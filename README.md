@@ -9,6 +9,7 @@ deterministically with no model in the decision loop.
 - Target application notes — [`docs/parabank.md`](docs/parabank.md)
 - Screen map (29 screens + graph) — [`docs/parabank-screens.md`](docs/parabank-screens.md)
 - **Findings, mapped to the assignment** — [`docs/findings.md`](docs/findings.md)
+- Capabilities and the vocabulary they imply — [`docs/capabilities-and-vocabulary.md`](docs/capabilities-and-vocabulary.md)
 - Open issues — [`docs/issues/`](docs/issues/README.md)
 - Decision records — [`docs/adr/`](docs/adr/README.md)
 
