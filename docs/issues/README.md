@@ -10,3 +10,4 @@ what is still wrong. Each carries the evidence, so nobody has to rediscover it.
 | [0003](0003-cross-tenant-locators.md) | Template matching cannot survive a tenant rebrand | §3.7 reuse | by design |
 | [0004](0004-sync-playwright-async.md) | Sync Playwright cannot nest `asyncio.run` | caller structure | low |
 | [0005](0005-mask-mutable-pixels.md) | Mask changing pixels rather than avoiding them | — | idea |
+| [0006](0006-controlled-vocabulary.md) | A straw-man controlled vocabulary for controls | part of 0001 | high |

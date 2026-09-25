@@ -88,9 +88,35 @@ naming explicitly and checking for. If the inventory comes back without one, ask
 again specifically for it rather than proceeding with a hole. Turns a silent
 omission into a retry.
 
-## What to measure
+## Measured: a tiled scan is more stable and more complete
 
-Inventory the same screenshot N times and report: the size distribution, which
+Prototype, same screenshot, three runs each. Report zones tile the screen 2x3
+with no overlap; each tile is shown with a 35% context margin and a red
+rectangle marking its zone, and the model reports only controls whose CENTRE
+falls inside that rectangle -- so nothing is cut off at a boundary and adjacent
+tiles cannot both claim the same control.
+
+```
+             controls found   spread   login controls
+  BROAD      24, 19, 24         5        3/3
+  TILED      27, 27, 26         1        3/3
+```
+
+Spread of 1 against 5, and consistently 2-8 more controls found.
+
+**What this does NOT show.** The broad scan found all three login controls on all
+three runs, so the failure this experiment was meant to test was not reproduced.
+"Tiled fixes the missing Log In button" is unproven. What is shown is better
+stability and completeness -- the mechanism by which it ought to.
+
+Cost: 6 calls rather than 1, parallelising into a single batch at concurrency 8,
+and plausibly net-neutral since fewer phantom controls means fewer wasted
+refinement calls.
+
+## What to measure next
+
+Enough runs to actually catch the broad scan failing, then the same comparison.
+Separately: inventory the same screenshot N times and report: the size distribution, which
 controls appear in every run versus some, and **how often a required control is
 missing**. That last number is the one that matters, and it is the number the
 three fixes above should move.
