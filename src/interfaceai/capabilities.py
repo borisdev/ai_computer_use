@@ -174,7 +174,7 @@ READ_SAVINGS_BALANCE = Capability(
                 "yet. Discovery slugs a control from its visible label, so this "
                 "row records as `account_13344_link` -- an id that cannot serve "
                 "another account. The discriminator says WHICH row by value; "
-                "resolving it is docs/issues/0001."
+                "resolving it is docs/issues/0007."
             ),
         ),
         Step(
