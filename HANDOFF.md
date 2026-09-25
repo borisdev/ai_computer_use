@@ -3,7 +3,7 @@
 Read this first. It says where the project is, what is proven, what is not, and
 what to do next. Everything it claims is measured unless it says otherwise.
 
-**Repo:** `github.com/borisdev/ai_computer_use` · 6 commits · 49 tests green · ruff clean
+**Repo:** `github.com/borisdev/ai_computer_use` · 92 tests green · ruff clean
 
 ---
 
@@ -146,6 +146,9 @@ only points**:
 | `decisions.py` | `validate_decision`, role→action table | 7 tests |
 | `parabank.py` | target facts, known states | 7 + 4 live |
 | `evidence.py` | `EvidenceWriter` | smoke only |
+| `vocabulary.py` | the 34-term controlled vocabulary, versioned | 8 tests |
+| `capability.py` | **the artifact (§3.2)** — schema, validator, approval gate | 35 tests |
+| `capabilities.py` | two authored capabilities + registry | same |
 
 **The three verbs:**
 
@@ -182,11 +185,21 @@ correctness guard.
 | § | | |
 |---|---|---|
 | 3.1 | goal-driven agent loop | nothing decides yet |
-| 3.2 | **capability artifact** | the graded centrepiece — designed, not coded |
-| 3.3 | step executor / `CapabilityResult` | `locate_control` exists; nothing runs a sequence |
+| 3.3 | step executor / `CapabilityResult` | the artifact and `locate_control` both exist; **nothing runs a sequence** |
+| 3.3 | screen-map store keyed `(app, tenant, screen)` | a step names a control; nothing resolves the name to a locator |
 | 3.6 | escalation | triggers exist (`unresolved`, `ambiguous`); no `Operator` |
 | — | `REPORT.md` | skeleton |
 | — | `/evidence/` | screenshots only |
+
+§3.2 is now coded — see §4 and [ADR 0005](docs/adr/0005-capability-artifact-shape.md).
+Two caveats that matter more than the tick:
+
+- **The two committed artifacts are HAND-AUTHORED**, because discovery does not
+  exist. They are the shape discovery must emit, not evidence that it can.
+- **One step of capability 1 has no mechanism behind it.** Selecting one of
+  eleven near-identical account rows by a parameter is expressed
+  (`ControlRef.discriminator`) and not implemented —
+  [issue 0007](docs/issues/0007-parameterised-row-selection.md).
 
 ---
 
@@ -220,18 +233,25 @@ That separates two failure modes that looked identical:
 
 ## 7. Where to go next, in order
 
-1. **The capability artifact (§3.2).** The graded centrepiece and everything
-   hangs off it. The design is settled in
-   [`docs/capabilities-and-vocabulary.md`](docs/capabilities-and-vocabulary.md):
-   five capabilities, and a 34-term straw-man vocabulary derived backwards from
-   them. Capability 1 is self-checking — account 13344 is SAVINGS **$1,231.10**.
-   Needs `requires` (preconditions) as well as a checkpoint.
+1. ~~**The capability artifact (§3.2).**~~ **Done** — `capability.py`,
+   `vocabulary.py`, `capabilities.py`, [ADR 0005](docs/adr/0005-capability-artifact-shape.md).
+   Four constraints are in the type system, each one a measured failure:
+   no locators in the artifact, a checkpoint may only compare an extracted
+   value, a sensitive slot cannot hold a literal, and `draft → approved` is one
+   gate. Capability 1 is self-checking — account 13344 is SAVINGS **$1,231.10**
+   after a seed and CHECKING **$5,022.93** after CLEAN, and a test asserts the
+   checkpoint is on the field that differs.
 2. **The step executor (§3.3).** `screenshot → locate → validate → use →
-   screenshot → assert checkpoint → CapabilityResult`.
+   screenshot → assert checkpoint → CapabilityResult`. It needs a **screen-map
+   store** first: a step names `(screen, control_id)`, and something has to turn
+   that into a `VisualLocator` for the tenant in hand. That store is the missing
+   piece, not the loop.
 3. **Fix the inventory ([0001](docs/issues/0001-incomplete-inventory.md)).** Three
    reinforcing parts: the controlled vocabulary, the goal passed down to the
    coarse prompt, and a required-controls list that retries rather than
-   proceeding with a hole.
+   proceeding with a hole. ⚠️ The vocabulary now EXISTS but is **not in the
+   prompt** — `VOCABULARY.as_prompt_block()` is written and uncalled, so the
+   15/24/22 number has not moved.
 4. **`Operator` seam (§3.6).** `page.pause()` gives pause, same session, resume
    and codegen capture in one line — see §8 below.
 5. **`REPORT.md`.** Sections 2 and 3 of this document are most of it already.

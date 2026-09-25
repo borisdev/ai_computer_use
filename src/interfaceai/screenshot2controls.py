@@ -185,7 +185,9 @@ from typing import Literal, Protocol, TypeVar
 import cv2
 import numpy as np
 from PIL import Image, ImageDraw
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
+
+from interfaceai.contracts import Contract
 
 # A patch flatter than this matches everything at 1.0 -- module docstring, B.
 _CONSTANT_STD = 1.0
@@ -206,14 +208,6 @@ _PATCH_PLACEMENTS = ((1.0, 2 / 3), (1.0, 1 / 3), (1.0, 1 / 2), (1.5, 2 / 3), (1.
 # have asked for. Measured: ParaBank's inputs are 18px tall; round 1 spacing is
 # 30px, and 0 dots landed inside the password field. See _refine.
 _MIN_TRUSTED_DOT_SPACING_PX = 12
-
-
-class Contract(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-        ser_json_bytes="base64",
-        val_json_bytes="base64",
-    )
 
 
 class ControlRole(StrEnum):

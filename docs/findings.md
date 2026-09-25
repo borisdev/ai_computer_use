@@ -14,8 +14,8 @@ Companions: [parabank.md](parabank.md) (the target), [parabank-screens.md](parab
 | § | Requirement | State | Evidence |
 |---|---|---|---|
 | 3.1 | Goal-driven agent loop | **not built** | perception half done; nothing decides yet |
-| 3.2 | Typed, versioned artifact | **partial** | control-map contract done; no *capability* artifact |
-| 3.3 | Deterministic replay | **partial** | `locate_control` exact (drift 0,0); no step executor |
+| 3.2 | Typed, versioned artifact | **built** | `capability.py` + 35 tests; two authored artifacts, both hand-written |
+| 3.3 | Deterministic replay | **partial** | `locate_control` exact (drift 0,0); no step executor, no screen-map store |
 | 3.4 | Safety guardrails | **partial** | single action chokepoint + 8 tests; no per-step risk classing |
 | 3.5 | Evidence | **partial** | `EvidenceWriter` written, not yet wired into a run |
 | 3.6 | Escalation & handoff | **not built** | triggers exist (`unresolved`, `ambiguous`); no routing |
@@ -81,6 +81,14 @@ One principle, twice: **code owns the resolution decision; the model only points
 ---
 
 ## 3. §3.2 — what an artifact may and may not store
+
+Now built: `src/interfaceai/capability.py`, and
+[ADR 0005](adr/0005-capability-artifact-shape.md) records the four constraints
+that ended up in the type system rather than in a convention. The measurements
+below are what put them there.
+
+⚠️ The two committed artifacts in `artifacts/` are **hand-authored**. Discovery
+does not exist, so they are the shape it must emit, not evidence that it can.
 
 Three storage schemes were tried. Two were measured failing.
 
@@ -242,6 +250,16 @@ asserted — not yet measured.
 7. **A key in `.secret` never reaches the SDK** — pydantic-settings loads it into
    `Settings`, the client reads `os.environ`.
 8. **gpt-4o rejects `max_tokens > 4096`** on that deployment.
+9. **The compose healthcheck shelled out to `curl || wget`, and the amd64 image
+   has NEITHER.** Every probe exited 127, the container sat `unhealthy`
+   indefinitely while serving 200s, and `docker compose up -d --wait` — the
+   documented first command — could never return. `CLAUDE.md` recorded "the
+   image ships `/usr/bin/curl`" under *Verified against a running container*;
+   that reading was taken on arm64, and `parasoft/parabank` is multi-arch with
+   different package sets. Replaced with a `bash` `/dev/tcp` probe that asks for
+   the webapp path, so it still fails while Tomcat is listening but has not
+   deployed the war. **A verification is scoped to the machine it ran on**, and
+   nothing in the note said which one that was.
 
 ---
 
@@ -250,10 +268,16 @@ asserted — not yet measured.
 See [issues/](issues/README.md).
 
 1. **Coarse inventory instability** (15/24/22) — currently blocks end-to-end login.
-2. **No capability artifact** — §3.2's graded centrepiece.
+   The vocabulary that is one third of the fix now exists
+   (`vocabulary.py`) and is **not in the prompt yet**, so the number has not moved.
+2. **No screen-map store** — a step names `(screen, control_id)` and nothing
+   turns that into a `VisualLocator`. The executor's missing prerequisite.
 3. **No agent loop** — §3.1.
-4. **No step executor / `StepResult`** — §3.3's result contract.
-5. **Patch contamination** — mechanically addressed, *unverified*: the last run
+4. **No step executor / `CapabilityResult`** — §3.3's result contract.
+5. **A parameterised control has no stable name** —
+   [issue 0007](issues/0007-parameterised-row-selection.md). One step of
+   capability 1 is expressed and unimplemented.
+6. **Patch contamination** — mechanically addressed, *unverified*: the last run
    never grounded the button, so there is no evidence either way.
-6. **No escalation path** — §3.6.
-7. **`REPORT.md` is a skeleton**, `/evidence/` holds screenshots only.
+7. **No escalation path** — §3.6.
+8. **`REPORT.md` is a skeleton**, `/evidence/` holds screenshots only.

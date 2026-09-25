@@ -39,7 +39,13 @@ container is down is not — it would be asserting nothing.
 - `src/interfaceai/settings.py` — config, loaded from `.env` + `.secret`
 - `src/interfaceai/parabank.py` — everything about the target surface: seed fixtures,
   known-state controls, liveness
-- `src/interfaceai/cli.py` — `interfaceai` CLI, currently `env` subcommands only
+- `src/interfaceai/vocabulary.py` — the 34-term controlled vocabulary, versioned.
+  Read by the artifact validator; **not yet in the inventory prompt**
+- `src/interfaceai/capability.py` — **the capability artifact (§3.2)**: schema,
+  validator, `draft → approved` gate. Shape decisions in `docs/adr/0005-*`
+- `src/interfaceai/capabilities.py` — the authored capabilities and the registry.
+  Hand-written, because discovery does not exist yet
+- `src/interfaceai/cli.py` — `interfaceai` CLI: `env` and `capability` subcommands
 - `docker-compose.yml` — ParaBank, both tenant variants
 - `docs/findings.md` — **every measurement, mapped to the assignment sections.**
   Read before re-deriving anything; it records what was measured and what was
@@ -57,9 +63,9 @@ container is down is not — it would be asserting nothing.
 - `REPORT.md` — the brief's design write-up deliverable, seven mandated headings
 - `evidence/`, `artifacts/` — graded deliverables, see brief §6
 
-Not written yet: the agent loop, artifact schema, replay engine, escalation
-path. `REPORT.md` exists but most sections are marked pending. Read `README.md`
-for what is actually done.
+Not written yet: the agent loop, the screen-map store, the replay engine, the
+escalation path. `REPORT.md` exists but most sections are marked pending. Read
+`HANDOFF.md` for what is actually done and measured.
 
 ## Conventions
 
@@ -101,10 +107,16 @@ for what is actually done.
   exactly what `insert.sql` says.
 - The landing page has `name="username"` and **zero** `data-testid` attributes,
   which is the premise of choosing this target.
-- The image ships `/usr/bin/curl` (Ubuntu 24.04), so the compose healthcheck
-  works and `docker compose up -d --wait` is the readiness gate. There is no
-  hand-rolled wait script; there was one, and it was deleted once the
-  healthcheck proved out.
+- ⛔ **Corrected 2026-09-25: the image does NOT ship `curl`, and this line cost
+  the next session its start command.** Measured on **amd64**: no `curl`, no
+  `wget`, so every healthcheck probe exited 127 and the container sat
+  `unhealthy` indefinitely while happily serving 200s — `docker compose up -d
+  --wait` could never return. The original reading was taken on **arm64**, and
+  `parasoft/parabank` is multi-arch with different package sets. The check now
+  uses `bash` + `/dev/tcp`, verified to exit 0 on `/parabank/index.htm` and 1 on
+  a path Tomcat does not serve. `docker compose up -d --wait` returns Healthy in
+  ~10s. **A verification is scoped to the machine it ran on**, and this note did
+  not say which one.
 
 - `db.htm` works and is the *only* dependable way to get a schema. `action=INIT`
   loads the full fixtures; `action=CLEAN` loads `reset.sql`, which is **not a

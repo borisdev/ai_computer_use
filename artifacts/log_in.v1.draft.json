@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "name": "log_in",
+  "version": 1,
+  "goal": "log in to the bank as the operator's seeded customer",
+  "vocabulary_version": 1,
+  "target": {
+    "app": "parabank",
+    "tenant": "baseline",
+    "base_url": "http://localhost:8080/parabank"
+  },
+  "viewport_width": 1280,
+  "viewport_height": 900,
+  "params": [],
+  "returns": [
+    {
+      "name": "customer_first_name",
+      "slot": "first_name"
+    }
+  ],
+  "requires": [
+    {
+      "name": "not_already_authenticated",
+      "control": {
+        "screen": "global_nav",
+        "control_id": "log_out_link",
+        "discriminator": null
+      },
+      "must": "absent",
+      "why": "Logging in on top of a live session lands on a different screen than the one every step below was recorded against."
+    }
+  ],
+  "steps": [
+    {
+      "verb": "enter",
+      "control": {
+        "screen": "index",
+        "control_id": "username_textbox",
+        "discriminator": null
+      },
+      "value": {
+        "kind": "secret",
+        "input_ref": "parabank_username"
+      },
+      "slot": "username",
+      "output": null,
+      "risky": false,
+      "note": "Sensitive slot: the artifact carries the KEY, never the value."
+    },
+    {
+      "verb": "enter",
+      "control": {
+        "screen": "index",
+        "control_id": "password_textbox",
+        "discriminator": null
+      },
+      "value": {
+        "kind": "secret",
+        "input_ref": "parabank_demo_password"
+      },
+      "slot": "password",
+      "output": null,
+      "risky": false,
+      "note": "Same. `use_control` logs value_length and never the value."
+    },
+    {
+      "verb": "click",
+      "control": {
+        "screen": "index",
+        "control_id": "log_in_button",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "risky": false,
+      "note": "Reversible: Log Out undoes it, so not risky."
+    },
+    {
+      "verb": "wait_for",
+      "control": {
+        "screen": "global_nav",
+        "control_id": "log_out_link",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "risky": false,
+      "note": "Waiting for the nav rather than the heading: logged-out overview.htm serves HTTP 200 with the SAME heading and an empty table, so the heading proves nothing."
+    },
+    {
+      "verb": "extract",
+      "control": {
+        "screen": "overview",
+        "control_id": "welcome_name",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": "first_name",
+      "output": "customer_first_name",
+      "risky": false,
+      "note": "The welcome line is the only per-customer text on the screen."
+    }
+  ],
+  "checkpoints": [
+    {
+      "output": "customer_first_name",
+      "op": "equals",
+      "expected": {
+        "kind": "literal",
+        "value": "John"
+      },
+      "why": "A value, not a lookup. The credentials are fixed keys, so the customer behind them is fixed too -- a different name means the secret provider handed us somebody else's session."
+    }
+  ],
+  "approval": "draft",
+  "approved_by": null
+}

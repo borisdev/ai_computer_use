@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "name": "read_savings_balance",
+  "version": 1,
+  "goal": "read the current balance of a member's savings account",
+  "vocabulary_version": 1,
+  "target": {
+    "app": "parabank",
+    "tenant": "baseline",
+    "base_url": "http://localhost:8080/parabank"
+  },
+  "viewport_width": 1280,
+  "viewport_height": 900,
+  "params": [
+    {
+      "name": "account_id",
+      "slot": "account_id",
+      "required": true
+    }
+  ],
+  "returns": [
+    {
+      "name": "found_account_id",
+      "slot": "account_id"
+    },
+    {
+      "name": "account_type",
+      "slot": "account_type"
+    },
+    {
+      "name": "balance",
+      "slot": "balance"
+    }
+  ],
+  "requires": [
+    {
+      "name": "authenticated",
+      "control": {
+        "screen": "global_nav",
+        "control_id": "log_out_link",
+        "discriminator": null
+      },
+      "must": "present",
+      "why": "Logged-out overview.htm returns HTTP 200 with the right heading and an empty table. A checkpoint cannot catch that; the presence of Log Out can. Re-checked on resume after a human handoff, because the operator may have logged out."
+    }
+  ],
+  "steps": [
+    {
+      "verb": "click",
+      "control": {
+        "screen": "global_nav",
+        "control_id": "accounts_overview_link",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "risky": false,
+      "note": "Navigation only. Reversible."
+    },
+    {
+      "verb": "wait_for",
+      "control": {
+        "screen": "overview",
+        "control_id": "accounts_overview_heading",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "risky": false,
+      "note": "The table renders after the nav, so the heading is the gate."
+    },
+    {
+      "verb": "click",
+      "control": {
+        "screen": "overview",
+        "control_id": "account_link",
+        "discriminator": {
+          "kind": "param",
+          "param": "account_id"
+        }
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "risky": false,
+      "note": "The parameterised step, and the one with no mechanism behind it yet. Discovery slugs a control from its visible label, so this row records as `account_13344_link` -- an id that cannot serve another account. The discriminator says WHICH row by value; resolving it is docs/issues/0001."
+    },
+    {
+      "verb": "wait_for",
+      "control": {
+        "screen": "activity",
+        "control_id": "account_details_heading",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "risky": false,
+      "note": "Account Details. One screen per record id (activity.htm?id=:id)."
+    },
+    {
+      "verb": "observe",
+      "control": null,
+      "value": null,
+      "slot": null,
+      "output": null,
+      "risky": false,
+      "note": "Evidence frame of the screen every value below is read from (S3.5)."
+    },
+    {
+      "verb": "extract",
+      "control": {
+        "screen": "activity",
+        "control_id": "account_number_value",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": "account_id",
+      "output": "found_account_id",
+      "risky": false,
+      "note": "Read back the id we navigated to, so the checkpoint can compare it."
+    },
+    {
+      "verb": "extract",
+      "control": {
+        "screen": "activity",
+        "control_id": "account_type_value",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": "account_type",
+      "output": "account_type",
+      "risky": false,
+      "note": "The field that separates the seeded record from the CLEAN one."
+    },
+    {
+      "verb": "extract",
+      "control": {
+        "screen": "activity",
+        "control_id": "balance_value",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": "balance",
+      "output": "balance",
+      "risky": false,
+      "note": "What the caller asked for. Never asserted -- it is the answer."
+    }
+  ],
+  "checkpoints": [
+    {
+      "output": "found_account_id",
+      "op": "equals",
+      "expected": {
+        "kind": "param",
+        "param": "account_id"
+      },
+      "why": "Necessary and NOT sufficient: ParaBank's CLEAN state keeps id 13344 and changes the record behind it, so this passes there."
+    },
+    {
+      "output": "account_type",
+      "op": "equals",
+      "expected": {
+        "kind": "literal",
+        "value": "SAVINGS"
+      },
+      "why": "This is the one that catches it. After CLEAN, 13344 is CHECKING $5,022.93 rather than SAVINGS $1,231.10 -- a different record under the same id. Without this the capability returns the wrong number to a bank and reports success."
+    }
+  ],
+  "approval": "draft",
+  "approved_by": null
+}

@@ -13,8 +13,13 @@ __pycache__/
 
 # Run output
 evidence/runs/
-artifacts/*.json
-!artifacts/.gitkeep
+# Approved artifacts are NOT committed. Approval is a person's act on a
+# machine; committing one would let the next clone replay unattended on a
+# review nobody in that clone performed, which is the gate being decoration.
+# Drafts ARE committed -- they are the reviewable deliverable (brief S6), they
+# are deterministic (`interfaceai capability export`), and a test compares them
+# byte for byte against the authored source.
+artifacts/*.approved.json
 .playwright/
 *.log
 

@@ -6,11 +6,12 @@ from __future__ import annotations
 
 import sys
 import time
+from pathlib import Path
 
 import typer
 from rich.console import Console
 
-from interfaceai import parabank
+from interfaceai import capabilities, capability, parabank, vocabulary
 from interfaceai.settings import get_settings
 
 app = typer.Typer(no_args_is_help=True, help="Computer-use automation for legacy bank apps.")
@@ -95,6 +96,95 @@ def break_db(
         f"[yellow]Minimal dataset[/] {url} -- only customer 12212 and account "
         f"13344 (now CHECKING $5,022.93) remain"
     )
+
+
+# ---------------------------------------------------------------------------
+# capability -- the artifact (assignment 3.2)
+# ---------------------------------------------------------------------------
+
+cap = typer.Typer(no_args_is_help=True, help="Inspect, export and approve capability artifacts.")
+app.add_typer(cap, name="capability")
+
+ARTIFACTS = Path(__file__).resolve().parents[2] / "artifacts"
+
+
+@cap.command("list")
+def cap_list() -> None:
+    """Every authored capability, with its signature and approval state."""
+    for c in capabilities.REGISTRY:
+        params = ", ".join(f"{p.name}: {capability.slot_type(p.slot)}" for p in c.params)
+        returns = ", ".join(f"{o.name}: {capability.slot_type(o.slot)}" for o in c.returns)
+        colour = "green" if c.approval is capability.Approval.APPROVED else "yellow"
+        console.print(
+            f"[bold]{c.name}[/]({params}) -> {returns or 'nothing'}  "
+            f"[{colour}]{c.approval}[/]  v{c.version}"
+        )
+
+
+@cap.command("show")
+def cap_show(
+    name: str = typer.Argument(..., help="Capability name, e.g. read_savings_balance"),
+) -> None:
+    """Print one capability as the JSON that would be exported."""
+    try:
+        console.print_json(capability.dump_capability(capabilities.get(name)))
+    except KeyError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(1) from exc
+
+
+@cap.command("validate")
+def cap_validate() -> None:
+    """Check every authored capability against the vocabulary in force."""
+    failed = False
+    for c in capabilities.REGISTRY:
+        try:
+            capability.validate_capability(c)
+        except capability.CapabilityError as exc:
+            failed = True
+            console.print(f"[red]FAIL[/] {c.name}: {exc}")
+        else:
+            console.print(f"[green]ok  [/] {c.name} v{c.version}")
+    console.print(
+        f"\nvocabulary v{vocabulary.VOCABULARY_VERSION}, {len(vocabulary.VOCABULARY.terms)} terms"
+    )
+    if failed:
+        raise typer.Exit(1)
+
+
+@cap.command("export")
+def cap_export() -> None:
+    """Write every authored capability to artifacts/ as a draft."""
+    ARTIFACTS.mkdir(parents=True, exist_ok=True)
+    for c in capabilities.REGISTRY:
+        capability.validate_capability(c)
+        path = ARTIFACTS / capability.artifact_filename(c)
+        path.write_text(capability.dump_capability(c))
+        console.print(f"[green]wrote[/] {path.relative_to(ARTIFACTS.parent)}")
+
+
+@cap.command("approve")
+def cap_approve(
+    name: str = typer.Argument(..., help="Capability name to promote."),
+    by: str = typer.Option(..., "--by", help="Who reviewed it. Recorded in the artifact."),
+) -> None:
+    """Promote an exported draft to approved -- the gate unattended replay checks.
+
+    Deliberately a separate command and a separate file. Discovery emits a
+    draft; a person reads the steps and the checkpoints and promotes it. An
+    artifact that approved itself would make the gate decoration.
+    """
+    try:
+        source = capabilities.get(name)
+    except KeyError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(1) from exc
+    approved = capability.approve(source, by)
+    capability.validate_capability(approved)
+    ARTIFACTS.mkdir(parents=True, exist_ok=True)
+    path = ARTIFACTS / capability.artifact_filename(approved)
+    path.write_text(capability.dump_capability(approved))
+    console.print(f"[green]approved[/] {path.relative_to(ARTIFACTS.parent)} by {by}")
 
 
 def main() -> None:  # pragma: no cover

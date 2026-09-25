@@ -16,16 +16,21 @@ deterministically with no model in the decision loop.
 
 ## Status
 
-Built so far: the **target environment**. The agent loop, artifact schema and
-replay engine are not implemented yet.
+Perception and the artifact are built. Nothing runs a sequence yet.
 
 | Piece | State |
 |---|---|
 | ParaBank target, both tenant variants | done |
 | Seed fixtures, verified against the live app | done |
 | Known-state / error-injection controls | done, round-trip verified |
-| `uv` project, tests, lint | done |
-| Agent loop / artifact schema / replay / escalation | not started |
+| Perception — `extract_control_locators`, `locate_control`, `use_control` | done; grounding 3/3, replay drift (0,0) |
+| **Capability artifact (§3.2)** — schema, validator, `draft → approved` gate | done; [ADR 0005](docs/adr/0005-capability-artifact-shape.md) |
+| Controlled vocabulary, 34 terms | done in code; **not yet in the inventory prompt** |
+| Screen-map store / step executor / agent loop / escalation | not started |
+
+The two artifacts in `artifacts/` are **hand-authored**: discovery does not
+exist yet, so they are the shape it has to emit rather than evidence that it
+can. `HANDOFF.md` is the honest ledger of what is measured.
 
 Setting up a fresh machine: [`docs/vm-setup.md`](docs/vm-setup.md)
 
@@ -47,8 +52,12 @@ uv run interfaceai env reset             # 2. seed the database, verify it took
 
 Then open <http://localhost:8080/parabank> and log in as `john` / `demo`.
 
-First run pulls `parasoft/parabank:baseline` (~250 MB, native arm64 on Apple
-Silicon). After that a cold start is about 15 seconds.
+First run pulls `parasoft/parabank:baseline` (~250 MB; multi-arch, native on
+both amd64 and arm64). After that a cold start is about 15 seconds.
+
+⚠️ The arches do not ship the same packages — the amd64 image has neither
+`curl` nor `wget`, which is why the compose healthcheck probes over `bash`'s
+`/dev/tcp` instead of shelling out to an HTTP client.
 
 ### Why starting it is two commands
 
@@ -79,6 +88,12 @@ docker compose down              # stop; also wipes the DB (no volume)
 uv run interfaceai env status            # ready / no data / down, per tenant
 uv run interfaceai env reset             # reseed to the full fixtures
 uv run interfaceai env break             # switch to the minimal dataset (see below)
+
+uv run interfaceai capability list       # signatures and approval state
+uv run interfaceai capability show read_savings_balance
+uv run interfaceai capability validate   # check every artifact against the vocabulary
+uv run interfaceai capability export     # (re)write artifacts/*.draft.json
+uv run interfaceai capability approve read_savings_balance --by "your name"
 
 uv run pytest -m "not live"      # offline tests
 uv run pytest -m live            # live tests; needs the stack up
@@ -158,7 +173,9 @@ Not available yet — it needs the agent loop and replay engine. It will be:
 ```bash
 docker compose up -d --wait && uv run interfaceai env reset
 uv run interfaceai discover --goal "..." --target http://localhost:8080/parabank
-uv run interfaceai replay artifacts/<capability>.json --param account_id=13344
+uv run interfaceai capability approve read_savings_balance --by "you"
+uv run interfaceai replay artifacts/read_savings_balance.v1.approved.json \
+  --param account_id=13344
 ```
 
 ## Layout
@@ -171,6 +188,11 @@ docs/adr/              decision records
 src/interfaceai/
   settings.py          config from .env + .secret
   parabank.py          surface facts, seed fixtures, known-state controls
+  surface.py           the perception/action seam; `use_control`
+  screenshot2controls.py   `extract_control_locators`, `locate_control`
+  vocabulary.py        the 34-term controlled vocabulary
+  capability.py        the capability artifact: schema, validator, approval gate
+  capabilities.py      the authored capabilities and the registry
   cli.py               `interfaceai` CLI
 tests/                 offline fixture tests + live smoke tests
 evidence/              discovery and replay run evidence (brief deliverable)

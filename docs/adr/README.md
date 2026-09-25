@@ -12,3 +12,4 @@ actually considered. A decision with no rejected alternative was not a decision.
 | [0002](0002-playwright-screenshot-control.md) | Playwright driving screenshots and coordinates, not the DOM | Accepted |
 | [0003](0003-plain-docker-compose.md) | Plain `docker compose`, no Makefile | Accepted |
 | [0004](0004-custom-tool-vocabulary.md) | Our own tool vocabulary, not Anthropic's computer toolset | Accepted |
+| [0005](0005-capability-artifact-shape.md) | What a capability artifact may and may not contain | Accepted |

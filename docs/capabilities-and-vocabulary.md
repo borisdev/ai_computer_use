@@ -150,17 +150,43 @@ these 34 words.
 
 ## What it needs to become code
 
-- **A schema.** `ControlledVocabulary` with nouns, verbs, qualifiers, and a
-  `version`. A capability records which version it was authored against, so v2
-  cannot silently redefine a term a saved artifact depends on.
-- **A resolver.** `ConceptResolver` as a Protocol, so the strategy is swappable
-  and measurable. For 34 terms the simplest implementation wins: put the
-  vocabulary in the prompt and let the model resolve directly, no separate step.
-  A cached, embedding-backed resolver of the kind nobsmed-v2 uses — described
-  there as *convergently deterministic*, an LLM whose every result is cached so
-  the same input yields the same output after the first call — earns its
-  complexity at thousands of terms, not at 34. Naming it as the growth path is
-  enough.
+- **A schema.** ✅ `src/interfaceai/vocabulary.py`. `ControlledVocabulary` with
+  nouns, verbs, qualifiers and a `version`; a capability records which version
+  it was authored against and `validate_capability` refuses a mismatch, so v2
+  cannot silently redefine a term a saved artifact depends on. The `sensitive`
+  flag landed with it — `username`, `password` and `ssn` — and it is what makes
+  a literal credential un-storable rather than merely discouraged.
+- **A resolver.** ❌ Not built, and the vocabulary is **not in the inventory
+  prompt yet**. `VOCABULARY.as_prompt_block()` exists and nothing calls it, so
+  the 15/24/22 variance this was meant to fix has not been re-measured. For 34
+  terms the simplest implementation still wins: put the vocabulary in the prompt
+  and let the model resolve directly, no separate step. A cached,
+  embedding-backed resolver earns its complexity at thousands of terms, not at
+  34. Naming it as the growth path is enough.
+
+## Layer 3, as built
+
+`src/interfaceai/capability.py`, and
+[ADR 0005](adr/0005-capability-artifact-shape.md) for why it has the shape it
+has. The sketch above survived contact with three changes, each forced by
+something already measured:
+
+- **`requires` and the checkpoint are capability-level, not step verbs.** A
+  precondition is re-checked after a human handoff, so it cannot live at a
+  position in the list. `escalate` went the same way: it is what the executor
+  does on a failure, so its authored form is `Step.risky`.
+- **A checkpoint can only compare an EXTRACTED VALUE.** `on_screen(...)` is not
+  expressible, because that shape passes on ParaBank's CLEAN state and hands
+  back a different record's balance.
+- **A step names a control; it does not carry one.** The locator lives in a
+  per-tenant screen map, which is what keeps one artifact usable on two tenants.
+
+Two capabilities are authored (`capabilities.py`): `log_in`, which exercises the
+sensitive slots, and `read_savings_balance`, which is capability 1. **Both are
+hand-written and both are `draft`.** Capability 3, 4 and 5 are not authored —
+and capability 4 should not be until the entity-qualified-slot question in
+[issue 0006](issues/0006-controlled-vocabulary.md) is settled, because it is the
+one that needs to say whose `city` it is.
 
 Stability is the property that matters either way: a resolver that answers
 differently on two runs reintroduces exactly the churn the vocabulary exists to

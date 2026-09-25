@@ -1,9 +1,10 @@
 # Design write-up
 
-> **Status: in progress.** The target environment is built and verified; the
-> agent loop, artifact schema and replay engine are not written yet. Sections
-> below marked *pending* are placeholders against the brief's mandated headings,
-> not claims. What is stated as done has been checked against a running system.
+> **Status: in progress.** The target environment, the perception layer and the
+> **capability artifact** are built and verified; the agent loop and the replay
+> engine are not written yet. Sections below marked *pending* are placeholders
+> against the brief's mandated headings, not claims. What is stated as done has
+> been checked against a running system.
 
 Supporting documents:
 
