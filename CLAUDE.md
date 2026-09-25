@@ -6,6 +6,10 @@ deliberate and the judgment calls are what's being assessed.
 
 Monolith, not a monorepo: one package at `src/interfaceai/`.
 
+**Read [`HANDOFF.md`](HANDOFF.md) first.** It carries the settled scope
+boundary, what is measured versus assumed, the current blocker, and the
+decisions not to relitigate.
+
 ## Essential commands
 
 - **python3** (not python) on this macOS system

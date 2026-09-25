@@ -4,6 +4,7 @@ An LLM drives a legacy bank UI once to work out how a task is done, that run is
 recorded as a typed capability artifact, and the artifact is then replayed
 deterministically with no model in the decision loop.
 
+- **Start here** — [`HANDOFF.md`](HANDOFF.md): scope, what is proven, what is next
 - Assignment brief — [`Assignment-A-Computer-Use-Automation.md`](Assignment-A-Computer-Use-Automation.md)
 - Design write-up — [`REPORT.md`](REPORT.md)
 - Target application notes — [`docs/parabank.md`](docs/parabank.md)

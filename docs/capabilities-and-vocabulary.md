@@ -93,8 +93,47 @@ The misses are informative rather than alarming:
 - **`from_account` / `to_account`** are present as `fromAccountId` /
   `toAccountId` — a naming convention difference, not a gap.
 
-So the WADL confirmed 24 of 34 terms and cost one `curl`. That is a useful
-spell-check and a poor foundation, which is exactly how it should be treated.
+**As a validation step this failed: it changed nothing.** All 34 terms survived;
+not one was added, renamed or removed because of it. Kept here only for the
+lesson it produced — *an API's inputs are not an application's vocabulary, and
+domain verbs live in what people ask for* — and then dropped as a method. Do not
+repeat it on the next application.
+
+## Layer 2: step verbs
+
+The 34 terms above are a vocabulary of **data** — what controls are *about*. A
+capability also needs a vocabulary of **control flow**: how to move from control
+to control, when to wait, what to assert, when to stop and ask a person.
+
+| Verb | Why it exists |
+|---|---|
+| `require` | a **precondition** — `authenticated`, `on_screen(overview)` |
+| `enter` / `click` / `select` | act on a control |
+| `wait_for` | a page load, a slow response |
+| `observe` | screenshot — the evidence trail (§3.5) |
+| `assert` | the **checkpoint** (§3.3) — did we reach the expected state |
+| `extract` | a typed output the caller gets back (§3.2) |
+| `escalate` | stuck, or risky-and-unconfirmed (§3.6) |
+
+Eight verbs, and each maps onto a requirement — a good sign the decomposition is
+real rather than invented.
+
+`require` is the one most easily forgotten and the most load-bearing. It is what
+makes **resume after a human handoff** safe: the operator may have logged out or
+navigated away, so resume must re-check preconditions before acting. It is also
+the honest answer to logged-out `overview.htm` returning HTTP 200 with an empty
+table — a precondition catches that, a checkpoint does not.
+
+## Layer 3: a capability is a compound
+
+```
+read_savings_balance:
+  requires:   authenticated
+  params:     account_id: str          <- a SLOT from layer 1
+  steps:      [...]                    <- layer 2 verbs over layer 1 controls
+  checkpoint: on_screen(account_details) and account_id matches
+  returns:    balance: Money
+```
 
 ## What this is not
 
