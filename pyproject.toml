@@ -1,0 +1,53 @@
+[project]
+name = "interfaceai"
+version = "0.1.0"
+description = "Computer-use automation: LLM discovers a flow once, replays it deterministically"
+requires-python = ">=3.13"
+dependencies = [
+    "anthropic>=1.8.0",
+    "httpx>=0.28",
+    "litellm>=1.102.1",
+    "opencv-python-headless>=5.0.0.93",
+    "pillow>=12.3.0",
+    "playwright>=1.63.0",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "rich>=14",
+    "typer>=0.15",
+]
+
+# Deliberately NOT pinned yet: the computer-use driver (Playwright vs. raw CDP
+# vs. accessibility tree vs. screenshot+coordinates) and the model SDK. Those
+# are the assignment's "explicitly your call" decisions -- picking them by
+# silently adding a dependency would be deciding them by accident.
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "ruff>=0.9",
+]
+
+[project.scripts]
+interfaceai = "interfaceai.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/interfaceai"]
+
+[tool.ruff]
+line-length = 100
+lint.ignore = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    # Needs ParaBank actually running: `make up` first. Excluded by `make test`.
+    "live: requires a live ParaBank container",
+]

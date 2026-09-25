@@ -1,0 +1,64 @@
+# Local "legacy bank app" to automate against.
+#
+# ParaBank (Parasoft's demo banking app): Tomcat 10 + JDK 21 + HSQLDB, one
+# container, no external dependencies. Chosen because it is a genuine
+# server-rendered Java web app -- table layouts, .htm form posts, no test IDs,
+# no SPA -- which is the "legacy web surface" the assignment describes, rather
+# than a modern site with a clean DOM.
+#
+# Two services, same vendor product, different builds:
+#   parabank    (image tag `baseline`)  -- tenant A, the surface we record on
+#   parabank-b  (image tag `feature`)   -- tenant B, a drifted variant
+# `baseline` and `latest` are the same digest upstream; `feature` is a distinct
+# image. That gives us a free stand-in for "two institutions running the same
+# core banking package at different versions" (assignment 3.7 / stretch goal).
+
+# Project name comes from COMPOSE_PROJECT_NAME in .env rather than a top-level
+# `name:` key, which older compose builds reject.
+services:
+  parabank:
+    image: parasoft/parabank:baseline
+    container_name: parabank
+    restart: unless-stopped
+    ports:
+      - "${PARABANK_PORT:-8080}:8080"      # web UI + REST/SOAP services
+      - "${PARABANK_JMS_PORT:-61616}:61616" # ActiveMQ, loan processor
+      - "${PARABANK_DB_PORT:-9001}:9001"    # HSQLDB, for seeding/asserting out of band
+    healthcheck:
+      # LIVENESS ONLY -- Tomcat has deployed the webapp. It does NOT mean the
+      # app is usable: ParaBank boots with no database schema and serves 200s
+      # regardless. `make up` seeds the DB after this goes green, and gates on
+      # interfaceai.parabank.is_seeded(). -L matters: without it a bare 302 passes.
+      test:
+        - CMD-SHELL
+        - >-
+          curl -fsSL http://localhost:8080/parabank/index.htm >/dev/null 2>&1 ||
+          wget -q -O /dev/null http://localhost:8080/parabank/index.htm
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s   # Tomcat cold start + webapp deploy
+
+  parabank-b:
+    image: parasoft/parabank:feature
+    container_name: parabank-b
+    profiles: ["tenant-b"]
+    restart: unless-stopped
+    ports:
+      - "${PARABANK_B_PORT:-8081}:8080"
+      - "${PARABANK_B_JMS_PORT:-61617}:61616"
+      - "${PARABANK_B_DB_PORT:-9002}:9001"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          curl -fsSL http://localhost:8080/parabank/index.htm >/dev/null 2>&1 ||
+          wget -q -O /dev/null http://localhost:8080/parabank/index.htm
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+# No volumes on purpose. ParaBank's HSQLDB is in-container, so `docker compose
+# down` is a full factory reset and every run starts from the same seed data --
+# which is what makes replay determinism measurable rather than aspirational.

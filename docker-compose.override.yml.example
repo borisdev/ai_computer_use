@@ -1,0 +1,11 @@
+# Local overrides. Copy to docker-compose.override.yml (gitignored) if you need
+# them; compose picks that file up automatically.
+#
+#   cp docker-compose.override.yml.example docker-compose.override.yml
+
+services:
+  parabank:
+    # Give Tomcat more heap, or attach a debugger, without touching the
+    # committed compose file.
+    environment:
+      - CATALINA_OPTS=-Xms512m -Xmx1024m
