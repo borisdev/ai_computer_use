@@ -820,27 +820,58 @@ def _overlap(a: CropBox, b: CropBox) -> int:
     return max(0, w) * max(0, h)
 
 
-def _locator_for(
+def _choose_landmark(
     screen: ScreenInput,
     point: ClickPoint,
     cfg: DiscoveryConfig,
     size: ImageSize,
-    volatile: list[CropBox] | None = None,
+    unstable_regions: list[CropBox] | None = None,
 ) -> tuple[VisualLocator | None, str | None]:
-    """Build a patch and prove it re-finds itself on the very image it came from.
+    """Choose the landmark that will be used to find this control again.
 
-    Several PLACEMENTS are tried, not just one size. Reaching upward catches the
-    label above an input, which is what makes a blank field identifiable -- but
-    for a submit button sitting below a form, upward is the worst direction:
-    measured on ParaBank, the Log In patch swallowed the password field, matched
-    at 1.0000 on an empty form and 0.8150 once anything was typed, so the button
-    became unfindable mid-login. Reaching downward instead catches "Forgot login
-    info?" and "Register", which never change.
+    A LANDMARK is a patch of the screen around the click point, saved as pixels.
+    At replay we find the landmark and step back to the control by a recorded
+    offset. It is not a picture of the control -- an empty text field has no
+    identity of its own, so the landmark deliberately reaches beyond it to
+    capture something distinctive nearby, usually a label.
 
-    Verifying here is cheap; discovering at replay that a patch was featureless
-    or volatile is not.
+    A good landmark is both UNIQUE (it appears once on the screen) and STABLE
+    (its pixels will still look like that later). Uniqueness can be checked here;
+    stability cannot, so it is inferred from which regions hold controls whose
+    contents change.
+
+    Five placements are tried. Measured on ParaBank, the click point is inside
+    the Log In button and both candidates are unique:
+
+          UP-reaching landmark                DOWN-reaching landmark
+       +-----------------------+
+       |  Password             |
+       |  +-----------------+  |
+       |  |                 |  |  <- contents change
+       |  +-----------------+  |       +-----------------------+
+       |    +----------+       |       |    +----------+       |
+       |    |  LOG IN  |       |       |    |  LOG IN  |       |
+       |    |    *     |       |       |    |    *     |       |
+       |    +----------+       |       |    +----------+       |
+       +-----------------------+       |  Forgot login info?   |
+                                       |  Register             |
+        unique?  YES                   +-----------------------+
+        stable?  NO   rejected
+                                        unique?  YES
+                                        stable?  YES  chosen
+
+       * = the click point, inside the button. The landmark surrounds it; the
+           recorded offset is what steps from landmark corner back to the point.
+
+    Uniqueness alone cannot choose between these -- both are unique on the
+    discovery screenshot, where the form is empty. That is the whole trap: the
+    upward landmark self-matched at 1.0000 and then scored 0.8150 once anything
+    was typed, so the button became unfindable mid-login. Hence the second test.
+
+    Verifying here is cheap; discovering at replay that a landmark was
+    featureless or unstable is not.
     """
-    volatile = volatile or []
+    unstable_regions = unstable_regions or []
     last = "no patch attempted"
     usable: list[tuple[int, VisualLocator]] = []
 
@@ -860,7 +891,7 @@ def _locator_for(
         if drift > _SELF_MATCH_TOLERANCE_PX:
             last = f"self-match drifted {drift}px"
             continue
-        usable.append((sum(_overlap(crop, v) for v in volatile), locator))
+        usable.append((sum(_overlap(crop, r) for r in unstable_regions), locator))
 
     if usable:
         # Among placements that are unique, prefer the one overlapping the least
@@ -917,9 +948,10 @@ async def extract_control_locators(
     taken: set[str] = set()
     ids = [_unique(_slug(c.label, c.role), taken) for c in inventory.controls]
 
-    # Controls whose CONTENTS change once the flow runs. A patch overlapping one
-    # is recorded empty at discovery and stops matching as soon as it is filled.
-    volatile = [
+    # Regions whose PIXELS change once the flow runs -- an empty field does not
+    # stay empty. A landmark overlapping one is recorded blank at discovery and
+    # stops matching the moment it is filled.
+    unstable_regions = [
         cells[c.cell_id]
         for c in inventory.controls
         if c.cell_id in cells and c.role in (ControlRole.TEXTBOX, ControlRole.SELECT)
@@ -951,7 +983,7 @@ async def extract_control_locators(
         if point is None:
             return LocatedControl(**base, status="unresolved", reason=why)
 
-        locator, why = _locator_for(inp, point, cfg, size, volatile)
+        locator, why = _choose_landmark(inp, point, cfg, size, unstable_regions)
         if locator is None:
             return LocatedControl(**base, status="unresolved", reason=why)
 

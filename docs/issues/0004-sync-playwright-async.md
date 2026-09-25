@@ -5,10 +5,10 @@
 ## Observed
 
 ```python
-with PlaywrightSurface(...) as surf:              # Playwright's own loop is running
-    asyncio.run(extract_control_locators(...))    # RuntimeError: asyncio.run()
-                                                  # cannot be called from a
-                                                  # running event loop
+with PlaywrightSurface(...) as surf:  # Playwright's own loop is running
+    asyncio.run(extract_control_locators(...))  # RuntimeError: asyncio.run()
+    # cannot be called from a
+    # running event loop
 ```
 
 Sync Playwright drives its own event loop internally. `asyncio.run` starts a new

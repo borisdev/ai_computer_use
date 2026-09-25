@@ -5,7 +5,8 @@ what is still wrong. Each carries the evidence, so nobody has to rediscover it.
 
 | # | Issue | Blocks | Severity |
 |---|---|---|---|
-| [0001](0001-coarse-inventory-instability.md) | Coarse inventory returns 15/24/22 controls from one screenshot | end-to-end login | high |
-| [0002](0002-patch-contamination.md) | Context patches capture fields whose contents change | form submit buttons | high |
+| [0001](0001-incomplete-inventory.md) | The inventory is incomplete and different every run (15/24/22) | **everything** | highest |
+| [0002](0002-landmark-stability.md) | Landmarks can capture pixels that change | form submit buttons | fixed, unverified live |
 | [0003](0003-cross-tenant-locators.md) | Template matching cannot survive a tenant rebrand | §3.7 reuse | by design |
 | [0004](0004-sync-playwright-async.md) | Sync Playwright cannot nest `asyncio.run` | caller structure | low |
+| [0005](0005-mask-mutable-pixels.md) | Mask changing pixels rather than avoiding them | — | idea |

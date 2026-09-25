@@ -1,4 +1,4 @@
-# 0002 — Context patches capture fields whose contents change
+# 0002 — Landmarks can capture pixels that change
 
 **Severity:** high for any control below a form — which is every submit button.
 
@@ -37,7 +37,7 @@ known to be volatile — controls the coarse inventory labelled `textbox` or
 `select` — and the lowest-overlap placement wins.
 
 **Unverified.** On the run that followed, `log_in_button` was never grounded
-(see [0001](0001-coarse-inventory-instability.md)), so the patch stage was never
+(see [0001](0001-incomplete-inventory.md)), so the patch stage was never
 reached. There is no evidence either way yet.
 
 ## What to measure
