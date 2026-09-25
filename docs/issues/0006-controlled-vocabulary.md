@@ -83,7 +83,49 @@ UI-native: `confirmPassword`, `verifyField`, `submit`, `cancel`, `navLink`
 
 ~30 terms. Small enough to put in a prompt, fixed enough to stabilise naming.
 
-## What to measure
+## Measured: the churn is in NAMING, not in finding
+
+Three tiled scans of the same screenshot, diffed by control rather than counted:
+
+```
+run 1: 26    run 2: 26    run 3: 26      count perfectly stable
+
+found in ALL 3 runs : 18
+varies across runs  :  8
+```
+
+Six of those eight are three controls described two different ways:
+
+```
+buttonwithagroupofpeopleic  [1,0,1]  \
+customerloginbuttonpersoni  [0,1,0]  /   the SAME button
+
+buttonwithahouseiconlikely  [1,0,1]  \
+homebuttonhouseiconinthece  [0,1,0]  /   the SAME button
+
+buttonwithanenvelopeiconli  [1,0,1]  \
+contactbuttonenvelopeiconi  [0,1,0]  /   the SAME button
+```
+
+They are ParaBank's three orange header icons -- home, accounts, contact --
+which carry **no text label, only an icon**. With no text to anchor a name the
+model writes prose, and prose varies between runs. The remaining two entries are
+a double-counted "READ MORE" (there are two on the page) and a footer line that
+is arguably not a control.
+
+**Nothing was dropped. The instability is in what things are CALLED.**
+
+This sharpens the case for a controlled vocabulary: it is not only for search and
+cross-tenant reuse, it is the fix for identity instability on unlabelled
+controls. Forcing the three prose descriptions to resolve to `home_button`,
+`accounts_button`, `contact_button` removes the churn entirely.
+
+It also separates two failure modes that looked alike. A control WITH a text
+label (`log_in_button`) going missing is an omission by the broad scan, which
+tiling addresses. A control WITHOUT one churning between names is a naming
+problem, which only a vocabulary addresses.
+
+## What to measure next
 
 Whether inventorying the same screenshot N times with the vocabulary in the
 prompt produces the same set of resolved concepts — and specifically whether a

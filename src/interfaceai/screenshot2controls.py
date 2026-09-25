@@ -297,6 +297,27 @@ class DiscoveryConfig(Contract):
     context_width: int = Field(default=240, ge=16)
     context_height: int = Field(default=96, ge=16)
 
+    # --- Tiled inventory (prototype; see docs/issues/0001-incomplete-inventory.md)
+    #
+    # One broad "list every control" call over a 192-cell grid is the worst-shaped
+    # task available, and it measures that way: 24/19/24 controls from identical
+    # bytes. Tiling into a few narrow questions gave 27/27/26 -- spread 1 against
+    # 5. Parameterised so the comparison can be replicated and swept rather than
+    # re-derived from a scratchpad script.
+    #
+    # Report zones tile the screen EXACTLY (no overlap); only the context margin
+    # overlaps. A control is reported by the one tile whose zone contains its
+    # centre, so nothing is lost at a boundary and nothing is double-counted.
+    tile_cols: int = Field(default=2, ge=1, le=8)
+    tile_rows: int = Field(default=3, ge=1, le=8)
+    # Context shown around each zone, as a fraction of the zone. Large enough
+    # that a label just outside the zone is still readable.
+    tile_margin: float = Field(default=0.35, ge=0, le=1)
+    # Enlargement cap for a tile. Lower values trade legibility for cost, which
+    # is the knob to sweep when tuning scan resolution.
+    tile_max_zoom: int = Field(default=4, ge=1, le=8)
+    tile_target_px: int = Field(default=900, ge=200, le=2000)
+
 
 class ResolveInput(Contract):
     screenshot_png: bytes = Field(repr=False)
