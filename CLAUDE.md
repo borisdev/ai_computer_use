@@ -37,6 +37,10 @@ container is down is not — it would be asserting nothing.
   known-state controls, liveness
 - `src/interfaceai/cli.py` — `interfaceai` CLI, currently `env` subcommands only
 - `docker-compose.yml` — ParaBank, both tenant variants
+- `docs/findings.md` — **every measurement, mapped to the assignment sections.**
+  Read before re-deriving anything; it records what was measured and what was
+  only inferred.
+- `docs/issues/` — open problems with their evidence
 - `docs/parabank-screens.md` — the 29 screens, the navigation graph, and the
   hazards for an exploring agent (logout poisoning, POST-only screens)
 - `docs/parabank.md` — **everything learned about the target.** Read this before

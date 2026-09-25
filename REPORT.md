@@ -12,6 +12,9 @@ Supporting documents:
   the seed fixtures, and the collected gotchas. The evidence behind most of the
   decisions below.
 - **[docs/adr/](docs/adr/README.md)** — architecture decision records.
+- **[docs/findings.md](docs/findings.md)** — every measurement behind the claims
+  below, mapped section by section to this brief.
+- **[docs/issues/](docs/issues/README.md)** — what is still open, with evidence.
 
 ---
 
