@@ -283,6 +283,8 @@ initialized" every 10s for minutes while `docker compose ps` said `healthy`.
 Keys live in `.secret` (gitignored). `VISION_API_KEY` and `VISION_API_KEY_EASTUS2`
 are copied from `~/workspace/nobsmed-v2/.secret`.
 
+Setting up a fresh machine or VM: [`docs/vm-setup.md`](docs/vm-setup.md)
+
 Full target notes: [`docs/parabank.md`](docs/parabank.md) ·
 29 screens: [`docs/parabank-screens.md`](docs/parabank-screens.md)
 

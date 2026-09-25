@@ -27,6 +27,8 @@ replay engine are not implemented yet.
 | `uv` project, tests, lint | done |
 | Agent loop / artifact schema / replay / escalation | not started |
 
+Setting up a fresh machine: [`docs/vm-setup.md`](docs/vm-setup.md)
+
 ## Requirements
 
 - A Docker runtime with `docker compose` — Docker Desktop, OrbStack or Colima
