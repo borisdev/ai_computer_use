@@ -14,7 +14,7 @@ because each of them was already measured failing:
 
 1.  **No coordinates, and no locators either.** A step names a control by
     `(screen, control_id)`; the pixel template that finds it lives in a
-    per-tenant screen map. Raw `(x, y)` scored 1/10 clicks inside the control
+    per-tenant control map. Raw `(x, y)` scored 1/10 clicks inside the control
     (`docs/findings.md` S2), and a template is the least portable thing in the
     system -- keeping it out of the artifact is what lets one artifact serve
     two tenants whose CSS differs (S3.7).
@@ -105,7 +105,7 @@ Value = Annotated[LiteralValue | ParamValue | SecretValue, Field(discriminator="
 class ControlRef(Contract):
     """Which control, by name, on which recorded screen.
 
-    Resolved at replay through the screen map for the tenant in hand, and from
+    Resolved at replay through the control map for the tenant in hand, and from
     there through `locate_control`. The artifact stays tenant-agnostic; only
     the locator payload behind this name is tenant-specific.
     """
@@ -240,7 +240,7 @@ class OutputSpec(Contract):
 class Target(Contract):
     """What this was authored against. Not a URL to navigate to.
 
-    `tenant` selects the screen map at replay; a capability recorded on tenant
+    `tenant` selects the control map at replay; a capability recorded on tenant
     A is the same capability on tenant B, with different pixels behind the
     same control names.
     """

@@ -63,7 +63,7 @@ container is down is not — it would be asserting nothing.
 - `REPORT.md` — the brief's design write-up deliverable, seven mandated headings
 - `evidence/`, `artifacts/` — graded deliverables, see brief §6
 
-Not written yet: the agent loop, the screen-map store, the replay engine, the
+Not written yet: the agent loop, the control-map store, the replay engine, the
 escalation path. `REPORT.md` exists but most sections are marked pending. Read
 `HANDOFF.md` for what is actually done and measured.
 

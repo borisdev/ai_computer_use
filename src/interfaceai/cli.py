@@ -11,7 +11,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from interfaceai import capabilities, capability, parabank, vocabulary
+from interfaceai import capabilities, capability, control_map_store, parabank, vocabulary
 from interfaceai.settings import get_settings
 
 app = typer.Typer(no_args_is_help=True, help="Computer-use automation for legacy bank apps.")
@@ -107,6 +107,11 @@ app.add_typer(cap, name="capability")
 
 ARTIFACTS = Path(__file__).resolve().parents[2] / "artifacts"
 
+# Hoisted: ruff B008 refuses a call in an argument default.
+_MAPS_OPTION = typer.Option(
+    Path("control_maps"), "--maps", help="Control-map store root (written by discovery)."
+)
+
 
 @cap.command("list")
 def cap_list() -> None:
@@ -185,6 +190,37 @@ def cap_approve(
     path = ARTIFACTS / capability.artifact_filename(approved)
     path.write_text(capability.dump_capability(approved))
     console.print(f"[green]approved[/] {path.relative_to(ARTIFACTS.parent)} by {by}")
+
+
+@cap.command("check")
+def cap_check(
+    maps: Path = _MAPS_OPTION,
+) -> None:
+    """Check every capability against the control maps it would replay against.
+
+    `capability validate` checks an artifact against itself and the vocabulary.
+    This is the other half: does every control it names actually exist, was it
+    grounded, was its screen recorded at the artifact's viewport, and does its
+    role accept the action the step asks for. An unresolvable control name is a
+    fault worth finding here rather than mid-replay.
+    """
+    store = control_map_store.ControlMapStore(maps)
+    total = 0
+    for c in capabilities.REGISTRY:
+        faults = control_map_store.check_capability(c, store)
+        total += len(faults)
+        if not faults:
+            console.print(f"[green]ok  [/] {c.name}")
+            continue
+        console.print(f"[red]FAIL[/] {c.name} \u2014 {len(faults)} fault(s)")
+        for fault in faults:
+            console.print(f"       {fault}")
+    if total:
+        console.print(
+            f"\n[yellow]{total} fault(s)[/] against {maps}/. "
+            "An empty store means discovery has not run yet."
+        )
+        raise typer.Exit(1)
 
 
 def main() -> None:  # pragma: no cover

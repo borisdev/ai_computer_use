@@ -22,7 +22,7 @@ the type system rather than in a style guide:
 ### 1. No coordinates, and no locators either
 
 A step names a control by `(screen, control_id)`. The pixel template that finds
-it lives in a per-tenant screen map, not in the artifact.
+it lives in a per-tenant control map, not in the artifact.
 
 Raw `(x, y)` scored **1/10** clicks inside the target control, and a fractional
 bbox scored the same; only a context patch plus a click offset replayed at
@@ -101,7 +101,7 @@ an artifact that could approve itself would make the gate decoration.
 
 - Discovery must emit this shape. It does not exist yet, so the two committed
   artifacts are **hand-authored** — the target shape, not evidence.
-- The executor needs a screen-map store keyed by `(app, tenant, screen)`. Not
+- The executor needs a control-map store keyed by `(app, tenant, screen)`. Not
   built.
 - One capability cannot yet be expressed end to end: selecting one of eleven
   near-identical account rows by a parameter. `ControlRef.discriminator` says

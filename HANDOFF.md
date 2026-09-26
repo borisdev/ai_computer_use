@@ -186,7 +186,7 @@ correctness guard.
 |---|---|---|
 | 3.1 | goal-driven agent loop | nothing decides yet |
 | 3.3 | step executor / `CapabilityResult` | the artifact and `locate_control` both exist; **nothing runs a sequence** |
-| 3.3 | screen-map store keyed `(app, tenant, screen)` | a step names a control; nothing resolves the name to a locator |
+| 3.3 | control-map store keyed `(app, tenant, screen)` | a step names a control; nothing resolves the name to a locator |
 | 3.6 | escalation | triggers exist (`unresolved`, `ambiguous`); no `Operator` |
 | — | `REPORT.md` | skeleton |
 | — | `/evidence/` | screenshots only |
@@ -242,7 +242,7 @@ That separates two failure modes that looked identical:
    after a seed and CHECKING **$5,022.93** after CLEAN, and a test asserts the
    checkpoint is on the field that differs.
 2. **The step executor (§3.3).** `screenshot → locate → validate → use →
-   screenshot → assert checkpoint → CapabilityResult`. It needs a **screen-map
+   screenshot → assert checkpoint → CapabilityResult`. It needs a **control-map
    store** first: a step names `(screen, control_id)`, and something has to turn
    that into a `VisualLocator` for the tenant in hand. That store is the missing
    piece, not the loop.

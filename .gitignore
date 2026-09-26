@@ -20,6 +20,12 @@ evidence/runs/
 # are deterministic (`interfaceai capability export`), and a test compares them
 # byte for byte against the authored source.
 artifacts/*.approved.json
+
+# Control maps written by discovery. Ignored for now because a map embeds
+# its template PNGs as base64 and the size is unmeasured; revisit once a
+# real discovery run exists, since committing them would let a reviewer
+# replay without re-running discovery.
+control_maps/
 .playwright/
 *.log
 

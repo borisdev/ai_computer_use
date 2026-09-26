@@ -179,7 +179,7 @@ something already measured:
   expressible, because that shape passes on ParaBank's CLEAN state and hands
   back a different record's balance.
 - **A step names a control; it does not carry one.** The locator lives in a
-  per-tenant screen map, which is what keeps one artifact usable on two tenants.
+  per-tenant control map, which is what keeps one artifact usable on two tenants.
 
 Two capabilities are authored (`capabilities.py`): `log_in`, which exercises the
 sensitive slots, and `read_savings_balance`, which is capability 1. **Both are

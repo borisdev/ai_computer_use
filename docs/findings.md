@@ -15,7 +15,7 @@ Companions: [parabank.md](parabank.md) (the target), [parabank-screens.md](parab
 |---|---|---|---|
 | 3.1 | Goal-driven agent loop | **not built** | perception half done; nothing decides yet |
 | 3.2 | Typed, versioned artifact | **built** | `capability.py` + 35 tests; two authored artifacts, both hand-written |
-| 3.3 | Deterministic replay | **partial** | `locate_control` exact (drift 0,0); no step executor, no screen-map store |
+| 3.3 | Deterministic replay | **partial** | `locate_control` exact (drift 0,0); no step executor, no control-map store |
 | 3.4 | Safety guardrails | **partial** | single action chokepoint + 8 tests; no per-step risk classing |
 | 3.5 | Evidence | **partial** | `EvidenceWriter` written, not yet wired into a run |
 | 3.6 | Escalation & handoff | **not built** | triggers exist (`unresolved`, `ambiguous`); no routing |
@@ -270,7 +270,7 @@ See [issues/](issues/README.md).
 1. **Coarse inventory instability** (15/24/22) — currently blocks end-to-end login.
    The vocabulary that is one third of the fix now exists
    (`vocabulary.py`) and is **not in the prompt yet**, so the number has not moved.
-2. **No screen-map store** — a step names `(screen, control_id)` and nothing
+2. **No control-map store** — a step names `(screen, control_id)` and nothing
    turns that into a `VisualLocator`. The executor's missing prerequisite.
 3. **No agent loop** — §3.1.
 4. **No step executor / `CapabilityResult`** — §3.3's result contract.
