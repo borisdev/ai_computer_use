@@ -29,6 +29,64 @@ Three of the four wrong ones are **digit transpositions of a real account**:
 
 The fourth, `13767`, matches nothing. None of the four announced any doubt.
 
+## ⛔ ROOT CAUSE FOUND 2026-09-26: it is OUR GRID OVERLAY, not the model
+
+The 6/11 above is real and reproduces. The explanation this issue originally
+gave for it — small glyphs, uniform digits, no linguistic redundancy — is
+**wrong**. Isolated by asking the same read-only question in four conditions,
+three runs each:
+
+```
+condition            r1      r2      r3     invented
+full, NO grid      11/11   11/11   11/11    none
+full, WITH grid     8/11    8/11    9/11    13000, 54221, 5678, 56789
+crop, NO grid      10/11   10/11   10/11    1267
+crop, WITH grid    10/11   10/11   10/11    2567
+```
+
+![clean vs gridded](../../evidence/issue-0008-clean-vs-gridded.png)
+
+*Left: what reads 11/11. Right: the same pixels with our overlay, which reads
+8/11.*
+
+**A clean full screenshot reads perfectly, three times out of three.** The same
+image with our 192-cell overlay drawn on it drops to 8/11.
+
+The confirmation is that it reproduces the live failure: the gridded condition
+invented **54221**, which is one of the exact wrong ids from the real discovery
+run, and it never appears without the grid.
+
+**The instrument is corrupting the measurement.** Red cell borders and yellow
+numbered badges are drawn across the content to solve the *locate* problem, and
+they break the *read* problem on the same image.
+
+⚠️ **Two earlier hypotheses, both disproved by this table, both mine:**
+
+- *"small glyphs — magnify them"*. A magnification sweep at 1.0x / 1.5x / 2.0x /
+  2.9x scored 11/11 at **every** level including no magnification at all. Size
+  was never the variable.
+- *"cropping is the variable"*. The first crop test scored 11/11, but it was
+  cropped from a CLEAN screenshot. Held against grid, the crop is slightly
+  *worse* than the clean full image (10/11 vs 11/11) — it clips context.
+
+### What follows
+
+The coarse pass asks one call to do two jobs on one image: **name every control**
+and **assign each a cell number**. Those jobs want opposite images — reading
+wants the content unobstructed, locating wants the annotation on top.
+
+The cheap fix is to stop asking them together:
+
+```
+read pass     CLEAN screenshot   -> labels, roles, descriptions     measured 11/11
+locate pass   GRIDDED screenshot -> which cell each named thing is in
+```
+
+One extra call per screen. It does not fix [0009](0009-wrong-row-grounding-is-silent.md)
+on its own — cell assignment may be corrupted by the overlay too, and that is
+**unmeasured** — but it removes the overlay from the half of the job that is now
+known to be damaged by it.
+
 ## Why this matters more than it looks
 
 **It contradicts the sentence this project has been building on.**
@@ -58,10 +116,9 @@ Three consequences, in order of how much they hurt:
 
 ## What it does NOT mean
 
-Not "the model is unreliable, add retries". The failure is specific and its
-shape suggests the mechanism: small glyphs, uniform digits, no linguistic
-redundancy to constrain the guess. A word can be inferred from context; `13011`
-cannot.
+Not "the model is unreliable, add retries". Nor, as this section said until the
+root cause was found, "small glyphs with no linguistic redundancy" — the same
+model reads the same glyphs at 11/11 when we stop drawing on them.
 
 It also is not an argument against the dot-grid grounding work, which measured
 3/3 and is unaffected — that asks the model to *point*, not to *read*.
@@ -77,10 +134,9 @@ Untried, in rough order of preference:
   which cuts against [ADR 0002](../adr/0002-playwright-screenshot-control.md) —
   so it should be a recorded, deliberate fallback with its own provenance on the
   step, not a silent shortcut.
-- **Zoom before reading.** Grounding already works by magnifying a cell; the
-  same crop handed back for reading gives the model far larger glyphs. Cheap to
-  test: re-read the 11 rows from crops rather than the full screenshot, and
-  re-score against the oracle. **This is the next measurement to take.**
+- ⛔ ~~**Zoom before reading.**~~ **Measured and rejected** — 11/11 at every
+  magnification from 1.0x to 2.9x, so there was nothing for zoom to fix. Kept
+  because it was the obvious idea and it was wrong.
 - **Read it twice and require agreement.** Turns a silent wrong answer into a
   detectable disagreement. Doubles the cost and does not fix a stable misread.
 
