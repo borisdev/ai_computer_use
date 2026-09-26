@@ -56,6 +56,14 @@ The confirmation is that it reproduces the live failure: the gridded condition
 invented **54221**, which is one of the exact wrong ids from the real discovery
 run, and it never appears without the grid.
 
+⛔ **Sharpened 2026-09-26 by [0011](0011-control-panel-structured-read.md): it
+is not "annotation", it is annotation ON TOP OF CONTENT.** Markers drawn in a
+clear margin, one per row, cost nothing — 11/11 ids and 11/11 balances over
+three runs, with the marker numbers also returned correctly. The 192-cell grid
+hurts because its lines and badges cross the digits, not because it is an
+overlay. So the fix is not "never annotate"; it is "never annotate over what you
+need to read", which is a rule a drawing function can enforce — and now does.
+
 **The instrument is corrupting the measurement.** Red cell borders and yellow
 numbered badges are drawn across the content to solve the *locate* problem, and
 they break the *read* problem on the same image.

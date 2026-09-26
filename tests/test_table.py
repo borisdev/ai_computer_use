@@ -7,13 +7,15 @@ rather than a paragraph.
 
 from __future__ import annotations
 
+import io
 from pathlib import Path
 
+import numpy as np
 import pytest
 from PIL import Image, ImageDraw
 
 from interfaceai.screenshot2controls import CropBox, _png_bytes
-from interfaceai.table import MIN_CONFIDENCE, RowRhythm, find_row_rhythm
+from interfaceai.table import MIN_CONFIDENCE, RowRhythm, annotate_rows, find_row_rhythm
 
 RUN = Path(__file__).resolve().parents[1] / "evidence" / "runs" / "20260926T022551Z" / "frames"
 OVERVIEW = RUN / "004-03-overview.png"
@@ -171,3 +173,84 @@ def test_row_index_must_not_be_negative() -> None:
 def test_the_default_threshold_sits_between_the_measured_populations() -> None:
     """0.818 is the weakest real table column; 0.364 the strongest non-table."""
     assert 0.364 < MIN_CONFIDENCE < 0.818
+
+
+# --- marking rows for a structured read ------------------------------------
+
+# The accounts table, widened LEFT so markers have clear margin. Content (the
+# account links) starts at x=492 per the DOM oracle.
+PANEL = CropBox(x=425, y=330, width=355, height=330)
+CONTENT_X0 = 492
+
+
+def _markers():
+    rhythm = find_row_rhythm(shot(OVERVIEW), ACCOUNT_COLUMN)
+    assert rhythm is not None
+    return rhythm, annotate_rows(
+        shot(OVERVIEW), PANEL, rhythm, TRUE_FIRST_ROW_Y, content_x0=CONTENT_X0
+    )
+
+
+def test_one_marker_per_visible_row() -> None:
+    _, markers = _markers()
+    assert len(markers.y_by_marker) == len(TRUE_ROW_TOPS)
+
+
+def test_each_marker_maps_back_to_its_real_row() -> None:
+    _, markers = _markers()
+    assert [markers.y_of(i) for i in range(len(TRUE_ROW_TOPS))] == TRUE_ROW_TOPS
+
+
+def test_marker_9_is_account_13344() -> None:
+    """The end-to-end claim, in one assertion."""
+    _, markers = _markers()
+    assert 602 <= markers.y_of(9) <= 616
+
+
+def test_markers_never_touch_the_content() -> None:
+    """The bug that produced a 0/11 read, encoded so it cannot recur.
+
+    A probe once drew markers at the column centre and `12345` rendered as
+    `12<dot>45`. The model scored 0/11 and it looked like a model failure.
+    """
+    _, markers = _markers()
+    before = (
+        Image.open(io.BytesIO(shot(OVERVIEW)))
+        .convert("RGB")
+        .crop((PANEL.x, PANEL.y, PANEL.x + PANEL.width, PANEL.y + PANEL.height))
+    )
+    after = Image.open(io.BytesIO(markers.image_png)).convert("RGB")
+    content_from = CONTENT_X0 - PANEL.x
+    assert (
+        np.asarray(before)[:, content_from:, :] == np.asarray(after)[:, content_from:, :]
+    ).all(), "annotation altered pixels at or right of the content edge"
+
+
+def test_a_panel_with_no_room_for_markers_raises() -> None:
+    """Fail loudly rather than drawing over the data."""
+    rhythm = find_row_rhythm(shot(OVERVIEW), ACCOUNT_COLUMN)
+    assert rhythm is not None
+    tight = CropBox(x=488, y=330, width=290, height=330)
+    with pytest.raises(ValueError, match="Widen the panel"):
+        annotate_rows(shot(OVERVIEW), tight, rhythm, TRUE_FIRST_ROW_Y, content_x0=CONTENT_X0)
+
+
+def test_an_unknown_marker_raises_rather_than_returning_none() -> None:
+    _, markers = _markers()
+    with pytest.raises(KeyError, match="no marker"):
+        markers.y_of(99)
+
+
+def test_the_annotated_panel_is_written_for_a_human_to_look_at(tmp_path) -> None:
+    """Not an assertion so much as a window.
+
+    Everything else here is numbers. This writes the exact image a model would
+    be sent, so a person can open it and see whether the markers sit where they
+    should. Run with `--panel-out=<dir>` semantics via tmp_path, or read the
+    copy committed under evidence/.
+    """
+    _, markers = _markers()
+    out = tmp_path / "annotated-panel.png"
+    out.write_bytes(markers.image_png)
+    rendered = Image.open(out)
+    assert rendered.size == (PANEL.width, PANEL.height)

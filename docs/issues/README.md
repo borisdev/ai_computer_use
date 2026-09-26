@@ -15,3 +15,4 @@ what is still wrong. Each carries the evidence, so nobody has to rediscover it.
 | [0008](0008-dense-numeric-text-is-misread.md) | The model misreads dense numeric text (6/11 account ids) | 0007's fix, extraction | high |
 | [0009](0009-wrong-row-grounding-is-silent.md) | A grounded account link points at the WRONG ROW and says `ready` (1/4) | trusting any dense-table control | **highest** |
 | [0010](0010-extraction-cannot-point-at-data.md) | Extraction can only target a control, and data is not a control | every capability that returns a value | **highest** |
+| [0011](0011-control-panel-structured-read.md) | Control panels: locate a region, read it with a schema | — it UNBLOCKS 0007/0009/0010 | measured, partly built |

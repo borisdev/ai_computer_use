@@ -54,7 +54,7 @@ import io
 from dataclasses import dataclass
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from interfaceai.screenshot2controls import CropBox
 
@@ -136,3 +136,96 @@ def find_row_rhythm(
     if confidence < min_confidence:
         return None
     return RowRhythm(pitch=best, confidence=confidence)
+
+
+# ---------------------------------------------------------------------------
+# Marking rows for a structured read
+# ---------------------------------------------------------------------------
+#
+# Once the rhythm is known, one marker can be drawn per row and the panel handed
+# to a model with a response schema: "return each row's fields AND its marker
+# number". That gets the data and the click positions from a single call, with
+# no cell assignment and no per-row grounding.
+#
+# ⚠️ **The marker must not touch the content.** Measured 2026-09-26 on the
+# accounts table, three runs each:
+#
+#     clean crop                      ids 11/11   balances 11/11
+#     markers drawn OVER the digits   ids  0/11   balances  0/11
+#     markers drawn in the MARGIN     ids 11/11   balances 11/11, markers correct
+#
+# The middle row was an accident -- a probe placed dots at the column centre and
+# `12345` rendered as `12<dot>45`. It is kept as the measurement because it is
+# the whole rule: annotation is free in whitespace and destroys the read on top
+# of a glyph. This is also the sharper form of
+# `docs/issues/0008`: the 192-cell grid hurts because it draws ACROSS content,
+# not because it is an overlay.
+
+
+@dataclass(frozen=True)
+class RowMarkers:
+    """An annotated panel, and what each marker number means."""
+
+    image_png: bytes
+    y_by_marker: dict[int, int]
+
+    def y_of(self, marker: int) -> int:
+        if marker not in self.y_by_marker:
+            raise KeyError(f"no marker {marker}; drew {sorted(self.y_by_marker)}")
+        return self.y_by_marker[marker]
+
+
+def annotate_rows(
+    screenshot_png: bytes,
+    panel: CropBox,
+    rhythm: RowRhythm,
+    first_row_y: int,
+    *,
+    content_x0: int,
+    marker_radius: int = 5,
+) -> RowMarkers:
+    """Crop `panel` and draw one numbered marker per row, left of the content.
+
+    `content_x0` is the leftmost pixel of anything that must stay legible. The
+    markers are placed strictly left of it and the call raises if there is not
+    room, because silently overlapping the data is the failure this exists to
+    prevent -- and it is a failure that looks like a model error, not a drawing
+    error.
+    """
+    image = Image.open(io.BytesIO(screenshot_png)).convert("RGB")
+    crop = image.crop((panel.x, panel.y, panel.x + panel.width, panel.y + panel.height))
+
+    margin = content_x0 - panel.x
+    needed = 2 * marker_radius + 2
+    if margin < needed:
+        raise ValueError(
+            f"only {margin}px between the panel edge and the content at x={content_x0}; "
+            f"a marker needs {needed}px. Widen the panel to the left."
+        )
+    centre_x = margin // 2
+
+    drawing = ImageDraw.Draw(crop)
+    y_by_marker: dict[int, int] = {}
+    marker = 0
+    y = first_row_y
+    while y < panel.y + panel.height:
+        cy = y - panel.y + rhythm.pitch // 2
+        if cy + marker_radius >= crop.height:
+            break
+        drawing.ellipse(
+            (
+                centre_x - marker_radius,
+                cy - marker_radius,
+                centre_x + marker_radius,
+                cy + marker_radius,
+            ),
+            fill="#e00000",
+        )
+        drawing.text((centre_x + marker_radius + 1, cy - 6), str(marker), fill="#e00000")
+        y_by_marker[marker] = y
+        marker += 1
+        y += rhythm.pitch
+
+    buffer = io.BytesIO()
+    crop.save(buffer, "PNG")
+    return RowMarkers(image_png=buffer.getvalue(), y_by_marker=y_by_marker)
