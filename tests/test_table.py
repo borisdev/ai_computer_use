@@ -7,15 +7,35 @@ rather than a paragraph.
 
 from __future__ import annotations
 
+import asyncio
 import io
 from pathlib import Path
 
 import numpy as np
 import pytest
 from PIL import Image, ImageDraw
+from pydantic import BaseModel
 
-from interfaceai.screenshot2controls import CropBox, _png_bytes
-from interfaceai.table import MIN_CONFIDENCE, RowRhythm, annotate_rows, find_row_rhythm
+from interfaceai.decisions import supported_actions
+from interfaceai.screenshot2controls import (
+    ClickPoint,
+    ControlRole,
+    CropBox,
+    ScreenInput,
+    VisualLocator,
+    _make_locator,
+    _png_bytes,
+)
+from interfaceai.table import (
+    MIN_CONFIDENCE,
+    Offset,
+    PanelNotFound,
+    PanelRead,
+    RowRhythm,
+    annotate_rows,
+    extract_panel,
+    find_row_rhythm,
+)
 
 RUN = Path(__file__).resolve().parents[1] / "evidence" / "runs" / "20260926T022551Z" / "frames"
 OVERVIEW = RUN / "004-03-overview.png"
@@ -254,3 +274,111 @@ def test_the_annotated_panel_is_written_for_a_human_to_look_at(tmp_path) -> None
     out.write_bytes(markers.image_png)
     rendered = Image.open(out)
     assert rendered.size == (PANEL.width, PANEL.height)
+
+
+# --- the panel: extract, then drill down -----------------------------------
+
+
+class Row(BaseModel):
+    account_id: str
+    balance: str
+
+
+class Accounts(BaseModel):
+    rows: list[Row]
+
+
+def _anchor() -> VisualLocator:
+    """Anchor on the table HEADER -- unique, unlike every row below it."""
+    return _make_locator(
+        ScreenInput(screenshot_png=shot(OVERVIEW)),
+        CropBox(x=470, y=322, width=280, height=26),
+        ClickPoint(x=480, y=330),
+    )
+
+
+async def _fake_vision(*, prompt, image_png, response_model):
+    """Stands in for the model. The real 11/11 read is measured in 0011."""
+    return response_model(
+        rows=[
+            Row(account_id=a, balance="$0.00")
+            for a in [
+                "12345",
+                "12456",
+                "12567",
+                "12678",
+                "12789",
+                "12900",
+                "13011",
+                "13122",
+                "13233",
+                "13344",
+                "54321",
+            ]
+        ]
+    )
+
+
+def _read() -> PanelRead:
+    return asyncio.run(
+        extract_panel(
+            shot(OVERVIEW),
+            _anchor(),
+            panel=Offset(dx=-10, dy=20, width=310, height=320),
+            key_column=Offset(dx=10, dy=20, width=40, height=320),
+            response_model=Accounts,
+            vision=_fake_vision,
+            instruction="read the table",
+        )
+    )
+
+
+def test_a_panel_read_carries_the_rhythm_it_measured() -> None:
+    read = _read()
+    assert read.rhythm.pitch == TRUE_PITCH
+    assert len(read.data.rows) == 11
+
+
+def test_drilling_into_13344_goes_through_the_extract() -> None:
+    """The index comes from the READ, never from asking where the row is."""
+    read = _read()
+    index = [r.account_id for r in read.data.rows].index("13344")
+    assert index == 9
+    point = read.point_for_row(index, x=508)
+    assert 602 <= point.y <= 616, f"y={point.y} is outside 13344's link box"
+
+
+def test_a_panel_whose_anchor_is_absent_refuses() -> None:
+    blank = _png_bytes(Image.new("RGB", (1280, 900), "white"))
+    with pytest.raises(PanelNotFound, match="anchor"):
+        asyncio.run(
+            extract_panel(
+                blank,
+                _anchor(),
+                panel=Offset(dx=0, dy=0, width=100, height=100),
+                key_column=Offset(dx=0, dy=0, width=40, height=200),
+                response_model=Accounts,
+                vision=_fake_vision,
+                instruction="read the table",
+            )
+        )
+
+
+def test_a_panel_with_no_measurable_rhythm_refuses_rather_than_assuming() -> None:
+    with pytest.raises(PanelNotFound, match="rhythm"):
+        asyncio.run(
+            extract_panel(
+                shot(OVERVIEW),
+                _anchor(),
+                panel=Offset(dx=-10, dy=20, width=310, height=320),
+                key_column=Offset(dx=420, dy=-20, width=200, height=260),  # blank margin
+                response_model=Accounts,
+                vision=_fake_vision,
+                instruction="read the table",
+            )
+        )
+
+
+def test_a_table_panel_accepts_no_manual_action() -> None:
+    """You read a panel; you never click it. Enforced by the role table."""
+    assert supported_actions(ControlRole.TABLE_CONTROL_PANEL) == []

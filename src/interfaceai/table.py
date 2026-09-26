@@ -55,8 +55,16 @@ from dataclasses import dataclass
 
 import numpy as np
 from PIL import Image, ImageDraw
+from pydantic import BaseModel
 
-from interfaceai.screenshot2controls import CropBox
+from interfaceai.screenshot2controls import (
+    ClickPoint,
+    CropBox,
+    ResolveInput,
+    VisionCall,
+    VisualLocator,
+    locate_control,
+)
 
 # Measured on real regions, 2026-09-26. Real table columns score 0.899 and
 # 0.818; the strongest non-table region scores 0.364 (an empty margin), with
@@ -229,3 +237,106 @@ def annotate_rows(
     buffer = io.BytesIO()
     crop.save(buffer, "PNG")
     return RowMarkers(image_png=buffer.getvalue(), y_by_marker=y_by_marker)
+
+
+# ---------------------------------------------------------------------------
+# Extracting from a panel
+# ---------------------------------------------------------------------------
+
+
+class PanelNotFound(RuntimeError):
+    """The panel's anchor did not match. Never guess a region and read it."""
+
+
+@dataclass(frozen=True)
+class Offset:
+    """A region expressed RELATIVE to a matched anchor. dx/dy may be negative.
+
+    Not a `CropBox`: that validates `x >= 0` because it is an absolute region in
+    image space, and a panel frequently starts left of or above its anchor. The
+    repo already learned this once -- `docs/findings.md` records clipping having
+    to happen on plain ints for the same reason.
+    """
+
+    dx: int
+    dy: int
+    width: int
+    height: int
+
+    def at(self, origin_x: int, origin_y: int) -> CropBox:
+        """Resolve against a matched anchor, clipping to the image's origin."""
+        x, y = max(0, origin_x + self.dx), max(0, origin_y + self.dy)
+        return CropBox(x=x, y=y, width=self.width, height=self.height)
+
+
+@dataclass(frozen=True)
+class PanelRead[T]:
+    """What a panel read returned, and the geometry to act on it.
+
+    ⛔ **Drilling into a row ALWAYS depends on having extracted the panel first**
+    (Boris, 2026-09-26), so there is no way to get a click point except through
+    this object. That is deliberate: the alternative -- asking a model to find
+    the row for account 13344 on screen -- is
+    [issue 0009](../../docs/issues/0009-wrong-row-grounding-is-silent.md),
+    measured landing on the wrong record 3 times in 4.
+
+    The extract says 13344 is index 9. The rhythm turns index 9 into a y. No
+    model is ever asked where a row is.
+    """
+
+    data: T
+    rhythm: RowRhythm
+    first_row_y: int
+
+    def point_for_row(self, index: int, x: int) -> ClickPoint:
+        """Where to click to drill into row `index`. `x` picks the column."""
+        return ClickPoint(
+            x=x, y=self.rhythm.row_y(self.first_row_y, index) + self.rhythm.pitch // 2
+        )
+
+
+async def extract_panel[T: BaseModel](
+    screenshot_png: bytes,
+    locator: VisualLocator,
+    *,
+    panel: Offset,
+    key_column: Offset,
+    response_model: type[T],
+    vision: VisionCall,
+    instruction: str,
+) -> PanelRead[T]:
+    """Locate a `TABLE_CONTROL_PANEL`, crop it, and read it against a schema.
+
+    One model call returns the whole panel as typed rows. The parameter that
+    selects a row is then applied in CODE to that list -- no per-row grounding,
+    no cell assignment, and nothing asked to find a row on screen.
+
+    `panel` and `key_column` are offsets from the MATCHED anchor, so the crop
+    follows the anchor if the page reflows -- the same trick a click offset uses.
+
+    Measured on ParaBank's accounts table, three runs: 11/11 account ids and
+    11/11 balances. See `docs/issues/0011`.
+    """
+    found = locate_control(ResolveInput(screenshot_png=screenshot_png, locator=locator))
+    if found.status != "matched" or found.point is None:
+        raise PanelNotFound(f"panel anchor {found.status}: {found.reason}")
+
+    origin_x, origin_y = found.point.x, found.point.y
+    absolute = key_column.at(origin_x, origin_y)
+    rhythm = find_row_rhythm(screenshot_png, absolute)
+    if rhythm is None:
+        raise PanelNotFound(
+            "found the panel anchor but its rows have no measurable rhythm; "
+            "refusing rather than assuming a row height"
+        )
+
+    image = Image.open(io.BytesIO(screenshot_png)).convert("RGB")
+    box = panel.at(origin_x, origin_y)
+    crop = image.crop((box.x, box.y, box.x + box.width, box.y + box.height))
+    buffer = io.BytesIO()
+    crop.save(buffer, "PNG")
+
+    data = await vision(
+        prompt=instruction, image_png=buffer.getvalue(), response_model=response_model
+    )
+    return PanelRead(data=data, rhythm=rhythm, first_row_y=absolute.y)

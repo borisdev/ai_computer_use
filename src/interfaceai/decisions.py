@@ -37,6 +37,10 @@ ACTIONS_BY_ROLE: dict[ControlRole, list[ManualActionKind]] = {
     ControlRole.CHECKBOX: [ManualActionKind.TOGGLE],
     ControlRole.RADIO: [ManualActionKind.TOGGLE],
     ControlRole.UNKNOWN: [],
+    # A panel is read, not clicked. Extraction is a StepVerb, not a
+    # ManualActionKind, because it has no side effect -- so `validate_decision`
+    # refuses every manual action on a panel for free.
+    ControlRole.TABLE_CONTROL_PANEL: [],
 }
 
 

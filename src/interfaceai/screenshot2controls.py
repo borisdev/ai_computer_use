@@ -246,6 +246,15 @@ _MIN_TRUSTED_DOT_SPACING_PX = 12
 
 class ControlRole(StrEnum):
     TEXTBOX = "textbox"
+    # A REGION with structure, not a thing you click: a results table, an
+    # account list. Named by Boris, 2026-09-26. It exists because rows are
+    # self-similar and template matching needs something unique -- a panel's
+    # header is unique, its rows are not (docs/issues/0009, 0011).
+    #
+    # You do not act on a panel directly; `ACTIONS_BY_ROLE` gives it none. You
+    # either EXTRACT from it (snapshot the region, hand it to a model with a
+    # response schema) or DRILL DOWN into one of its rows (not implemented).
+    TABLE_CONTROL_PANEL = "table_control_panel"
     BUTTON = "button"
     LINK = "link"
     SELECT = "select"
