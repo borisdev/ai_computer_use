@@ -224,9 +224,12 @@ def cap_check(
         for fault in faults:
             console.print(f"       {fault}")
     if total:
+        recorded = sorted(
+            f"{t}/{sc}" for t in store.tenants("parabank") for sc in store.screens("parabank", t)
+        )
         console.print(
-            f"\n[yellow]{total} fault(s)[/] against {maps}/. "
-            "An empty store means discovery has not run yet."
+            f"\n[yellow]{total} fault(s)[/] against {maps}/ "
+            f"({', '.join(recorded) if recorded else 'nothing recorded yet'})"
         )
         raise typer.Exit(1)
 

@@ -10,6 +10,24 @@ Both are `draft`. That is not a placeholder -- nothing has reviewed a real run
 of either, and `draft` is exactly what that state is called. `interfaceai
 capability approve` is the human action that changes it.
 
+⛔ **Neither of these can replay, and `interfaceai capability check` says so.**
+Measured 2026-09-26 against the control maps a real discovery run produced:
+
+    log_in                  hand-authored    3 faults
+    read_savings_balance    hand-authored    8 faults
+    log_in_discovered       DISCOVERED       0 faults
+
+Every fault is a control name invented here that no inventory emits --
+`global_nav` (a pseudo-screen with no producer), `accounts_overview_heading` and
+`*_value` (static text, which the coarse prompt is told to ignore --
+`docs/issues/0010`), and `account_link` (discovery records `13344_link` --
+`docs/issues/0007`).
+
+**That contrast is the argument for discovery, not a bug to patch.** A
+hand-written artifact can name anything; a discovered one can only name what it
+recorded. These stay as the target SHAPE, and the check staying red on them is
+correct.
+
 `read_savings_balance` is the assignment's own worked example and is
 self-checking: account 13344 is SAVINGS $1,231.10 after a seed, and CHECKING
 $5,022.93 after ParaBank's CLEAN. So its checkpoint has a known-correct answer
