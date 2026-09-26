@@ -198,8 +198,9 @@ step that asks whether the thing grounded is the thing named.
 
 | approach | cost | status |
 |---|---|---|
-| **Tile the scan** — position comes from *which tile answered*, not from mapping onto one of 192 numbers. Removes the failing task rather than making it harder. | 6 calls instead of 1 | **leading candidate**, effect here **unmeasured** |
+| **Tile the scan** — show each of 6 zones on its own, enlarged up to 4x, so the model picks among far fewer cell numbers on far bigger glyphs. Shrinks the failing task rather than enlarging it. | 6 calls instead of 1, **plus writing it** | **not implemented** — `tile_*` sits in `DiscoveryConfig` and nothing reads it. 0001 measured a scratch prototype for inventory *stability* (27/27/26 vs 24/19/24); its effect on cell *assignment* is unmeasured |
 | **Verify after grounding** — zoom the grounded point, ask what is there, refuse if it does not match the control's own label. Closes the currently-open loop. | +1 call per control | leans on reading, 54% per [0008](0008-dense-numeric-text-is-misread.md) |
+| **Do not put a row on the path at all** — [0010](0010-extraction-cannot-point-at-data.md). The balance is already on the overview table; clicking the row was never needed to read it. | none | **removes this issue from capability 1's path entirely** |
 | **Do not target rows visually** — ParaBank routes details as `activity.htm?id=13344`. Deterministic, no reading, no grounding. | breaks the desktop seam ([ADR 0002](../adr/0002-playwright-screenshot-control.md)) | viable as a **recorded** fallback with provenance on the step, never a silent shortcut |
 
 > ⛔ **A finer grid is the wrong fix**, and was proposed here before the
@@ -244,3 +245,4 @@ disproved.
 - [0008](0008-dense-numeric-text-is-misread.md) — same screen, same cause, but **loud**: the label is wrong (`13011` → `13001`) so the id is visibly bogus. Here both ids are real and only the position is wrong.
 - [0007](0007-parameterised-row-selection.md) — wanted to pick a row by reading it; this says the row it lands on is not reliably the row it named.
 - [0001](0001-incomplete-inventory.md) — names the 192-cell mapping task as an aggravating factor; this is that factor causing a correctness bug rather than instability.
+- [0010](0010-extraction-cannot-point-at-data.md) — why a row was on the path at all. It did not have to be, and for reading a value it should not be. This issue stays open for capabilities that must genuinely *act* on one of N identical rows.
