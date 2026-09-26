@@ -31,6 +31,40 @@ what discovery marked `ready`
 
 The column is right every time. The **row** is wrong 3 times in 4.
 
+![wrong-row grounding](../../evidence/issue-0009-wrong-row-grounding.png)
+
+Green boxes are the real links, read from the DOM oracle. Red crosshairs are
+where discovery ground a click point and marked the control `ready`. Blue lines
+are the 80px coarse grid the inventory pass works in.
+
+The crosshairs bunch in the top three rows while the accounts they NAME are
+spread down the whole table. `13122_link` is grounded 80px above its own row —
+exactly one coarse cell — and `13344`, the account the assignment's worked
+example needs, has no crosshair at all.
+
+```
+   80px coarse grid          real rows, 28px pitch        grounded point
+ y=320 ├──────────────
+                            12345  350..364   <--  12345_link (500,361)  ok
+                            12456  378..392   <--  12456_link (500,359)  WRONG: 12345's row
+ y=400 ├──────────────                        <--  13001_link (500,386)  WRONG: 12456's row
+                            12567  406..420                              (+ no such account)
+                            12678  434..448
+                            12789  462..476   <--  13122_link (511,466)  WRONG: 12789's row
+ y=480 ├──────────────
+                            12900  490..504
+                            13011  518..532
+ y=560 ├──────────────
+                            13122  546..560   <--  what 13122_link NAMES. nothing grounded here.
+                            13233  574..588
+                            13344  602..616   <--  capability 1 needs this. ungrounded.
+ y=640 ├──────────────
+                            54321  630..644
+```
+
+Three rows per cell, and the cell is the only positional information the
+refinement step is given.
+
 ## Why it is silent, which is the whole problem
 
 `status: ready` means discovery ground a click point AND the landmark around it
