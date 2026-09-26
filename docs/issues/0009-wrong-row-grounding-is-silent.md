@@ -213,6 +213,50 @@ step that asks whether the thing grounded is the thing named.
 
 ---
 
+## 6b. Relabelling the grid does not fix it — measured
+
+Boris asked whether the labels should move to the margins: column letters across
+the top, row numbers down the left, spreadsheet style, so nothing is drawn over
+the content. It is the natural response to
+[0008](0008-dense-numeric-text-is-misread.md) and it was worth testing.
+
+Five targets on the overview, three schemes, three runs each, DOM oracle for
+truth ([`scripts/experiment_grid_schemes.py`](../../scripts/experiment_grid_schemes.py)):
+
+| scheme | exact cell | row only |
+|---|---|---|
+| current — numbers inside cells | **3/15** | — |
+| A1 labels in margins + faint gridlines | 0/15 | 6/15 |
+| A1 labels in margins + margin ticks only | 0/15 | 3/15 |
+
+**Every scheme is bad.** The best is 20%, and that is one target scoring 3/3
+while the other four score zero. Answers are highly consistent *within* a scheme
+(`123, 123, 123`; `J8, J8, J8`), so this is systematic mis-registration, not
+noise — which also means more runs will not rescue it.
+
+The error shape says why the margin idea underperformed:
+
+```
+nav links     at x=375    truth column E    model says C/D    under by 1-2
+account links at x=508    truth column G    model says I/J/K  over by 2-4
+```
+
+Divergent, not a constant offset. The column header sits up to 600px from the
+target and the connecting gridlines are deliberately faint, because strong lines
+across content are what 0008 measured as destroying the read. **Strong enough to
+trace is strong enough to damage.** That is the tension, and it does not appear
+to have a setting that satisfies both.
+
+⚠️ **This does not touch the dot-grid REFINEMENT**, which scored 3/3 on the login
+screen. That asks the model to pick a dot inside a magnified crop — a different
+task from naming a cell on a full screenshot, and the one that works.
+
+**The conclusion is not "find a better grid".** It is that cell assignment should
+not be on the positioning path at all — which is what
+[0011](0011-control-panel-structured-read.md) does: locate a panel by a
+non-repeating anchor, get the row pitch by autocorrelation, and compute the
+position. No model is asked where anything is.
+
 ## 7. The check that should exist
 
 The measurement in §1, as a `live`-marked test: log in, read the real link boxes
