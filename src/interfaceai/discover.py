@@ -43,9 +43,7 @@ same path replay takes, so discovery exercises it rather than a shortcut.
 
 from __future__ import annotations
 
-import asyncio
 import time
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -85,6 +83,7 @@ from interfaceai.screenshot2controls import (
 from interfaceai.surface import (
     ActionPolicy,
     NotAllowedError,
+    OffLoop,
     PlaywrightSurface,
     use_control,
 )
@@ -244,11 +243,11 @@ def screen_name(url: str) -> str:
 
 
 class _Caller:
-    """Runs async model calls off the Playwright thread, and counts them."""
+    """Counts model calls and runs them off the Playwright thread (`OffLoop`)."""
 
-    def __init__(self, vision: VisionCall, pool: ThreadPoolExecutor) -> None:
+    def __init__(self, vision: VisionCall, off: OffLoop) -> None:
         self._vision = vision
-        self._pool = pool
+        self._off = off
         self.calls = 0
 
     def vision(self) -> VisionCall:
@@ -261,7 +260,7 @@ class _Caller:
         return counted  # type: ignore[return-value]
 
     def run(self, coro):  # type: ignore[no-untyped-def]
-        return self._pool.submit(asyncio.run, coro).result()
+        return self._off.run(coro)
 
 
 _DECIDE_PROMPT = """\
@@ -369,8 +368,8 @@ def discover(
     recorded: list[RecordedStep] = []
     history: list[str] = []
 
-    with ThreadPoolExecutor(max_workers=1, thread_name_prefix="model") as pool:
-        caller = _Caller(vision, pool)
+    with OffLoop() as off:
+        caller = _Caller(vision, off)
         counted_vision = caller.vision()
 
         with PlaywrightSurface(

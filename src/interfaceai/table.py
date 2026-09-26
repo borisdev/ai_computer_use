@@ -285,14 +285,21 @@ class PanelRead[T]:
     """
 
     data: T
-    rhythm: RowRhythm
     first_row_y: int
+    # None when the panel has too few rows to establish a period. Reading a
+    # one-row table is fine; DRILLING into it is what needs the rhythm, so the
+    # absence is only fatal at `point_for_row`.
+    rhythm: RowRhythm | None = None
 
     def point_for_row(self, index: int, x: int) -> ClickPoint:
         """Where to click to drill into row `index`. `x` picks the column."""
-        return ClickPoint(
-            x=x, y=self.rhythm.row_y(self.first_row_y, index) + self.rhythm.pitch // 2
-        )
+        if self.rhythm is None:
+            raise PanelNotFound(
+                "no measurable row rhythm, so a row position cannot be computed; "
+                "the panel was read but cannot be drilled into"
+            )
+        y = self.rhythm.row_y(self.first_row_y, index) + self.rhythm.pitch // 2
+        return ClickPoint(x=x, y=y)
 
 
 async def extract_panel[T: BaseModel](
@@ -323,12 +330,8 @@ async def extract_panel[T: BaseModel](
 
     origin_x, origin_y = found.point.x, found.point.y
     absolute = key_column.at(origin_x, origin_y)
+    # Not fatal: extraction does not need it, only drilldown does.
     rhythm = find_row_rhythm(screenshot_png, absolute)
-    if rhythm is None:
-        raise PanelNotFound(
-            "found the panel anchor but its rows have no measurable rhythm; "
-            "refusing rather than assuming a row height"
-        )
 
     image = Image.open(io.BytesIO(screenshot_png)).convert("RGB")
     box = panel.at(origin_x, origin_y)
@@ -339,4 +342,4 @@ async def extract_panel[T: BaseModel](
     data = await vision(
         prompt=instruction, image_png=buffer.getvalue(), response_model=response_model
     )
-    return PanelRead(data=data, rhythm=rhythm, first_row_y=absolute.y)
+    return PanelRead(data=data, first_row_y=absolute.y, rhythm=rhythm)

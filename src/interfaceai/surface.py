@@ -12,8 +12,11 @@ coordinate in that screenshot's pixel space.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import logging
+from collections.abc import Coroutine
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Literal, Protocol, Self, runtime_checkable
 
@@ -340,3 +343,44 @@ def use_control(
         url=surface.current_url(),
         value_length=None if value is None else len(value),
     )
+
+
+# ---------------------------------------------------------------------------
+# Running async work while sync Playwright holds the thread
+# ---------------------------------------------------------------------------
+
+
+class OffLoop:
+    """Runs coroutines on a worker thread, because sync Playwright owns this one.
+
+    ⛔ `asyncio.run() cannot be called from a running event loop` is raised from
+    inside a `PlaywrightSurface` block: the sync API drives its own loop in the
+    calling thread. Measured twice, 2026-09-26.
+
+    The repo once concluded from this that "capture and discovery must be
+    separate phases". They only need separate THREADS. Playwright stays here;
+    coroutines go to a single worker where no loop exists. Verified both
+    directions -- the surface still works after a model call, and model calls
+    still work after a click.
+
+        with PlaywrightSurface(...) as surface, OffLoop() as off:
+            png = surface.screenshot()
+            result = off.run(some_async_call(png))
+    """
+
+    def __init__(self) -> None:
+        self._pool: ThreadPoolExecutor | None = None
+
+    def __enter__(self) -> Self:
+        self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="offloop")
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        if self._pool is not None:
+            self._pool.shutdown(wait=True)
+            self._pool = None
+
+    def run[T](self, coro: Coroutine[object, object, T], timeout: float | None = None) -> T:
+        if self._pool is None:
+            raise RuntimeError("OffLoop must be used as a context manager")
+        return self._pool.submit(asyncio.run, coro).result(timeout=timeout)

@@ -98,6 +98,50 @@ A panel read returns *typed fields*, so the artifact can declare
 
 ---
 
+## ⚠️ Anchor on ONE column header, never the header row
+
+Measured 2026-09-26. Table columns auto-size to their content, so a patch
+spanning a column boundary moves when the row count changes. Recorded on the
+seeded table (11 rows), matched against CLEAN (1 row):
+
+```
+anchor                       self   on CLEAN   status
+3 columns of the header    1.0000     0.0000   not_found
+'Account' header only      1.0000     1.0000   matched
+'Account' + left edge      1.0000     1.0000   matched
+just the word              1.0000     1.0000   matched
+```
+
+The header row's **y is identical** in both states (315..344); only the column
+boundaries shift, by 1-2px (`605->606`, `737->735`). That is enough to fail a
+0.95 threshold. Anchor on the narrowest unique element.
+
+## Extraction does not need the rhythm; drilldown does
+
+A one-row table has no measurable period, and an early cut refused the whole
+extract for that — turning a legitimate one-row result into a failure. Reading
+is fine without a rhythm; only `point_for_row` needs one, so `PanelRead.rhythm`
+is optional and the refusal moved to the drilldown.
+
+## End to end, against the live app
+
+[`tests/test_savings_balance_live.py`](../../tests/test_savings_balance_live.py)
+— login through the control map, `extract_panel` on the overview, the parameter
+selecting the row **in code**:
+
+```
+seeded   PASS   reads $1231.10 for account 13344, drilldown point lands on its row
+CLEAN    FAIL   AssertionError: read '5022.93', seed fixture says 1231.10
+```
+
+The CLEAN run is the point: the panel read is correct, and the **value**
+checkpoint catches that 13344 is a different record. A lookup checkpoint would
+have passed. This is §3.3's failure class, demonstrated against the app's own
+admin lever rather than a stub.
+
+⚠️ It is **not** capability 1 replaying from an artifact — there is no replay
+engine. It proves the mechanism reaches the right answer.
+
 ## Open, and the naming question is a human's
 
 - **Step 1 has no mechanism.** Something must decide "this region is a panel"

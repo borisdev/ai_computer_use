@@ -364,19 +364,27 @@ def test_a_panel_whose_anchor_is_absent_refuses() -> None:
         )
 
 
-def test_a_panel_with_no_measurable_rhythm_refuses_rather_than_assuming() -> None:
-    with pytest.raises(PanelNotFound, match="rhythm"):
-        asyncio.run(
-            extract_panel(
-                shot(OVERVIEW),
-                _anchor(),
-                panel=Offset(dx=-10, dy=20, width=310, height=320),
-                key_column=Offset(dx=420, dy=-20, width=200, height=260),  # blank margin
-                response_model=Accounts,
-                vision=_fake_vision,
-                instruction="read the table",
-            )
+def test_a_panel_with_no_rhythm_still_READS_but_cannot_be_drilled() -> None:
+    """Reading a one-row table is fine. Drilling into it is what needs a period.
+
+    The guard used to reject the whole extract, which made a legitimate
+    one-row result look like a failure.
+    """
+    read = asyncio.run(
+        extract_panel(
+            shot(OVERVIEW),
+            _anchor(),
+            panel=Offset(dx=-10, dy=20, width=310, height=320),
+            key_column=Offset(dx=420, dy=-20, width=200, height=260),  # blank margin
+            response_model=Accounts,
+            vision=_fake_vision,
+            instruction="read the table",
         )
+    )
+    assert read.rhythm is None
+    assert len(read.data.rows) == 11
+    with pytest.raises(PanelNotFound, match="cannot be drilled"):
+        read.point_for_row(0, x=508)
 
 
 def test_a_table_panel_accepts_no_manual_action() -> None:
