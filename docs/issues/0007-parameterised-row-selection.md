@@ -75,3 +75,66 @@ the bar is not a ratio to improve — it is pass or fail.
   problem, same root: identity is downstream of whatever the model called it.
 - [ADR 0005](../adr/0005-capability-artifact-shape.md) — why the field exists in
   the schema before the code that reads it.
+
+---
+
+## ✅ A candidate that needs no per-row grounding at all (2026-09-26)
+
+Boris's proposal, after the wrong-row measurements in
+[0009](0009-wrong-row-grounding-is-silent.md): *rows in a table keep changing so
+there is no neighbourhood landmark — landmark the TABLE instead, then work
+inside it.*
+
+The principle underneath it is one this repo already measured in miniature and
+never generalised: **never template-match something that repeats.**
+[findings.md §3](../findings.md) recorded that a control's own bbox matched
+*Username and Password* — 3 positions. A table is that failure eleven times
+over. But a table's **header** is unique and does not change with the data, so
+it is an ideal anchor.
+
+That decomposes row targeting into four steps, none of which is cell assignment:
+
+| step | mechanism | measured |
+|---|---|---|
+| locate the table | template-match the header row | template matching is proven — replay drift (0,0), score 1.0000 |
+| row pitch | autocorrelation of the column's brightness profile | **28px at 0.899**; next candidate 0.385. Pure CV, **no model call** |
+| row order | read the account column from a **CLEAN** screenshot | **11/11**, three runs ([0008](0008-dense-numeric-text-is-misread.md)) |
+| row for account X | `origin + index(X) * pitch` | arithmetic |
+
+```
+ParaBank overview, account column
+row tops   350  378  406  434  462  490  518  546  574  602  630
+diffs           28   28   28   28   28   28   28   28   28   28
+
+13344 is index 9 in the clean read  ->  350 + 9*28 = 602
+real 13344 row                      ->  602..616                   exact
+```
+
+**Phase needs one anchor.** Autocorrelation alone recovered the pitch perfectly
+but put the origin a constant 7px out, because "brightest offset" finds the top
+of the stripe rather than the text baseline. A constant offset is what a single
+grounded anchor calibrates — and the header is exactly that anchor.
+
+### Why this is better than the fix this issue originally proposed
+
+The original plan was: enumerate candidate rows, have the model read each one,
+pick the one matching the parameter. That needs eleven readings on an image we
+now know is defaced by our own overlay. This needs **one** template match on a
+non-repeating element, **one** clean read, and arithmetic.
+
+It also sidesteps the malformed question I posed after 0008 — *"does the overlay
+corrupt cell assignment too?"* There is no way to answer that: cell assignment
+**requires** the overlay, so no clean baseline exists. The right question was
+whether repeated structures need cell assignment at all. They do not.
+
+### Not yet built, and the honest gaps
+
+- **Untested on a second table.** ParaBank's overview has uniform 28px rows and
+  alternating stripes. A table with variable-height rows, or grouped headers,
+  breaks the pitch assumption — and the autocorrelation peak would say so
+  (a weak or split peak is the signal to refuse rather than guess).
+- **Order must come from the same render as the click.** If the app reorders
+  rows between the read and the action, the index is stale. The read and the
+  act have to share one screenshot, or the checkpoint has to catch it.
+- **It still needs the clean-read split** from [0008](0008-dense-numeric-text-is-misread.md)
+  to land first, since the 11/11 depends on an un-gridded image.
