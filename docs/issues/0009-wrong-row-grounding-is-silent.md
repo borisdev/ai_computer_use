@@ -125,6 +125,51 @@ different and only one of them is loud:
 0009   the CELL is wrong           13122 grounded on 12789   invisible: both are real
 ```
 
+## Why coarse -> fine does not catch its own mistake
+
+![what the coarse pass sees](../../evidence/issue-0009-what-the-coarse-pass-sees.png)
+
+The overlay the coarse pass is given, cropped to the table. Cell 71 holds two
+account links, cells 87 / 103 / 119 hold three each — and **every one of those
+cells looks the same**: underlined blue numbers in the same column position.
+
+```
+COARSE   whole screenshot + 192 numbered cells
+         "list the controls, and for each say which cell number it is in"
+                     |
+                     |  passes ONE NUMBER forward
+                     v
+FINE     crop that cell, enlarge, put dots on it
+         "which dot is on the target?"
+```
+
+The fine pass never sees the whole screen again, so it cannot check the number
+it was handed. For `13122`:
+
+```
+truth     13122 is in cell 103
+coarse    says cell 87                       miscounted the grid rows
+fine      crops 87, looks for "an account number link"
+          finds 12567 / 12678 / 12789 -- three, all plausible
+          grounds on 12789, returns click(n) at full confidence
+result    status: ready, landmark unique, ~1.0 at every future replay
+```
+
+**The unstated assumption is that a wrong cell will look wrong.** It does when
+controls are distinguishable — that is why the login screen scored 3/3 — and the
+evidence shows it holding and failing on the same screen:
+
+```
+6 links   got a cell in the BALANCE column       nothing like an account link
+                                                 -> unresolved. assumption HELD.
+3 links   got a NEIGHBOURING ACCOUNT cell        something matching was there
+                                                 -> clicked it. assumption FAILED.
+```
+
+And telling 12789 from 13122 means reading five small digits, which
+[0008](0008-dense-numeric-text-is-misread.md) measures at 54% — so the check
+that could catch this is unreliable at exactly this text size.
+
 ## What would catch it
 
 Nothing in the pipeline does today. In rough order of cost:
