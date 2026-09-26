@@ -57,6 +57,15 @@ structural property of how a tall image is encoded, not a capability gap.
 
 **Consequence:** model tier is not a lever. Changing *what you ask for* is.
 
+⚠️ **And a second qualification, 2026-09-26, which cuts the other way.** The
+grounding work below measured **3/3** on a login screen with five well-spaced
+controls, and that stands. On a table of eleven rows 28px apart inside an 80px
+coarse grid it is **1/4**, and — unlike every failure recorded here — it is
+**silent**: the control reports `ready`, the landmark is genuine and unique, and
+it sits around the wrong row. See
+[issue 0009](issues/0009-wrong-row-grounding-is-silent.md). Control density, not
+model tier, is the variable neither measurement controlled for.
+
 ### What fixed it
 
 Stop asking for coordinates. Code places numbered dots at known points; the
@@ -241,6 +250,7 @@ asserted — not yet measured.
 | ParaBank cold start | ~15s to healthy, plus an explicit seed |
 | ParaBank screens | 29 (9 public, 10 authenticated, 10 POST-only) |
 | Account numbers read correctly | **6/11** on the overview table (issue 0008) |
+| Account links grounded on their OWN row | **1/4** of those marked `ready` (issue 0009) |
 | Discovery run, cold (maps unbuilt) | 2 screens mapped, ~100 calls |
 | Discovery run, warm (maps cached) | 3 actions, **4 calls, 15s** |
 | Landmark score as a form fills | 0.99999 -> 0.9839 -> **0.8365** (below threshold) |
