@@ -28,6 +28,7 @@ uv run interfaceai env reset          # readiness: seed + verify. Both are neede
 uv run pytest -m "not live"   # offline; no container needed
 uv run pytest -m live         # live; needs the stack up and seeded
 uv run ruff check . && uv run ruff format --check .
+uv run python3 scripts/check_doc_links.py   # docs/ cross-links and anchors
 ```
 
 Live tests are marked `live` and deselected from the offline run. A live test
