@@ -249,7 +249,8 @@ asserted — not yet measured.
 | Context patch as template | 1 match (unique) |
 | ParaBank cold start | ~15s to healthy, plus an explicit seed |
 | ParaBank screens | 29 (9 public, 10 authenticated, 10 POST-only) |
-| Account numbers read correctly | **6/11** on the overview table (issue 0008) |
+| Account numbers read, **gridded** screenshot | 6/11 live, 8-9/11 replicated (issue 0008) |
+| Account numbers read, **clean** screenshot | **11/11**, three runs (issue 0008) |
 | Account links grounded on their OWN row | **1/4** of those marked `ready` (issue 0009) |
 | Discovery run, cold (maps unbuilt) | 2 screens mapped, ~100 calls |
 | Discovery run, warm (maps cached) | 3 actions, **4 calls, 15s** |
