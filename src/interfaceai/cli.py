@@ -11,7 +11,15 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from interfaceai import capabilities, capability, control_map_store, parabank, vocabulary
+from interfaceai import (
+    capabilities,
+    capability,
+    control_map_store,
+    parabank,
+    vision_llm,
+    vocabulary,
+)
+from interfaceai import discover as discover_mod
 from interfaceai.settings import get_settings
 
 app = typer.Typer(no_args_is_help=True, help="Computer-use automation for legacy bank apps.")
@@ -221,6 +229,128 @@ def cap_check(
             "An empty store means discovery has not run yet."
         )
         raise typer.Exit(1)
+
+
+# ---------------------------------------------------------------------------
+# discover -- the goal-driven LLM run (assignment 3.1)
+# ---------------------------------------------------------------------------
+
+EVIDENCE = Path(__file__).resolve().parents[2] / "evidence" / "runs"
+
+_GOAL_OPTION = typer.Option(..., "--goal", help="What to accomplish, in natural language.")
+_NAME_OPTION = typer.Option(..., "--name", help="Capability name for the emitted artifact.")
+_PARAM_OPTION = typer.Option(
+    None,
+    "--param",
+    help="Declare a caller input: name=slot=value, e.g. account_id=account_id=13344. Repeatable.",
+)
+_SECRET_OPTION = typer.Option(
+    None,
+    "--secret",
+    help="Offer a credential by NAME: input_ref=slot. Value comes from settings, never the CLI.",
+)
+
+
+def _parse_params(raw: list[str] | None) -> tuple[discover_mod.Parameter, ...]:
+    out = []
+    for item in raw or []:
+        parts = item.split("=", 2)
+        if len(parts) != 3:
+            raise typer.BadParameter(f"--param must be name=slot=value, got {item!r}")
+        out.append(discover_mod.Parameter(name=parts[0], slot=parts[1], value=parts[2]))
+    return tuple(out)
+
+
+def _parse_secrets(raw: list[str] | None) -> tuple[discover_mod.SecretBinding, ...]:
+    """Values are resolved from settings here, so a credential never enters argv.
+
+    A password on a command line lands in shell history and in `ps` output for
+    every user on the box, which is the kind of finding 3.4 is about.
+    """
+    settings = get_settings()
+    known = {
+        "parabank_username": settings.parabank_demo_username,
+        "parabank_demo_password": settings.parabank_demo_password.get_secret_value(),
+    }
+    out = []
+    for item in raw or []:
+        ref, _, slot = item.partition("=")
+        if ref not in known:
+            raise typer.BadParameter(
+                f"unknown secret {ref!r}; this build resolves: {', '.join(sorted(known))}"
+            )
+        out.append(discover_mod.SecretBinding(input_ref=ref, slot=slot or ref, value=known[ref]))
+    return tuple(out)
+
+
+@app.command("discover")
+def discover_cmd(
+    goal: str = _GOAL_OPTION,
+    name: str = _NAME_OPTION,
+    param: list[str] = _PARAM_OPTION,
+    secret: list[str] = _SECRET_OPTION,
+    maps: Path = _MAPS_OPTION,
+    tenant: str = typer.Option("baseline", "--tenant"),
+    max_steps: int = typer.Option(12, "--max-steps"),
+    headless: bool = typer.Option(True, "--headless/--headed"),
+    confirm_risky: bool = typer.Option(
+        False, "--confirm-risky", help="Permit irreversible steps. Off by default."
+    ),
+) -> None:
+    """Run the LLM against the live target and record the flow as a draft capability."""
+    settings = get_settings()
+    entry_point = (
+        settings.parabank_b_base_url if tenant != "baseline" else settings.parabank_base_url
+    )
+    if not parabank.is_seeded(entry_point):
+        console.print(f"[red]{entry_point} is not seeded[/] -- run `interfaceai env reset` first")
+        raise typer.Exit(1)
+
+    target = capability.Target(app="parabank", tenant=tenant, base_url=entry_point)
+    outcome = discover_mod.discover(
+        goal=goal,
+        name=name,
+        target=target,
+        entry_point=f"{entry_point}/index.htm",
+        vision=vision_llm.call_vision_llm,
+        store=control_map_store.ControlMapStore(maps),
+        evidence_root=EVIDENCE,
+        params=_parse_params(param),
+        secrets=_parse_secrets(secret),
+        max_steps=max_steps,
+        headless=headless,
+        confirm_risky=confirm_risky,
+        allowed_origins=settings.allowed_origins,
+    )
+
+    if isinstance(outcome, discover_mod.DiscoverySuccess):
+        ARTIFACTS.mkdir(parents=True, exist_ok=True)
+        path = ARTIFACTS / capability.artifact_filename(outcome.capability)
+        path.write_text(capability.dump_capability(outcome.capability))
+        console.print(
+            f"[green]discovered[/] {outcome.capability.name} in {len(outcome.steps)} steps, "
+            f"{outcome.model_calls} model calls, {outcome.seconds:.0f}s"
+        )
+        console.print(f"  artifact  {path}")
+        console.print(f"  evidence  {outcome.evidence_dir}")
+        console.print(f"  maps      {maps}/")
+        faults = control_map_store.check_capability(
+            outcome.capability, control_map_store.ControlMapStore(maps)
+        )
+        for fault in faults:
+            console.print(f"  [yellow]fault[/] {fault}")
+        return
+
+    if isinstance(outcome, discover_mod.PassToOperator):
+        console.print(f"[yellow]needs a human[/] at step {outcome.step_index} on {outcome.screen}")
+        console.print(f"  why       {outcome.reason}")
+        console.print(f"  screen    {outcome.screenshot}")
+        console.print(f"  evidence  {outcome.evidence_dir}")
+        raise typer.Exit(2)
+
+    console.print(f"[red]discovery failed[/] at step {outcome.step_index}: {outcome.reason}")
+    console.print(f"  evidence  {outcome.evidence_dir}")
+    raise typer.Exit(1)
 
 
 def main() -> None:  # pragma: no cover

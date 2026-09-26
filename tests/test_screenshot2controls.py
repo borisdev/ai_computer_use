@@ -16,11 +16,14 @@ from interfaceai.screenshot2controls import (
     CropBox,
     DiscoveryConfig,
     DiscoveryError,
+    ImageSize,
     ResolveInput,
     ScreenInput,
     VisualLocator,
+    _choose_landmark,
     _CoarseControl,
     _CoarseInventory,
+    _context_patch,
     _make_locator,
     _png_bytes,
     _Refinement,
@@ -215,3 +218,90 @@ class TestExtract:
 
 def test_slug_is_stable_for_the_same_label() -> None:
     assert _slug("Transfer Funds", ControlRole.LINK) == _slug("Transfer  Funds", ControlRole.LINK)
+
+
+class TestLandmarkSurvivesTypedInput:
+    """A submit button's landmark must not swallow the field above it.
+
+    Regression for the 2026-09-26 discovery run: every placement for ParaBank's
+    Log In button reached up over the password field, self-matched at 1.0000 on
+    the empty form, and scored 0.8365 once anything was typed -- so the run
+    escalated mid-login. The failure is invisible on the discovery screenshot by
+    construction, which is why the check has to fill the field and re-score.
+
+    ⚠️ The geometry is not decorative. The gap between the field's bottom edge
+    and the click point must be SMALLER than `context_height / 3`, or every
+    stock placement clears the field on its own and the test passes without
+    exercising anything. The first version of this test had a 33px gap against
+    a 26px reach and stayed green with the fix reverted.
+
+        field bottom   108
+        click point    125     gap = 17
+        context_height  80     bias 1/3 reaches 26px up -> top 98, INSIDE the field
+                               bias 0.15 reaches 12px up -> top 113, clear
+    """
+
+    FIELD = (60, 70, 260, 108)
+    CLICK = ClickPoint(x=150, y=125)
+    CONFIG = DiscoveryConfig(context_width=200, context_height=80)
+
+    def _form(self, *, typed: bool) -> Image.Image:
+        img = Image.new("RGB", (320, 220), "white")
+        d = ImageDraw.Draw(img)
+        d.text((60, 50), "Password", fill="black")
+        d.rectangle(self.FIELD, outline="gray", width=1)
+        if typed:
+            # A filled field differs across its whole height, which is what the
+            # overlapping patch actually sees.
+            d.rectangle((62, 72, 258, 106), fill="#404040")
+        d.rectangle((110, 112, 190, 138), outline="blue", width=2)
+        d.text((126, 119), "LOG IN", fill="black")
+        d.text((60, 160), "Forgot login info?", fill="black")
+        d.text((60, 180), "Register", fill="black")
+        return img
+
+    def _unstable(self) -> CropBox:
+        x0, y0, x1, y1 = self.FIELD
+        return CropBox(x=x0, y=y0, width=x1 - x0, height=y1 - y0)
+
+    def test_the_chosen_landmark_still_matches_once_the_field_is_filled(self) -> None:
+        empty = _png_bytes(self._form(typed=False))
+        filled = _png_bytes(self._form(typed=True))
+
+        locator, why = _choose_landmark(
+            ScreenInput(screenshot_png=empty),
+            self.CLICK,
+            self.CONFIG,
+            ImageSize(width=320, height=220),
+            [self._unstable()],
+        )
+        assert locator is not None, why
+        assert locator.reference_crop.y >= self.FIELD[3], (
+            f"chose a patch starting at y={locator.reference_crop.y}, inside the field "
+            f"that ends at y={self.FIELD[3]}"
+        )
+
+        after = locate_control(ResolveInput(screenshot_png=filled, locator=locator))
+        assert after.status == "matched", f"{after.status}: {after.reason}"
+        assert after.point == self.CLICK
+
+    def test_an_upward_landmark_is_what_this_avoids(self) -> None:
+        """The control. Without it the test above could pass for the wrong reason.
+
+        Forces the placement the chooser used to be stuck with and shows it
+        self-matching perfectly on the empty form and failing on the filled one
+        -- which is the whole shape of the bug.
+        """
+        empty = _png_bytes(self._form(typed=False))
+        filled = _png_bytes(self._form(typed=True))
+
+        upward = _context_patch(self.CLICK, 200, 80, ImageSize(width=320, height=220), above=1 / 3)
+        assert upward.y < self.FIELD[3], "the control placement must actually overlap the field"
+        locator = _make_locator(ScreenInput(screenshot_png=empty), upward, self.CLICK)
+
+        assert (
+            locate_control(ResolveInput(screenshot_png=empty, locator=locator)).status == "matched"
+        )
+        assert (
+            locate_control(ResolveInput(screenshot_png=filled, locator=locator)).status != "matched"
+        )

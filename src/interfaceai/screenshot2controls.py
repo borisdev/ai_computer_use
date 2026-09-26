@@ -201,7 +201,41 @@ _MAX_ZOOM = 8
 _SELF_MATCH_TOLERANCE_PX = 2
 # (size factor, fraction of height above the point). Ordered: reach up for a
 # label first, then down for a control below a form, then centred, then bigger.
-_PATCH_PLACEMENTS = ((1.0, 2 / 3), (1.0, 1 / 3), (1.0, 1 / 2), (1.5, 2 / 3), (1.5, 1 / 3))
+# (scale, fraction of the patch ABOVE the click point). `_choose_landmark`
+# builds one candidate per entry and keeps whichever overlaps the least
+# volatile content, so this list only has to OFFER a survivable option -- the
+# selection rule does the rest.
+#
+# ⚠️ The last two exist because of a measured failure, 2026-09-26. The first
+# five all place the patch top at or above the click point minus a third of the
+# patch height, which on ParaBank's login form means every candidate for the
+# Log In button swallowed the password field. Discovery self-matched all of
+# them at 1.0000 on the empty form and the run then died mid-login: username
+# matched at 0.99999, password at 0.9839 (already degraded by the typed
+# username), and Log In at 0.8365 -- below threshold, so the run correctly
+# refused to click and escalated.
+#
+# Re-scored offline against that run's own before/after frames:
+#
+#     bias  patch y     on the FILLED form
+#     0.67  325..421    not_found
+#     0.33  357..453    not_found
+#     0.25  365..461    not_found
+#     0.20  370..466    0.9572   <- the cliff is the field's bottom edge, y~370
+#     0.15  375..471    0.9998
+#     0.05  385..481    0.9998
+#
+# 0.20 clears by 0.007 and is deliberately not in the list; a placement that
+# only just passes today is one antialiasing change from failing.
+_PATCH_PLACEMENTS = (
+    (1.0, 2 / 3),
+    (1.0, 1 / 3),
+    (1.0, 1 / 2),
+    (1.5, 2 / 3),
+    (1.5, 1 / 3),
+    (1.0, 0.15),
+    (1.0, 0.05),
+)
 # Never accept a grounded point from a grid coarser than this. A dot cannot be
 # inside a control shorter than the dot spacing, so at coarser resolutions a
 # `click` is not a wrong answer by the model -- it is an answer we should not

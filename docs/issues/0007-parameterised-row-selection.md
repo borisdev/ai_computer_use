@@ -47,8 +47,15 @@ random.
    reports `ambiguous` when a second candidate is within the margin, so the
    candidates exist — what is missing is returning them.
 2. read the text of each candidate and match it against the bound parameter.
-   That is a perception question, which is the half models are measured GOOD at
-   (§2: every control named correctly, every run).
+
+   ⛔ **That second step is now measured and it does not work.** It assumed
+   reading is the half models are good at. On this exact screen the model reads
+   **6 of 11** account numbers correctly —
+   [issue 0008](0008-dense-numeric-text-is-misread.md) — so matching row text
+   against a parameter would pick the wrong account about half the time, with no
+   signal that it had. **0007 cannot be fixed until 0008 is**, and the most
+   promising route (read from a zoomed crop rather than the full screenshot) is
+   unmeasured.
 
 Note what this does **not** reintroduce: the model is not choosing where to
 click. Code enumerates candidates, the model reads them, code picks the one

@@ -13,11 +13,11 @@ Companions: [parabank.md](parabank.md) (the target), [parabank-screens.md](parab
 
 | § | Requirement | State | Evidence |
 |---|---|---|---|
-| 3.1 | Goal-driven agent loop | **not built** | perception half done; nothing decides yet |
+| 3.1 | Goal-driven agent loop | **built** | real run 2026-09-26: 3 actions, logged in, artifact emitted |
 | 3.2 | Typed, versioned artifact | **built** | `capability.py` + 35 tests; two authored artifacts, both hand-written |
 | 3.3 | Deterministic replay | **partial** | `locate_control` exact (drift 0,0); no step executor, no control-map store |
 | 3.4 | Safety guardrails | **partial** | single action chokepoint + 8 tests; no per-step risk classing |
-| 3.5 | Evidence | **partial** | `EvidenceWriter` written, not yet wired into a run |
+| 3.5 | Evidence | **built** | wired: trace.jsonl + a frame per step, from a real run |
 | 3.6 | Escalation & handoff | **not built** | triggers exist (`unresolved`, `ambiguous`); no routing |
 | 3.7 | Heterogeneity & multi-tenant | **designed** | seam built and argued; limits measured |
 
@@ -26,6 +26,15 @@ Companions: [parabank.md](parabank.md) (the target), [parabank-screens.md](parab
 ## 2. The central finding
 
 **Vision models read a screen accurately and locate it badly.**
+
+⚠️ **Qualified 2026-09-26, and the qualification is load-bearing.** "Read
+accurately" holds for **labelled controls** — the measurement below, five
+well-spaced labels on a login screen, named verbatim on every run. It does
+**not** hold for dense numeric data: on the Accounts Overview the model read
+**6 of 11** account numbers correctly, inventing `13001` for `13011`, `13323`
+for `13233` and `54221` for `54321`, each at full confidence. See
+[issue 0008](issues/0008-dense-numeric-text-is-misread.md). The original claim
+was true of what it measured and was generalised one step too far.
 
 Asked to map ParaBank's login screen, every model named every control correctly
 — labels verbatim, roles right, nothing hallucinated on the happy path. Asked
@@ -231,6 +240,10 @@ asserted — not yet measured.
 | Context patch as template | 1 match (unique) |
 | ParaBank cold start | ~15s to healthy, plus an explicit seed |
 | ParaBank screens | 29 (9 public, 10 authenticated, 10 POST-only) |
+| Account numbers read correctly | **6/11** on the overview table (issue 0008) |
+| Discovery run, cold (maps unbuilt) | 2 screens mapped, ~100 calls |
+| Discovery run, warm (maps cached) | 3 actions, **4 calls, 15s** |
+| Landmark score as a form fills | 0.99999 -> 0.9839 -> **0.8365** (below threshold) |
 
 ---
 
