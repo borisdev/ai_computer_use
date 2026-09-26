@@ -72,6 +72,27 @@ The second case is the one that shapes the design. A replay whose checkpoint is
 balance. So a checkpoint has to assert the values it expected, and the result
 contract needs a verdict that is neither success nor "not found".
 
+### ⭐ Demonstrated, not argued — flip the database and watch the check fire
+
+`tests/test_savings_balance_live.py` reads account 13344's balance through the
+real chain: locate the "Account" column header, crop the table, one model call
+against a response schema, and then select the row **in code** by the caller's
+parameter. Run it against each database state:
+
+```
+env reset  (INIT)    PASS   11 rows, 13344 -> $1231.10
+env break  (CLEAN)   FAIL   AssertionError: read '5022.93', seed fixture says 1231.10
+                             1 row -- the same id, a different record
+```
+
+**The extract is correct in both runs.** What differs is whether the value
+matches what was recorded — which is the entire argument for checkpoints that
+assert values rather than lookups, shown rather than asserted. The failure is
+produced by the application's own admin page, not by a stub or a mock.
+
+⚠️ This exercises the mechanism, not the engine: it hand-wires the same
+`locate -> validate -> use` chain a replay would walk. See §7.
+
 Determinism is also helped by the environment: the database lives inside the
 container with no volume, so `docker compose down` is a factory reset and every
 run starts from an identical seed
