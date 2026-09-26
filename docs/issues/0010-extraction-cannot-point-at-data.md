@@ -89,6 +89,56 @@ That implies three changes, in order:
 3. **`Step.EXTRACT` targets a region, not a `ControlRef`.** That is a schema
    change to the artifact and wants an ADR amendment, not a quiet edit.
 
+### ⛔ It does NOT reuse `unstable_regions`, and the geometry says why
+
+An earlier draft of this section said the landmark machinery "already does
+exactly this bookkeeping — it just needs data regions added to the exclusion
+set". Measured on `activity.htm?id=13344`, that is wrong three ways:
+
+```
+Account Number:  x 490..592  y 316..337   h=21
+13344            x 594..653  y 316..337
+Account Type:    x 490..592  y 339..360
+SAVINGS          x 594..653  y 339..360
+Balance:         x 490..592  y 362..383
+$1231.10         x 594..653  y 362..383
+Available:       x 490..592  y 385..406
+$1231.10         x 594..653  y 385..406
+```
+
+1. **The whole block is 90px and a coarse cell is 80px.** Marking any value's
+   cell unstable marks every label in the block — including the one anchor that
+   says which number is being read. It would push the landmark off the details
+   table entirely.
+2. **It is not an exclusion set.** `usable.sort(key=overlap)` is a soft ranking;
+   the minimum wins and nothing is ever refused. That is exactly how
+   [0009](0009-wrong-row-grounding-is-silent.md)'s contaminated landmark got
+   chosen.
+3. **It is not a config change.** `_make_locator` yields
+   `(template, click_offset)` → a point. A read needs
+   `(template, offset, size)` → a region.
+
+**The geometry hands over a simpler construction instead.** The label ends at
+x=592 and the value starts at x=594 — 2px apart, same 21px row. So a read
+locator is *anchor on the label, read immediately beside it*:
+
+```
+template      "Balance:"                 stable by definition -- it is the field name
+read region   +2px right, same row, ~60px wide
+```
+
+The mutable-pixel problem then **disappears rather than needing machinery**: the
+template contains only the label, so the value changing cannot degrade the
+match. Reads do not reuse the unstable-region logic; they make it unnecessary.
+
+What does carry over: `locate_control` itself, the constant-template rejection
+guard, and the `not_found` / `ambiguous` / `incompatible` contract.
+
+⚠️ This is measured on ParaBank's label-left/value-right detail table. A layout
+with the label ABOVE the field, or no label at all, needs a different anchor —
+and a column of eleven balances with one header has no per-row label, which is
+the table case and is not solved by this.
+
 ⚠️ **Reading is the operation [0008](0008-dense-numeric-text-is-misread.md)
 measures at 54% on this exact text.** A region read from a zoomed crop is the
 untested hope — grounding already magnifies cells, so the machinery is there,
