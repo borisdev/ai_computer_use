@@ -82,16 +82,39 @@ said so, so they came back `unresolved` and the run escalates. **Those are the
 benign half.** An honest `unresolved` costs a re-run; a wrong `ready` costs a
 wrong record.
 
-## Root cause
+## Root cause — and the first answer here was wrong
 
-A coarse grid cell is **80px**. A table row is **28px**. Nearly three rows per
-cell, and the rows are identical but for four digits.
+⛔ **This section said "a coarse cell is 80px, a row is 28px, so three rows per
+cell". That explains ONE of the three failures.** Boris asked whether `13001_link`
+was wrong even allowing for the grid; it is, and checking properly changed the
+diagnosis.
 
-The coarse pass names a control and assigns it one `cell_id`. For eleven
-near-identical rows it cannot reliably say which cell holds which, and the
-refinement that follows only ever sees the cell it was handed — so it grounds
-confidently inside whatever row is there. There is no step that asks "is the
-thing I grounded the thing I was looking for?"
+The refinement step can only ground *inside* the cell the coarse pass handed it,
+so `cell(grounded_y)` **is** the assigned cell. That makes the question testable:
+does the true row sit in that same cell?
+
+```
+control        ground y   assigned cell | true row   true cell | verdict
+12345_link          361       320-400   |      357    320-400  | correct anyway
+12456_link          359       320-400   |      385    320-400  | within-cell ambiguity
+13122_link          466       400-480   |      553    480-560  | WRONG CELL by 1  (80px)
+13001_link          386       320-400   |      525    480-560  | WRONG CELL by 2 (160px)
+```
+
+So the dominant failure is **not** resolution, it is **assignment**: the coarse
+pass reports a cell number the control is not in. Only `12456_link` is the
+three-rows-per-cell story.
+
+That is the same defect [0001](0001-incomplete-inventory.md) already names as an
+aggravating factor, arriving somewhere new:
+
+> **192 numbered cells**, nearly all of them empty. The model must enumerate
+> controls *and* map each to one of 192 numbers.
+
+Enumerating is one task; mapping each result onto a number in a 192-cell overlay
+is a second, and it is the one that fails here. The refinement then grounds
+confidently inside whatever row happens to be in the cell it was given, and
+nothing ever asks "is the thing I grounded the thing I was looking for?"
 
 That is also the shared cause with [0008](0008-dense-numeric-text-is-misread.md)
 — small, uniform, redundancy-free text in a dense table — but the mechanisms are
@@ -112,11 +135,19 @@ Nothing in the pipeline does today. In rough order of cost:
   the refinement's answer against the coarse pass's claim. ⚠️ It leans on
   reading, which 0008 measures at 54% on this exact text, so it must be
   measured, not assumed.
-- **Make the grid finer where controls are dense.** `coarse_cell_px=80` against
-  a 28px row is the arithmetic of the bug. A cell smaller than the row pitch
-  makes the assignment unambiguous, at the cost of more cells to enumerate —
-  which [0001](0001-incomplete-inventory.md) already says is the thing that
-  destabilises the inventory. The two pull against each other.
+- ⛔ **A finer grid is the WRONG fix, and was proposed here before the
+  measurement above.** It would help the one within-cell case and make the two
+  dominant ones worse: halving the cell size quadruples the cell count, and
+  picking the right number out of 192 is already what is failing. Recorded
+  rather than deleted, because it is the intuitive answer and the next person
+  will reach for it too.
+- **Tile the scan** — the prototype in [0001](0001-incomplete-inventory.md),
+  which is now the leading candidate for this issue as well. Each tile is shown
+  with its zone marked and the model reports only controls centred inside it, so
+  position comes from *which tile answered* rather than from the model mapping a
+  control onto one of 192 numbers. It measured 27/27/26 against 24/19/24 for
+  inventory stability; its effect on cell-assignment accuracy is **unmeasured**
+  and is the experiment to run.
 - **Do not target rows visually at all.** ParaBank routes account details as
   `activity.htm?id=13344`, and §8 of the brief blesses `/item/12345 ->
   /item/:id`. Deterministic, no reading, no grounding. It bypasses the screen,
