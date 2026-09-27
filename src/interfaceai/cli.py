@@ -15,6 +15,7 @@ from interfaceai import (
     capabilities,
     capability,
     control_map_store,
+    handoff,
     outcomes,
     parabank,
     vision_llm,
@@ -375,6 +376,11 @@ def replay_cmd(
     confirm_risky: bool = typer.Option(
         False, "--confirm-risky", help="Permit irreversible steps. Off by default."
     ),
+    operator: bool = typer.Option(
+        False,
+        "--operator",
+        help="Hand the live session to a terminal operator when the run blocks (3.6).",
+    ),
 ) -> None:
     """Replay a capability deterministically. No model decides anything."""
     settings = get_settings()
@@ -404,6 +410,7 @@ def replay_cmd(
         allowed_origins=settings.allowed_origins,
         confirm_risky=confirm_risky,
         headless=headless,
+        operator=handoff.TerminalOperator() if operator else None,
     )
 
     if isinstance(result, outcomes.Success):

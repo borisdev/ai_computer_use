@@ -56,6 +56,12 @@ from interfaceai.capability import (
 from interfaceai.control_map_store import ControlMapMiss, ControlMapStore, MapKey, check_capability
 from interfaceai.decisions import AgentDecision, ManualActionKind, validate_decision
 from interfaceai.evidence import EvidenceWriter
+from interfaceai.handoff import (
+    InterventionRequest,
+    Operator,
+    Owner,
+    Resolution,
+)
 from interfaceai.outcomes import (
     BusinessOutcome,
     BusinessOutcomeKind,
@@ -105,6 +111,8 @@ class _Ctx:
     confirm_risky: bool
     outputs: dict[str, str]
     done: list[str]
+    operator: Operator | None = None
+    owner: Owner = Owner.WORKER
 
 
 def replay(
@@ -119,6 +127,7 @@ def replay(
     forbidden_values: frozenset[str] = frozenset(),
     confirm_risky: bool = False,
     headless: bool = True,
+    operator: Operator | None = None,
 ) -> CapabilityResult:
     """Run an APPROVED capability. The production path an agent would trigger."""
     assert_replayable(capability)
@@ -174,6 +183,7 @@ def replay(
             confirm_risky=confirm_risky,
             outputs={},
             done=[],
+            operator=operator,
         )
         return _run(ctx)
 
@@ -237,12 +247,137 @@ def _run(ctx: _Ctx) -> CapabilityResult:
                 evidence_dir=ctx.evidence.dir,
             )
 
-    for n, step in enumerate(ctx.capability.steps):
+    n = 0
+    while n < len(ctx.capability.steps):
+        step = ctx.capability.steps[n]
         result = _step(ctx, n, step)
-        if result is not None:
+        if result is None:
+            n += 1
+            continue
+        if not isinstance(result, NeedsOperator) or ctx.operator is None:
             return result
 
+        verdict = _hand_over(ctx, n, step, result)
+        if isinstance(verdict, NeedsOperator):
+            return verdict
+        if verdict == "advance":
+            ctx.done.append(f"{step.verb} (completed by the operator)")
+            n += 1
+            continue
+        # "retry": the precondition still holds and the action was safe to
+        # repeat, so run the SAME step again rather than assuming it happened.
+        continue
+
     return _checkpoints(ctx)
+
+
+def _hand_over(ctx: _Ctx, n: int, step: Step, blocked: NeedsOperator) -> str | NeedsOperator:
+    """Pause, give the human the live session, then VERIFY before resuming.
+
+    Returns "advance", "retry", or a `NeedsOperator` meaning stay paused.
+
+    The resume rule, and the order matters:
+
+        the step's own target is now satisfied     -> advance past it
+        the step is still safe to perform          -> retry it
+        anything uncertain                         -> stay paused
+
+    An irreversible step is never retried on the strength of "it looks like it
+    did not happen" -- a submission that silently succeeded and a submission
+    that failed can look identical, and repeating one moves money twice.
+    """
+    assert ctx.operator is not None
+    ctx.owner = Owner.HUMAN
+    ctx.evidence.event("handoff_requested", step=n, why=blocked.why, owner=str(ctx.owner))
+
+    resolution = ctx.operator.resolve(
+        InterventionRequest(
+            why=blocked.why,
+            capability=ctx.capability.name,
+            step_index=n,
+            screen=blocked.screen,
+            url=ctx.surface.current_url(),
+            completed_steps=tuple(ctx.done),
+            frame=blocked.frame,
+        ),
+        ctx.surface,
+    )
+    for action in resolution.actions:
+        ctx.evidence.event(
+            "human_acted",
+            step=n,
+            action=str(action.action),
+            x=action.x,
+            y=action.y,
+            url=action.url,
+            value_length=action.value_length,
+        )
+    ctx.owner = Owner.WORKER
+    ctx.evidence.event(
+        "handoff_returned",
+        step=n,
+        resolution=str(resolution.resolution),
+        human_actions=len(resolution.actions),
+        owner=str(ctx.owner),
+    )
+
+    if resolution.resolution is Resolution.ABORTED:
+        return NeedsOperator(
+            why=f"operator aborted at step {n}: {resolution.note or blocked.why}",
+            step_index=n,
+            screen=blocked.screen,
+            evidence_dir=ctx.evidence.dir,
+            completed_steps=tuple(ctx.done),
+        )
+
+    if step.control is None:
+        return "advance"
+
+    try:
+        control = _resolve(ctx, step.control)
+    except ControlMapMiss:
+        return NeedsOperator(
+            why=f"after handoff, {step.control.control_id} is not in the control map",
+            step_index=n,
+            screen=blocked.screen,
+            evidence_dir=ctx.evidence.dir,
+            completed_steps=tuple(ctx.done),
+        )
+
+    reachable = _find(ctx, control).status == "matched"
+    ctx.evidence.event("resume_check", step=n, control=control.id, reachable=reachable)
+
+    if step.verb in (StepVerb.WAIT_FOR, StepVerb.EXTRACT):
+        # These have no side effect, so "the target is there now" is the whole
+        # question and repeating is free.
+        if reachable:
+            return "retry"
+        return NeedsOperator(
+            why=f"resumed, but {control.id} is still not on screen",
+            step_index=n,
+            screen=blocked.screen,
+            evidence_dir=ctx.evidence.dir,
+            completed_steps=tuple(ctx.done),
+        )
+
+    if step.risky or control.policy.irreversible:
+        # Never blindly repeat an uncertain submission.
+        return NeedsOperator(
+            why=(
+                f"step {n} is irreversible; its effect cannot be confirmed from the "
+                "screen, so it will not be retried automatically"
+            ),
+            step_index=n,
+            screen=blocked.screen,
+            evidence_dir=ctx.evidence.dir,
+            completed_steps=tuple(ctx.done),
+        )
+
+    if reachable:
+        return "retry"
+    # The control is gone and the step was reversible -- the likeliest reading
+    # is that the operator performed it and the page moved on.
+    return "advance"
 
 
 def _step(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
