@@ -15,14 +15,17 @@ from interfaceai import (
     capabilities,
     capability,
     control_map_store,
+    decisions,
     handoff,
     outcomes,
     parabank,
+    screenshot2controls,
     vision_llm,
     vocabulary,
 )
 from interfaceai import discover as discover_mod
 from interfaceai import replay as replay_mod
+from interfaceai import surface as surface_mod
 from interfaceai.settings import get_settings
 
 app = typer.Typer(no_args_is_help=True, help="Computer-use automation for legacy bank apps.")
@@ -376,6 +379,11 @@ def replay_cmd(
     confirm_risky: bool = typer.Option(
         False, "--confirm-risky", help="Permit irreversible steps. Off by default."
     ),
+    tenant: str = typer.Option(
+        None,
+        "--tenant",
+        help="Replay against a DIFFERENT tenant than the artifact was recorded on (3.7).",
+    ),
     operator: bool = typer.Option(
         False,
         "--operator",
@@ -396,6 +404,16 @@ def replay_cmd(
     except (OSError, ValueError) as exc:
         console.print(f"[red]cannot load {artifact}:[/] {exc}")
         raise typer.Exit(1) from exc
+
+    if tenant and tenant != loaded.target.tenant:
+        # 3.7: the artifact is tenant-agnostic; only the control maps and the
+        # entry URL are tenant-specific. `maps adopt` is what establishes that
+        # the locators actually transfer.
+        base = settings.parabank_b_base_url if tenant != "baseline" else settings.parabank_base_url
+        loaded = loaded.model_copy(
+            update={"target": loaded.target.model_copy(update={"tenant": tenant, "base_url": base})}
+        )
+        console.print(f"[cyan]cross-tenant[/] replaying on {tenant} ({base})")
 
     result = replay_mod.replay(
         loaded,
@@ -431,6 +449,91 @@ def replay_cmd(
     console.print(f"  evidence  {result.evidence_dir}")
     if not outcomes.is_actionable_by_caller(result):
         raise typer.Exit(1)
+
+
+# ---------------------------------------------------------------------------
+# maps -- cross-tenant reuse (assignment 3.7)
+# ---------------------------------------------------------------------------
+
+maps_app = typer.Typer(no_args_is_help=True, help="Control maps and cross-tenant reuse.")
+app.add_typer(maps_app, name="maps")
+
+
+@maps_app.command("adopt")
+def maps_adopt(
+    screen: str = typer.Argument(..., help="Which screen to adopt, e.g. index."),
+    source: str = typer.Option("baseline", "--from", help="Tenant the map was recorded on."),
+    target: str = typer.Option(..., "--to", help="Tenant to adopt it for."),
+    maps: Path = _MAPS_OPTION,
+    login: bool = typer.Option(
+        False,
+        "--login",
+        help="Authenticate first. Required for screens behind a session, e.g. overview.",
+    ),
+) -> None:
+    """Reuse one tenant's control map for another, verifying every locator first.
+
+    The 3.7 question: does an artifact recorded at one institution work at
+    another running the same vendor product? This re-runs every locator against
+    the TARGET tenant's live screen and writes nothing if any drifted — a
+    partially-adopted map fails at replay, far from the cause.
+    """
+    settings = get_settings()
+    url = settings.parabank_base_url if target == "baseline" else settings.parabank_b_base_url
+    if not parabank.is_seeded(url):
+        console.print(f"[red]{url} is not seeded[/] — run `interfaceai env reset --tenant-b`")
+        raise typer.Exit(1)
+
+    store = control_map_store.ControlMapStore(maps)
+    with surface_mod.PlaywrightSurface(allowed_origins=settings.allowed_origins) as surface:
+        surface.navigate(f"{url}/index.htm")
+        if login:
+            # An authenticated screen logged out is a DIFFERENT screen, and the
+            # verifier would report it as tenant drift. Observed exactly that on
+            # overview.htm before this flag existed.
+            index_map = control_map_store.MapKey(app="parabank", tenant=source, screen="index")
+            for control_id, action, value in (
+                ("username_textbox", "enter_text", settings.parabank_demo_username),
+                (
+                    "password_textbox",
+                    "enter_text",
+                    settings.parabank_demo_password.get_secret_value(),
+                ),
+                ("log_in_button", "click", None),
+            ):
+                control = store.control(index_map, control_id)
+                found = screenshot2controls.locate_control(
+                    screenshot2controls.ResolveInput(
+                        screenshot_png=surface.screenshot(), locator=control.locator
+                    )
+                )
+                if found.status != "matched":
+                    console.print(f"[red]cannot log in on {target}[/]: {control_id} {found.status}")
+                    raise typer.Exit(1)
+                surface_mod.use_control(
+                    surface,
+                    found.point.x,
+                    found.point.y,
+                    decisions.ManualActionKind(action),
+                    value,
+                )
+            surface.wait(2.0)
+        surface.navigate(f"{url}/{screen}.htm")
+        surface.wait(1.0)
+        report = control_map_store.adopt_control_map(
+            store,
+            control_map_store.MapKey(app="parabank", tenant=source, screen=screen),
+            control_map_store.MapKey(app="parabank", tenant=target, screen=screen),
+            surface.screenshot(),
+        )
+
+    console.print(f"{source} -> {target}   {report}")
+    if report.clean:
+        console.print(f"[green]adopted[/] every locator matched; map written for {target}")
+        return
+    console.print(f"[yellow]drifted[/] {', '.join(report.drifted)}")
+    console.print("  nothing written — this tenant needs its own discovery run or overrides")
+    raise typer.Exit(1)
 
 
 def main() -> None:  # pragma: no cover

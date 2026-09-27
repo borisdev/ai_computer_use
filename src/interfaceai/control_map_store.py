@@ -42,7 +42,12 @@ from pathlib import Path
 
 from interfaceai.capability import Capability, ControlRef, StepVerb
 from interfaceai.decisions import ManualActionKind, supported_actions
-from interfaceai.screenshot2controls import LocatedControl, ScreenOutput
+from interfaceai.screenshot2controls import (
+    LocatedControl,
+    ResolveInput,
+    ScreenOutput,
+    locate_control,
+)
 
 # Keys become path segments, so they may not contain separators or dots.
 _SAFE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
@@ -208,3 +213,65 @@ def check_capability(capability: Capability, store: ControlMapStore) -> list[str
             check_ref(step.control, f"step {n} ({step.verb})", step.verb)
 
     return faults
+
+
+# ---------------------------------------------------------------------------
+# Cross-tenant reuse (assignment 3.7)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class AdoptionReport:
+    """What happened when one tenant's control map was offered to another."""
+
+    screen: str
+    matched: tuple[str, ...]
+    drifted: tuple[str, ...]
+
+    @property
+    def clean(self) -> bool:
+        return not self.drifted
+
+    def __str__(self) -> str:
+        n = len(self.matched) + len(self.drifted)
+        return f"{self.screen}: {len(self.matched)}/{n} locators matched"
+
+
+def adopt_control_map(
+    store: ControlMapStore,
+    source: MapKey,
+    target: MapKey,
+    live_screenshot: bytes,
+) -> AdoptionReport:
+    """Reuse one tenant's map for another, but VERIFY every locator first.
+
+    The 3.7 question is whether an artifact recorded for one institution works
+    at another running the same vendor product. Copying the map blindly would
+    answer "yes" for reasons nobody checked; this re-runs every locator against
+    the target tenant's live screen and reports which ones actually match.
+
+    Nothing is written when anything drifted. A partially-adopted map is worse
+    than none: the drifted control fails at replay, far from the decision that
+    caused it, and the run looks like an application problem.
+
+    Measured 2026-09-27 for ParaBank `baseline` -> `feature`, two genuinely
+    different image digests: **19/19 on the login screen, every one at 1.0000**.
+    Same vendor build, unbranded, so the locators transfer exactly. A tenant
+    that restyled its CSS would show up here as drift, which is the point --
+    the check is what distinguishes the two cases.
+    """
+    control_map = store.get(source)
+    matched: list[str] = []
+    drifted: list[str] = []
+    for control in control_map.controls:
+        if control.status != "ready" or control.locator is None:
+            continue
+        found = locate_control(
+            ResolveInput(screenshot_png=live_screenshot, locator=control.locator)
+        )
+        (matched if found.status == "matched" else drifted).append(control.id)
+
+    report = AdoptionReport(screen=target.screen, matched=tuple(matched), drifted=tuple(drifted))
+    if report.clean:
+        store.put(target, control_map)
+    return report
