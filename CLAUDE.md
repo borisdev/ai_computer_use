@@ -51,6 +51,8 @@ container is down is not — it would be asserting nothing.
 - `docs/findings.md` — **every measurement, mapped to the assignment sections.**
   Read before re-deriving anything; it records what was measured and what was
   only inferred.
+- `docs/failure-modes.md` — every failure we have OBSERVED, with the fixture or
+  lever that reproduces it. A mode with no test is not in the table
 - `docs/issues/` — open problems with their evidence
 - `docs/capabilities-and-vocabulary.md` — the five capabilities the system must
   perform, and the 34-term straw-man vocabulary derived backwards from them
