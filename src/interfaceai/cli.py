@@ -15,11 +15,13 @@ from interfaceai import (
     capabilities,
     capability,
     control_map_store,
+    outcomes,
     parabank,
     vision_llm,
     vocabulary,
 )
 from interfaceai import discover as discover_mod
+from interfaceai import replay as replay_mod
 from interfaceai.settings import get_settings
 
 app = typer.Typer(no_args_is_help=True, help="Computer-use automation for legacy bank apps.")
@@ -354,6 +356,74 @@ def discover_cmd(
     console.print(f"[red]discovery failed[/] at step {outcome.step_index}: {outcome.reason}")
     console.print(f"  evidence  {outcome.evidence_dir}")
     raise typer.Exit(1)
+
+
+# ---------------------------------------------------------------------------
+# replay -- the production path (assignment 3.3)
+# ---------------------------------------------------------------------------
+
+_ARTIFACT_ARG = typer.Argument(..., help="Path to an APPROVED capability artifact.")
+_INPUT_OPTION = typer.Option(None, "--param", help="Bind a typed input: name=value. Repeatable.")
+
+
+@app.command("replay")
+def replay_cmd(
+    artifact: Path = _ARTIFACT_ARG,
+    param: list[str] = _INPUT_OPTION,
+    maps: Path = _MAPS_OPTION,
+    headless: bool = typer.Option(True, "--headless/--headed"),
+    confirm_risky: bool = typer.Option(
+        False, "--confirm-risky", help="Permit irreversible steps. Off by default."
+    ),
+) -> None:
+    """Replay a capability deterministically. No model decides anything."""
+    settings = get_settings()
+    inputs: dict[str, str] = {}
+    for item in param or []:
+        name, _, value = item.partition("=")
+        if not value:
+            raise typer.BadParameter(f"--param must be name=value, got {item!r}")
+        inputs[name] = value
+
+    try:
+        loaded = capability.load_capability(artifact)
+    except (OSError, ValueError) as exc:
+        console.print(f"[red]cannot load {artifact}:[/] {exc}")
+        raise typer.Exit(1) from exc
+
+    result = replay_mod.replay(
+        loaded,
+        inputs,
+        store=control_map_store.ControlMapStore(maps),
+        evidence_root=EVIDENCE,
+        secrets={
+            "parabank_username": settings.parabank_demo_username,
+            "parabank_demo_password": settings.parabank_demo_password.get_secret_value(),
+        },
+        vision=vision_llm.call_vision_llm,
+        allowed_origins=settings.allowed_origins,
+        confirm_risky=confirm_risky,
+        headless=headless,
+    )
+
+    if isinstance(result, outcomes.Success):
+        console.print(f"[green]SUCCESS[/] {loaded.name} in {result.steps_run} steps")
+        for name, value in result.outputs.items():
+            console.print(f"  {name} = {value}")
+    elif isinstance(result, outcomes.BusinessOutcome):
+        console.print(f"[yellow]{result.kind}[/] {result.detail}")
+    elif isinstance(result, outcomes.NeedsOperator):
+        console.print(f"[yellow]NEEDS A HUMAN[/] at step {result.step_index}: {result.why}")
+        if result.completed_steps:
+            console.print(f"  completed: {', '.join(result.completed_steps)}")
+    else:
+        console.print(f"[red]FAILED[/] at {result.step}")
+        console.print(f"  expected  {result.expected}")
+        console.print(f"  observed  {result.observed}")
+
+    console.print(f"  evidence  {result.evidence_dir}")
+    if not outcomes.is_actionable_by_caller(result):
+        raise typer.Exit(1)
 
 
 def main() -> None:  # pragma: no cover

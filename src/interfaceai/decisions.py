@@ -79,6 +79,8 @@ def get_control(control_map: ScreenOutput, control_id: str) -> LocatedControl:
 def validate_decision(
     decision: AgentDecision,
     control_map: ScreenOutput,
+    *,
+    confirmed: bool = False,
 ) -> LocatedControl:
     """Validate a model's decision before Playwright executes it.
 
@@ -98,5 +100,11 @@ def validate_decision(
     needs_value = {ManualActionKind.ENTER_TEXT, ManualActionKind.SELECT}
     if decision.action in needs_value and decision.value is None:
         raise ValueError(f"{decision.action} requires a value")
+
+    # Irreversibility is recorded on the CONTROL, so every caller inherits it
+    # and none of them has to remember. `use_control` enforces the same pairing
+    # at the action layer; this catches it one step earlier, with a name.
+    if control.policy.irreversible and not confirmed:
+        raise ValueError(f"{control.id} is irreversible and this action was not confirmed")
 
     return control

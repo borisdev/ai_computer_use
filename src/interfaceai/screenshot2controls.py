@@ -299,6 +299,30 @@ class VisualLocator(Contract):
     ambiguity_margin: float = Field(default=0.05, ge=0, le=1)
 
 
+class ControlPolicy(Contract):
+    """What is true about a CONTROL regardless of who acts on it.
+
+    Deliberately only two fields. `allowed_actions` would duplicate
+    `decisions.ACTIONS_BY_ROLE`, which already derives legality from the role in
+    code the model cannot influence -- adding a second source would let them
+    disagree.
+
+    These two are genuinely new information:
+
+    `irreversible` -- `docs/findings.md` §5: "risk is a property of the CONTROL,
+    not the action kind. Clicking Log In is safe; clicking Transfer moves money;
+    both are CLICK." Recording it here rather than per authored step means every
+    capability touching that control inherits it.
+
+    `sensitive` -- the value typed into it must never be persisted. Distinct
+    from the vocabulary's sensitive SLOT, which is about the artifact; this is
+    about the screen.
+    """
+
+    irreversible: bool = False
+    sensitive: bool = False
+
+
 class LocatedControl(Contract):
     id: str = Field(min_length=1)  # Unique within this saved map.
     label: str | None
@@ -308,6 +332,7 @@ class LocatedControl(Contract):
     click_point: ClickPoint | None = None
     locator: VisualLocator | None = None
     reason: str | None = None
+    policy: ControlPolicy = ControlPolicy()
 
 
 class ScreenOutput(Contract):
