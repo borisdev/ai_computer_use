@@ -17,7 +17,8 @@ deterministically with no model in the decision loop.
 
 ## Status
 
-Perception and the artifact are built. Nothing runs a sequence yet.
+The end-to-end thread runs: discovery, a typed artifact, and deterministic
+replay with a typed outcome. Human handoff is the main gap.
 
 | Piece | State |
 |---|---|
@@ -26,8 +27,11 @@ Perception and the artifact are built. Nothing runs a sequence yet.
 | Known-state / error-injection controls | done, round-trip verified |
 | Perception — `extract_control_locators`, `locate_control`, `use_control` | done; grounding 3/3, replay drift (0,0) |
 | **Capability artifact (§3.2)** — schema, validator, `draft → approved` gate | done; [ADR 0005](docs/adr/0005-capability-artifact-shape.md) |
+| **Discovery (§3.1)** — goal-driven LLM loop against the live app | done; real run, evidence committed |
+| **Deterministic replay (§3.3)** — typed outcome, no model deciding | done; success and escalation both demonstrated |
 | Controlled vocabulary, 34 terms | done in code; **not yet in the inventory prompt** |
-| Screen-map store / step executor / agent loop / escalation | not started |
+| Escalation handoff (§3.6) — `page.pause()`, ownership, resume | detection works; **handoff not built** |
+| Persistence of runs / interventions | not started |
 
 The two artifacts in `artifacts/` are **hand-authored**: discovery does not
 exist yet, so they are the shape it has to emit rather than evidence that it
@@ -169,15 +173,42 @@ Detail: [parabank.md §5](docs/parabank.md#5-the-two-database-states).
 
 ## Demo path
 
-Not available yet — it needs the agent loop and replay engine. It will be:
+The full thread — goal, a real LLM run, a typed artifact, deterministic replay,
+and a typed outcome:
 
 ```bash
 docker compose up -d --wait && uv run interfaceai env reset
-uv run interfaceai discover --goal "..." --target http://localhost:8080/parabank
-uv run interfaceai capability approve read_savings_balance --by "you"
-uv run interfaceai replay artifacts/read_savings_balance.v1.approved.json \
-  --param account_id=13344
+
+# 1. DISCOVERY -- an LLM drives the live UI and records what worked
+uv run interfaceai discover \
+  --goal "Log in to the bank as the seeded customer and reach the accounts overview." \
+  --name log_in_discovered \
+  --secret parabank_username=username --secret parabank_demo_password=password
+
+# 2. REVIEW -- a human promotes the draft. Replay refuses anything unapproved.
+uv run interfaceai capability check
+uv run interfaceai capability approve log_in_discovered --by "your name"
+
+# 3. REPLAY -- no model decides anything
+uv run interfaceai replay artifacts/log_in_discovered.v1.approved.json
+#    SUCCESS log_in_discovered in 5 steps
+#      account_id = 12345
+
+# 4. THE ERROR PATH -- same artifact, same command, different app state
+uv run interfaceai env break
+uv run interfaceai replay artifacts/log_in_discovered.v1.approved.json
+#    NEEDS A HUMAN at step 4: cannot read 12345_link: not_found (0.8582)
+#      completed: enter username_textbox, enter password_textbox, click log_in_button, observe
+uv run interfaceai env reset
 ```
+
+Step 4 is the one worth watching. Nothing was mocked — `env break` posts
+`action=CLEAN` to ParaBank's own admin page, account 12345 stops existing, and
+replay refuses to click something scoring 0.86 rather than guessing. It exits 1
+and carries what it had already completed, so a human can resume.
+
+Every failure mode we have observed, with the fixture or lever that reproduces
+it: [`docs/failure-modes.md`](docs/failure-modes.md).
 
 ## Layout
 
