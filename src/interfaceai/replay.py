@@ -130,6 +130,8 @@ class _Ctx:
     done: list[str]
     operator: Operator | None = None
     owner: Owner = Owner.WORKER
+    # What this tenant permits. None means no restriction.
+    permitted: frozenset[str] | None = None
     library: dict[str, Capability] = field(default_factory=dict)
     stack: tuple[str, ...] = ()
     # One panel read serves every field taken from it. Cleared by any step
@@ -151,6 +153,7 @@ def replay(
     allowed_origins: tuple[str, ...] = (),
     forbidden_values: frozenset[str] = frozenset(),
     confirm_money_above: Decimal | None = None,
+    permitted: frozenset[str] | None = None,
     confirm_risky: bool = False,
     headless: bool = True,
     operator: Operator | None = None,
@@ -171,6 +174,21 @@ def replay(
         inputs=sorted(inputs),
         target=capability.target.model_dump(),
     )
+
+    if permitted is not None and capability.name not in permitted:
+        # A refusal by US, not by the application. Reported as a pre-flight
+        # failure rather than a `BusinessOutcome`, because a business outcome
+        # is the BANK's answer -- "no such member" -- and conflating our
+        # guardrail with the application's verdict is the distinction this
+        # result contract exists to keep.
+        evidence.event("not_permitted", capability=capability.name, tenant=capability.target.tenant)
+        return Failed(
+            step_index=-1,
+            step="pre-flight",
+            expected=f"{capability.name} to be permitted for {capability.target.tenant}",
+            observed=f"this tenant permits {sorted(permitted)}",
+            evidence_dir=evidence.dir,
+        )
 
     faults = check_capability(capability, store)
     if faults:
@@ -218,6 +236,7 @@ def replay(
             outputs={},
             done=[],
             operator=operator,
+            permitted=permitted,
             library=dict(library or {}),
             stack=(capability.name,),
         )
@@ -642,6 +661,18 @@ def _invoke(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
             step=f"invoke {step.invokes}",
             expected="a capability in the library",
             observed=f"library has {sorted(ctx.library)}",
+            evidence_dir=ctx.evidence.dir,
+        )
+    if ctx.permitted is not None and step.invokes not in ctx.permitted:
+        # ⛔ Checked at EVERY invoke, not only at the entry point. A permitted
+        # capability must not be able to reach a forbidden one -- otherwise the
+        # gate is a front door with the back door open.
+        ctx.evidence.event("not_permitted", step=n, capability=step.invokes)
+        return Failed(
+            step_index=n,
+            step=f"invoke {step.invokes}",
+            expected=f"{step.invokes} to be permitted for {ctx.capability.target.tenant}",
+            observed=f"this tenant permits {sorted(ctx.permitted)}",
             evidence_dir=ctx.evidence.dir,
         )
     if step.invokes in ctx.stack:

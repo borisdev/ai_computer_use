@@ -23,6 +23,9 @@ control maps it wrote, and one fixture captured from the CLEAN database.
 | an action outside the allowlist | `enter_text` when only `click` is allowed | `ActionPolicy` | `NeedsOperator` |
 | typing into a link | role → action table | the committed control map | `NeedsOperator` |
 | clicking a table panel | no action is legal on a panel | role → action table | `NeedsOperator` |
+| an irreversible step over the tenant's money threshold | `amount=1500` vs a 1000 threshold | `request_loan`, live | `NeedsOperator` |
+| a capability this tenant does not permit | `request_loan` on tenant `feature` | the allowlist | `Failed` at pre-flight |
+| a permitted capability **invoking** a forbidden one | permit `request_loan`, forbid `log_in` | the allowlist, at every invoke | `Failed` |
 
 ## Needs the live app
 
@@ -38,7 +41,7 @@ Listed so the gap is visible instead of quietly filled with a mock.
 | condition | why we have none |
 |---|---|
 | **recoverable** (transient load, interstitial) | nothing has ever flaked and then succeeded. `surface.wait()` is a blind sleep, not a handled condition. **No type exists** — a test asserts `outcomes.Recoverable` is absent, so adding one is a conscious act |
-| **permission denial** | ParaBank has no roles. ⚠️ Our own `ActionPolicy` refusing is a *guardrail* (§3.4), a different thing from the application denying an operator (§3.3). A per-tenant ACL would produce more of the first and still none of the second |
+| **permission denial** | ParaBank has no roles, so we still have **no instance**. ⚠️ We now DO have a per-tenant capability allowlist — and it produces exactly what was predicted here: more of the §3.4 guardrail and none of the §3.3 denial. It is labelled make-believe in `.env`, in `settings.py` and in its tests, because a fiction that forgets it is one is worse than no fiction |
 | **unexpected dialog** | ParaBank raises none. The seam is `page.on("dialog")` on the surface; cut rather than mocked |
 | **session timeout** | reachable — log out mid-flow — **not tried** |
 | **slow / failed load** | plausibly reachable via `jms.htm` queue shutdown — **unverified**, nothing has ever POSTed to it |

@@ -55,6 +55,24 @@ class Settings(BaseSettings):
     # and falls back to control-level risk only.
     interfaceai_confirm_money_above: str = "baseline=1000,feature=250"
 
+    # --- Which capabilities a tenant permits (assignment 3.4 + 3.7) ---
+    #
+    # ⚠️ **MAKE-BELIEVE, and labelled as such.** ParaBank has no roles and no
+    # authorization model, so this is OUR gate modelling what a real deployment
+    # would enforce -- not the application denying an operator. Those are
+    # different things and `docs/failure-modes.md` keeps them apart: a §3.4
+    # guardrail refusing is us; a §3.3 permission denial is the bank, and we
+    # still have no instance of the latter.
+    #
+    # It is a fiction worth having because the SHAPE is real: a bank does
+    # restrict which operations an integration may perform, per institution,
+    # and the check has to survive composition -- a permitted capability must
+    # not be able to invoke a forbidden one.
+    #
+    # "tenant=cap,cap" per tenant, comma separated. `*` permits everything. A
+    # tenant not listed permits everything, so the gate is opt-in.
+    interfaceai_allowed_capabilities: str = "baseline=*;feature=log_in,read_savings_balance"
+
     # --- Demo fixtures ---
     parabank_demo_username: str = "john"
     parabank_demo_password: SecretStr = Field(default=SecretStr("demo"))
@@ -72,6 +90,17 @@ class Settings(BaseSettings):
         if self.anthropic_api_key is not None:
             return self.anthropic_api_key.get_secret_value() or None
         return os.environ.get("ANTHROPIC_API_KEY") or None
+
+    def allowed_capabilities(self, tenant: str) -> frozenset[str] | None:
+        """What this tenant permits. None means no restriction."""
+        for entry in self.interfaceai_allowed_capabilities.split(";"):
+            name, _, names = entry.partition("=")
+            if name.strip() != tenant:
+                continue
+            if names.strip() == "*":
+                return None
+            return frozenset(n.strip() for n in names.split(",") if n.strip())
+        return None
 
     def confirm_money_above(self, tenant: str) -> Decimal | None:
         """The amount at or above which this tenant wants a person to look."""
