@@ -12,6 +12,8 @@ deterministically with no model in the decision loop.
 - Screen map (29 screens + graph) — [`docs/parabank-screens.md`](docs/parabank-screens.md)
 - **Findings, mapped to the assignment** — [`docs/findings.md`](docs/findings.md)
 - **Failure modes we have observed**, each with a test — [`docs/failure-modes.md`](docs/failure-modes.md)
+- **What exists right now** (generated) — [`docs/status.md`](docs/status.md)
+- **The two engine flows**, discovery and replay — [`docs/flows.md`](docs/flows.md)
 - Capabilities and the vocabulary they imply — [`docs/capabilities-and-vocabulary.md`](docs/capabilities-and-vocabulary.md)
 - Open issues — [`docs/issues/`](docs/issues/README.md)
 - Decision records — [`docs/adr/`](docs/adr/README.md)
@@ -246,6 +248,8 @@ uv run interfaceai discover \
   --secret parabank_username=username --secret parabank_demo_password=password
 
 uv run interfaceai capability check      # does every control it names exist?
+uv run interfaceai status                # capabilities, runs and outcomes at a glance
+uv run interfaceai diagram read_savings_balance    # its flowchart, read from the artifact
 uv run interfaceai capability approve log_in_discovered --by "your name"
 ```
 

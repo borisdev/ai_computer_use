@@ -363,6 +363,47 @@ measurement is a column too SHORT to hold two periods.
 
 ---
 
+### S1 · ~~Generated docs and the status view~~ — **DONE 2026-09-28**
+
+```
+uv run interfaceai status                          capabilities + runs, at a glance
+uv run interfaceai status --markdown docs/status.md   a committable page
+uv run interfaceai diagram read_savings_balance    its flowchart, from the artifact
+```
+
+**§3.2's human half.** *"Both a human reviewer and a calling agent should be
+able to understand what the capability does, what it needs, and what it
+returns."* The agent half was typed and validated; the human half was a
+200-line JSON file. Now it is a table with signature, approval, composition and
+fault count — and a mermaid flowchart **generated from the artifact**, so it
+cannot make a claim the system does not.
+
+**§3.5's other end.** We were writing `trace.jsonl` and a frame per step and
+reading none of it. No new storage: everything comes from `artifacts/` and
+`evidence/runs/`.
+
+**[`docs/flows.md`](docs/flows.md)** draws the two ENGINE flows — discovery's
+loop and replay's walk — which are a different picture from a capability's own
+diagram. Hand-drawn, and flagged as the only diagrams a reader must check
+against the code.
+
+### Two reader bugs it exposed, both making a run look like something else
+
+- **An invoked capability writes into the same evidence file**, so its
+  `replay_succeeded` made `request_loan` — which always escalates — read as
+  SUCCESS. Events are now tagged with which capability they describe.
+- **A `NeedsOperator` with no operator attached emitted no terminal event**, so
+  the reader called it "incomplete", which looks like a crash. Every run now
+  records its own verdict with `replay_finished` rather than leaving it
+  inferable.
+
+Both are pinned by tests, and both are the same shape as everything else here:
+the reader was quietly wrong in a way that looked fine.
+
+> **Decision:** DONE
+
+---
+
 ## B · Deliberate cuts — revisit if you disagree
 
 ### B1 · No persistence

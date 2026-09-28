@@ -180,6 +180,10 @@ def replay(
         target=capability.target.model_dump(),
     )
 
+    def early(result: CapabilityResult) -> CapabilityResult:
+        evidence.event("replay_finished", outcome=type(result).__name__, capability=capability.name)
+        return result
+
     if permitted is not None and capability.name not in permitted:
         # A refusal by US, not by the application. Reported as a pre-flight
         # failure rather than a `BusinessOutcome`, because a business outcome
@@ -187,33 +191,39 @@ def replay(
         # guardrail with the application's verdict is the distinction this
         # result contract exists to keep.
         evidence.event("not_permitted", capability=capability.name, tenant=capability.target.tenant)
-        return Failed(
-            step_index=-1,
-            step="pre-flight",
-            expected=f"{capability.name} to be permitted for {capability.target.tenant}",
-            observed=f"this tenant permits {sorted(permitted)}",
-            evidence_dir=evidence.dir,
+        return early(
+            Failed(
+                step_index=-1,
+                step="pre-flight",
+                expected=f"{capability.name} to be permitted for {capability.target.tenant}",
+                observed=f"this tenant permits {sorted(permitted)}",
+                evidence_dir=evidence.dir,
+            )
         )
 
     faults = check_capability(capability, store)
     if faults:
         evidence.event("artifact_unrunnable", faults=faults)
-        return Failed(
-            step_index=-1,
-            step="pre-flight",
-            expected="every control recorded and grounded",
-            observed="; ".join(faults),
-            evidence_dir=evidence.dir,
+        return early(
+            Failed(
+                step_index=-1,
+                step="pre-flight",
+                expected="every control recorded and grounded",
+                observed="; ".join(faults),
+                evidence_dir=evidence.dir,
+            )
         )
 
     missing = [p.name for p in capability.params if p.required and p.name not in inputs]
     if missing:
-        return Failed(
-            step_index=-1,
-            step="pre-flight",
-            expected=f"inputs for {missing}",
-            observed="not supplied",
-            evidence_dir=evidence.dir,
+        return early(
+            Failed(
+                step_index=-1,
+                step="pre-flight",
+                expected=f"inputs for {missing}",
+                observed="not supplied",
+                evidence_dir=evidence.dir,
+            )
         )
 
     with (
@@ -245,10 +255,29 @@ def replay(
             library=dict(library or {}),
             stack=(capability.name,),
         )
-        return _run(ctx)
+        return _finish(ctx, _run(ctx))
 
 
 # ---------------------------------------------------------------------------
+
+
+def _finish(ctx: _Ctx, result: CapabilityResult) -> CapabilityResult:
+    """Record HOW the run ended, always.
+
+    Without this a `NeedsOperator` with no operator attached wrote no terminal
+    event at all, so the evidence said nothing about the outcome and anything
+    reading the trace back had to guess -- `status` reported it as
+    "incomplete", which reads like a crash.
+
+    A run's own log should state its verdict rather than leave it inferable.
+    """
+    ctx.evidence.event(
+        "replay_finished",
+        outcome=type(result).__name__,
+        capability=ctx.capability.name,
+        recovered=list(ctx.recovered),
+    )
+    return result
 
 
 def _resolve(ctx: _Ctx, ref: ControlRef) -> LocatedControl:
@@ -1100,7 +1129,10 @@ def _checkpoints(ctx: _Ctx) -> CapabilityResult:
                 evidence_dir=ctx.evidence.dir,
             )
 
-    ctx.evidence.event("replay_succeeded", outputs=ctx.outputs)
+    # Tagged with WHICH capability succeeded: an invoked one writes into the
+    # same evidence file, so an untagged event makes a parent that failed
+    # look successful to anything reading the trace back.
+    ctx.evidence.event("replay_succeeded", capability=ctx.capability.name, outputs=ctx.outputs)
     return Success(
         outputs=dict(ctx.outputs),
         steps_run=len(ctx.done),

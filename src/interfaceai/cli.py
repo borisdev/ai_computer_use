@@ -10,6 +10,7 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
+from rich.table import Table
 
 from interfaceai import (
     capabilities,
@@ -25,6 +26,7 @@ from interfaceai import (
 )
 from interfaceai import discover as discover_mod
 from interfaceai import replay as replay_mod
+from interfaceai import status as status_mod
 from interfaceai import surface as surface_mod
 from interfaceai.settings import get_settings
 
@@ -583,6 +585,92 @@ def maps_adopt(
     console.print(f"[yellow]drifted[/] {', '.join(report.drifted)}")
     console.print("  nothing written — this tenant needs its own discovery run or overrides")
     raise typer.Exit(1)
+
+
+# ---------------------------------------------------------------------------
+# status -- the human half of the artifact (assignment 3.2), and 3.5's readback
+# ---------------------------------------------------------------------------
+
+_MARKDOWN_OPTION = typer.Option(
+    None, "--markdown", help="Write a committable page here instead of printing."
+)
+_LIMIT_OPTION = typer.Option(20, "--limit", help="How many recent runs to show.")
+
+
+@app.command("status")
+def status_cmd(
+    markdown: Path = _MARKDOWN_OPTION,
+    limit: int = _LIMIT_OPTION,
+    maps: Path = _MAPS_OPTION,
+) -> None:
+    """What capabilities exist, and what the recent runs did.
+
+    Reads `artifacts/` and `evidence/runs/` -- no new storage. §3.2 asks that
+    "both a human reviewer and a calling agent" understand a capability; the
+    agent half was typed and validated, the human half was a JSON file.
+    """
+    artifacts = status_mod.read_artifacts(ARTIFACTS)
+    runs = status_mod.read_runs(EVIDENCE)
+
+    if markdown:
+        markdown.write_text(status_mod.as_markdown(artifacts, runs, limit=limit))
+        console.print(f"[green]wrote[/] {markdown}")
+        return
+
+    store = control_map_store.ControlMapStore(maps)
+    table = Table(title="capabilities", box=None, pad_edge=False)
+    for column in ("capability", "v", "approval", "signature", "invokes", "faults"):
+        table.add_column(column)
+    for a in artifacts:
+        try:
+            loaded = capability.load_capability(a.path)
+            faults = len(control_map_store.check_capability(loaded, store))
+        except (OSError, ValueError):
+            faults = -1
+        mark = "[green]approved[/]" if a.approval is capability.Approval.APPROVED else "draft"
+        table.add_row(
+            a.name,
+            str(a.version),
+            mark,
+            a.signature,
+            ", ".join(a.invokes) or "—",
+            "[green]ok[/]" if faults == 0 else f"[red]{faults}[/]",
+        )
+    console.print(table)
+
+    runs_table = Table(title=f"runs (most recent {limit})", box=None, pad_edge=False)
+    for column in ("when", "kind", "capability", "outcome", "steps", "calls", "worst", "detail"):
+        runs_table.add_column(column)
+    colours = {"SUCCESS": "green", "business_outcome": "yellow", "needs_human": "yellow"}
+    for r in runs[:limit]:
+        colour = colours.get(r.outcome, "red")
+        runs_table.add_row(
+            r.started,
+            r.kind,
+            r.capability,
+            f"[{colour}]{r.outcome}[/]",
+            str(r.steps),
+            str(r.model_calls),
+            f"{r.worst_score:.3f}" if r.worst_score is not None else "—",
+            r.detail[:52],
+        )
+    console.print(runs_table)
+
+
+@app.command("diagram")
+def diagram_cmd(
+    name: str = typer.Argument(..., help="Capability name, e.g. read_savings_balance."),
+) -> None:
+    """Draw a capability as mermaid, READ FROM THE ARTIFACT.
+
+    A hand-drawn diagram is a claim about the artifact that stops being true the
+    moment the artifact changes, and nothing tells you. This one cannot drift.
+    """
+    try:
+        console.print(status_mod.as_mermaid(capabilities.get(name)))
+    except KeyError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(1) from exc
 
 
 def main() -> None:  # pragma: no cover
