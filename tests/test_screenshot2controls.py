@@ -22,11 +22,14 @@ from interfaceai.screenshot2controls import (
     VisualLocator,
     _choose_landmark,
     _CoarseControl,
-    _CoarseInventory,
     _context_patch,
     _make_locator,
+    _Placement,
+    _Placements,
     _png_bytes,
     _Refinement,
+    _Seen,
+    _SeenControl,
     _slug,
     extract_control_locators,
     locate_control,
@@ -113,13 +116,29 @@ class TestLocateControl:
 
 
 def fake_vision(inventory: list[_CoarseControl], refine: str = "click"):
-    """A VisionCall that inventories `inventory` and then always picks dot 1."""
-    calls = {"coarse": 0, "fine": 0}
+    """A VisionCall speaking the two-pass protocol, then always picking dot 1.
+
+    Pass 1 reads the controls off a clean screenshot; pass 2 places them on the
+    gridded one. `inventory` carries both halves, so a test writes one list and
+    the double splits it — which also means a test cannot accidentally describe
+    a control the locate pass never placed.
+    """
+    calls = {"read": 0, "locate": 0, "fine": 0}
 
     async def call(*, prompt, image_png, response_model):
-        if response_model is _CoarseInventory:
-            calls["coarse"] += 1
-            return _CoarseInventory(controls=inventory)
+        if response_model is _Seen:
+            calls["read"] += 1
+            return _Seen(
+                controls=[
+                    _SeenControl(label=c.label, role=c.role, description=c.description)
+                    for c in inventory
+                ]
+            )
+        if response_model is _Placements:
+            calls["locate"] += 1
+            return _Placements(
+                placements=[_Placement(index=n, cell_id=c.cell_id) for n, c in enumerate(inventory)]
+            )
         calls["fine"] += 1
         if refine == "unresolved":
             return _Refinement(action="unresolved", reason="cannot see it")
@@ -192,13 +211,14 @@ class TestExtract:
         by_id = {c.id: c for c in out.controls}
         assert by_id["username_textbox"].status == "unresolved"
         assert by_id["username_textbox"].reason == "not requested"
-        assert vision.calls["coarse"] == 1, "coarse inventory always runs"
+        assert vision.calls["read"] == 1, "the read pass always runs"
+        assert vision.calls["locate"] == 1, "so does the placement pass"
 
     def test_a_failed_coarse_call_raises_rather_than_reporting_an_empty_screen(self) -> None:
         async def broken(*, prompt, image_png, response_model):
             raise RuntimeError("azure 500")
 
-        with pytest.raises(DiscoveryError, match="coarse inventory failed"):
+        with pytest.raises(DiscoveryError, match="control read failed"):
             run(vision=broken)
 
     def test_ready_controls_carry_a_point_and_a_locator(self) -> None:
@@ -305,3 +325,82 @@ class TestLandmarkSurvivesTypedInput:
         assert (
             locate_control(ResolveInput(screenshot_png=filled, locator=locator)).status != "matched"
         )
+
+
+class TestTwoPassInventory:
+    """Reading and locating want opposite images — `docs/issues/0008`."""
+
+    def test_the_read_pass_gets_the_CLEAN_image_and_locate_gets_the_GRID(self) -> None:
+        """The whole point of the split, asserted on the bytes each call receives.
+
+        Measured: the same question scores 11/11 on a clean screenshot and
+        8/11 through our 192-cell overlay, reproducing an account id that never
+        appears without the grid. If these two ever get handed the same image,
+        the split has silently stopped happening.
+        """
+        seen_images: dict[str, bytes] = {}
+
+        async def spy(*, prompt, image_png, response_model):
+            if response_model is _Seen:
+                seen_images["read"] = image_png
+                return _Seen(
+                    controls=[
+                        _SeenControl(label="Log In", role=ControlRole.BUTTON, description="x")
+                    ]
+                )
+            if response_model is _Placements:
+                seen_images["locate"] = image_png
+                return _Placements(placements=[_Placement(index=0, cell_id=1)])
+            return _Refinement(action="click", number=1)
+
+        clean = _png_bytes(canvas())
+        asyncio.run(
+            extract_control_locators(ScreenInput(screenshot_png=clean), vision=spy, only=[])
+        )
+
+        assert seen_images["read"] == clean, "the read pass must see the untouched screenshot"
+        assert seen_images["locate"] != clean, "the locate pass must see the gridded one"
+
+    def test_a_control_the_locate_pass_forgets_is_unresolved_not_dropped(self) -> None:
+        """Identified but not located is a state the contract already has.
+
+        Losing the control entirely would be worse: a capability naming it
+        would fail at replay with "no such control" rather than with the
+        honest reason.
+        """
+
+        async def forgetful(*, prompt, image_png, response_model):
+            if response_model is _Seen:
+                return _Seen(
+                    controls=[
+                        _SeenControl(label="Log In", role=ControlRole.BUTTON, description="a"),
+                        _SeenControl(label="Ghost", role=ControlRole.LINK, description="b"),
+                    ]
+                )
+            if response_model is _Placements:
+                return _Placements(placements=[_Placement(index=0, cell_id=1)])
+            return _Refinement(action="click", number=1)
+
+        out = asyncio.run(
+            extract_control_locators(
+                ScreenInput(screenshot_png=_png_bytes(canvas())), vision=forgetful
+            )
+        )
+        by_id = {c.id: c for c in out.controls}
+        assert "ghost_link" in by_id, "a forgotten control must survive as unresolved"
+        assert by_id["ghost_link"].status == "unresolved"
+
+    def test_an_empty_read_pass_does_not_bother_placing_anything(self) -> None:
+        calls = {"n": 0}
+
+        async def empty(*, prompt, image_png, response_model):
+            calls["n"] += 1
+            if response_model is _Seen:
+                return _Seen(controls=[])
+            raise AssertionError("nothing to place")
+
+        out = asyncio.run(
+            extract_control_locators(ScreenInput(screenshot_png=_png_bytes(canvas())), vision=empty)
+        )
+        assert out.controls == []
+        assert calls["n"] == 1

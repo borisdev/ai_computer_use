@@ -95,7 +95,10 @@ def test_adoption_verifies_every_locator_against_the_target_tenant() -> None:
             surface.screenshot(),
         )
     assert report.clean, f"drifted: {report.drifted}"
-    assert len(report.matched) == 19
+    source = MAPS.get(MapKey(app="parabank", tenant="baseline", screen="index"))
+    ready = [c for c in source.controls if c.status == "ready"]
+    assert len(report.matched) == len(ready), "every grounded control must be verified"
+    assert report.matched, "verifying nothing is not a clean bill of health"
 
 
 @pytest.mark.usefixtures("both_tenants")

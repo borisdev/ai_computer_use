@@ -35,6 +35,7 @@ from interfaceai.screenshot2controls import (
     ClickPoint,
     ControlRole,
     CropBox,
+    LocatedControl,
     ResolveInput,
     ScreenInput,
     _make_locator,
@@ -138,27 +139,53 @@ def test_ambiguous_has_NO_observed_instance() -> None:
 
 
 def test_acting_on_an_ungrounded_control_is_refused() -> None:
-    """Real committed state: `13344_link` is `unresolved` on the overview.
+    """Discovery names controls it cannot ground; acting on one would mean
+    clicking a coordinate we do not have.
 
-    Discovery named it and never ground a click point, so acting would mean
-    clicking a coordinate we do not have. This is the most forceable escalation
-    in the system — no model involved at all.
+    Synthetic rather than pinned to a real map entry. It used to assert that
+    `13344_link` was `unresolved` — true when written, and false since the
+    two-pass inventory split landed (`docs/issues/0008`), which is exactly why
+    a MECHANISM test should not depend on a defect persisting.
     """
     control_map = MAPS.get(BASELINE_OVERVIEW)
-    target = next(c for c in control_map.controls if c.id == "13344_link")
-    assert target.status == "unresolved"
-
+    ungrounded = LocatedControl(
+        id="never_grounded_link",
+        label="Ghost",
+        role=ControlRole.LINK,
+        description="named by the read pass, never placed",
+        status="unresolved",
+        reason="the locate pass did not place it",
+    )
+    probe = control_map.model_copy(update={"controls": [*control_map.controls, ungrounded]})
     with pytest.raises(ValueError, match="not ready"):
         validate_decision(
             AgentDecision(
                 action=ManualActionKind.CLICK,
-                control_id="13344_link",
-                reason="drill into the savings account",
-                post_action_expectation="account details",
+                control_id="never_grounded_link",
+                reason="act on something that was never located",
+                post_action_expectation="",
                 confidence=0.9,
             ),
-            control_map,
+            probe,
         )
+
+
+def test_the_account_links_are_grounded_again_after_the_two_pass_split() -> None:
+    """The improvement, pinned so a regression is loud.
+
+    Before the split, 4 of 10 reported account ids did not exist and 13344 —
+    the assignment's own account — was `unresolved`. Measured after: 11/11
+    correct and every one grounded.
+    """
+    import re
+
+    control_map = MAPS.get(BASELINE_OVERVIEW)
+    accounts = [c for c in control_map.controls if re.fullmatch(r"\d{4,6}_link", c.id)]
+    assert len(accounts) == 11, f"expected 11 account links, got {[c.id for c in accounts]}"
+    assert all(c.status == "ready" for c in accounts), [
+        c.id for c in accounts if c.status != "ready"
+    ]
+    assert any(c.id == "13344_link" for c in accounts)
 
 
 def test_a_forbidden_value_never_reaches_the_page() -> None:
@@ -180,7 +207,7 @@ def test_typing_into_a_link_is_a_decision_error() -> None:
         validate_decision(
             AgentDecision(
                 action=ManualActionKind.ENTER_TEXT,
-                control_id="register_link",
+                control_id="forgot_login_info_link",
                 value="x",
                 reason="wrong kind of control",
                 post_action_expectation="",

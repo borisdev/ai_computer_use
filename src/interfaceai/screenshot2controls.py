@@ -679,6 +679,29 @@ class _CoarseInventory(BaseModel):
     controls: list[_CoarseControl]
 
 
+class _SeenControl(BaseModel):
+    """What the READ pass returns: what is there, not where it is."""
+
+    label: str | None = None
+    role: ControlRole = ControlRole.UNKNOWN
+    description: str
+
+
+class _Seen(BaseModel):
+    controls: list[_SeenControl]
+
+
+class _Placement(BaseModel):
+    index: int
+    cell_id: int | None = None
+
+
+class _Placements(BaseModel):
+    """What the LOCATE pass returns: one cell per control the read pass found."""
+
+    placements: list[_Placement]
+
+
 class _Refinement(BaseModel):
     action: Literal["click", "zoom", "unresolved"]
     number: int | None = None
@@ -701,6 +724,52 @@ For each one give:
 Do not give pixel coordinates or percentages. If you can see a control but
 cannot say which cell it is in, set cell_id to null. Do not invent controls that
 an application like this usually has but this screenshot does not show.
+"""
+
+# --- the two-pass replacement for the prompt above ---------------------------
+#
+# ⚠️ **One call cannot do both jobs well, and we measured why.** Naming controls
+# and assigning them a cell number want OPPOSITE images: reading wants the
+# content unobstructed, locating wants the annotation on top. Asked the same
+# read-only question three times each:
+#
+#     full screenshot, NO grid     11/11  11/11  11/11   nothing invented
+#     full screenshot, WITH grid    8/11   8/11   9/11   13000, 54221, 5678
+#
+# The gridded runs reproduced `54221` -- one of the exact wrong account ids from
+# a live discovery run -- and it never appears without the grid. Our own
+# instrument was corrupting the measurement. `docs/issues/0008`.
+#
+# So: read from the clean screenshot, then place what was read using the grid.
+# One extra call per screen, and only the first screen visit pays it.
+
+_READ_PROMPT = """\
+This is a screenshot of a business application. Nothing has been drawn on it.
+
+List every INTERACTIVE control you can see: links, buttons, text fields,
+checkboxes, radio buttons, dropdowns. Ignore static text, images and layout.
+
+For each one give:
+- label: the visible text on it, or the text immediately labelling it, verbatim
+- role: what the control is
+- description: enough to tell it apart from similar controls on this screen
+
+Read labels EXACTLY as printed, including digits. Do not invent controls that an
+application like this usually has but this screenshot does not show.
+"""
+
+_LOCATE_PROMPT = """\
+This is the same screenshot you were just shown, with a numbered grid drawn on
+top by our tooling. The numbers and lines are annotation, not page content.
+
+These controls were read from the clean image. For each one, give the number of
+the grid cell containing its centre:
+
+{controls}
+
+Return one placement per control, using the index shown above. If you can see a
+control but cannot say which cell it is in, set cell_id to null. Do not add,
+drop or rename controls -- the list is fixed.
 """
 
 _FINE_PROMPT = """\
@@ -1023,6 +1092,51 @@ def _choose_landmark(
     return None, f"no distinctive patch around the point ({last})"
 
 
+async def _inventory(clean_png: bytes, overlay_png: bytes, vision: VisionCall) -> _CoarseInventory:
+    """Name the controls on a CLEAN image, then place them using the grid.
+
+    Two calls rather than one, because the two jobs want opposite images --
+    see the note above `_READ_PROMPT`. A failed call is never reported as "this
+    screen has no controls".
+    """
+
+    async def call[T: BaseModel](prompt: str, png: bytes, model: type[T], what: str) -> T:
+        try:
+            return await vision(prompt=prompt, image_png=png, response_model=model)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            raise DiscoveryError(f"{what} failed: {type(exc).__name__}: {exc}") from exc
+
+    seen = await call(_READ_PROMPT, clean_png, _Seen, "control read")
+    if not seen.controls:
+        return _CoarseInventory(controls=[])
+
+    listing = "\n".join(
+        f"  {n}. {c.label or '(no label)'} | {c.role} -- {c.description}"
+        for n, c in enumerate(seen.controls)
+    )
+    placed = await call(
+        _LOCATE_PROMPT.format(controls=listing), overlay_png, _Placements, "control placement"
+    )
+
+    # A control the locate pass did not mention keeps cell_id=None and comes
+    # back `unresolved` -- identified but not located, which the contract
+    # already has a word for. Losing it entirely would be worse.
+    by_index = {p.index: p.cell_id for p in placed.placements}
+    return _CoarseInventory(
+        controls=[
+            _CoarseControl(
+                label=c.label,
+                role=c.role,
+                description=c.description,
+                cell_id=by_index.get(n),
+            )
+            for n, c in enumerate(seen.controls)
+        ]
+    )
+
+
 async def extract_control_locators(
     inp: ScreenInput,
     *,
@@ -1049,15 +1163,7 @@ async def extract_control_locators(
     size = ImageSize(width=image.width, height=image.height)
 
     overlay, cells = _grid_overlay(image, cfg.coarse_cell_px)
-    try:
-        inventory = await vision(
-            prompt=_COARSE_PROMPT, image_png=overlay, response_model=_CoarseInventory
-        )
-    except asyncio.CancelledError:
-        raise
-    except Exception as exc:
-        # Never report a failed call as "this screen has no controls".
-        raise DiscoveryError(f"coarse inventory failed: {type(exc).__name__}: {exc}") from exc
+    inventory = await _inventory(inp.screenshot_png, overlay, vision)
 
     wanted = set(only) if only is not None else None
     semaphore = asyncio.Semaphore(cfg.max_concurrency)

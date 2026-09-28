@@ -1,4 +1,21 @@
-# 0008 — The model misreads dense numeric text. 6 of 11, measured.
+# 0008 — ~~The model misreads dense numeric text~~ — FIXED 2026-09-28
+
+> **The cause was ours and the fix is in.** The coarse pass now READS from a
+> clean screenshot and LOCATES on the gridded one. Verified by a fresh
+> discovery run against the live app:
+>
+> ```
+> before (one call, gridded)    6/11 correct, 4 invented, 13344 unresolved
+> after  (read clean, locate)   11/11 correct, 0 invented, 13344 ready
+> ```
+>
+> The overview map also went 22/30 to 27/34 grounded, and `log_out_link` —
+> which the single pass never found at all — now appears. One extra call per
+> screen, paid once per screen.
+>
+> The original investigation follows, because the sequence is the lesson.
+
+## The original report: 6 of 11, measured
 
 **Severity: high.** It qualifies the project's headline finding, it puts wrong
 account numbers into control ids today, and the fix proposed for
