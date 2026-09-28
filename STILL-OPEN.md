@@ -58,7 +58,10 @@ that already exists. `locate_control` already returns `matched_crop`.
 
 **Cost:** ~2h, plus an ADR amendment (it changes the artifact schema).
 
-> **Decision:**
+> **Decision:** CUT — filed as [#4](https://github.com/borisdev/ai_computer_use/issues/4).
+> Nothing needs it: every capability in `LIBRARY` works without it, so it is an
+> abstraction with no caller. Both instances we actually hit had structure and
+> a panel was the better answer. §7 Cuts.
 
 ---
 
