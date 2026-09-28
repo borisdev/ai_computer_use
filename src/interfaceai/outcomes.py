@@ -8,7 +8,8 @@ same mistake as a threshold with no measured effect.
 The tally, from real runs (`tests/test_failure_modes.py` reproduces each):
 
     Success           8 acted steps across 3 discovery runs
-    BusinessOutcome   1  account 54321 after `env break`
+    BusinessOutcome   2  account 99999 via capability 1 (LIVE, through the
+                         whole replay path); account 54321 after `env break`
     Failed            6  landmark 0.8365 / anchor 0.8715 / anchor 0.0000 /
                          no rhythm / checkpoint 5022.93 != 1231.10 /
                          control `unresolved`

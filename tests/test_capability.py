@@ -182,12 +182,18 @@ def test_a_checkpoint_cannot_compare_against_a_secret() -> None:
         validate_capability(broken)
 
 
-def test_capability_one_asserts_the_field_that_separates_the_two_db_states() -> None:
-    """The self-check. Both numbers come from `parabank.py`, read off the app.
+def test_capability_one_v2_CANNOT_catch_the_changed_record_and_that_is_recorded() -> None:
+    """The cost of reading the overview instead of drilling into the detail page.
 
-    After INIT, 13344 is SAVINGS $1,231.10. After CLEAN it is CHECKING
-    $5,022.93 -- same id, different record. A checkpoint on the id alone passes
-    in both, so this asserts that the capability checks the field that differs.
+    v1 clicked through to `activity.htm` and checkpointed
+    `account_type == SAVINGS`, which caught ParaBank's CLEAN state serving 13344
+    as CHECKING $5,022.93. v2 reads the accounts table, where there is no type
+    column — so it reports the balance of whatever 13344 now is.
+
+    This test exists so the loss is PINNED rather than discovered later. It
+    passes today because v2 has no `account_type` checkpoint; if someone
+    restores the drilldown, it fails and points them at the note explaining why
+    that is good news.
     """
     seeded = next(a for a in parabank.ACCOUNTS if a.id == parabank.DEMO_SAVINGS_ACCOUNT_ID)
     cleaned = next(
@@ -195,11 +201,14 @@ def test_capability_one_asserts_the_field_that_separates_the_two_db_states() -> 
     )
     assert seeded.type != cleaned.type, "the two states must differ, or this proves nothing"
 
-    checkpoints = {c.output: c for c in capabilities.READ_SAVINGS_BALANCE.checkpoints}
-    account_type = checkpoints["account_type"]
-    assert isinstance(account_type.expected, LiteralValue)
-    assert account_type.expected.value == seeded.type
-    assert account_type.expected.value != cleaned.type
+    checkpoints = {c.output for c in capabilities.READ_SAVINGS_BALANCE.checkpoints}
+    assert "account_type" not in checkpoints, (
+        "account_type is checkpointed again — the drilldown must be back, so update "
+        "capabilities.py's note and this test"
+    )
+    assert "found_account_id" in checkpoints, (
+        "v2 must at least prove it answered about the account that was asked for"
+    )
 
 
 def test_balance_is_returned_and_never_asserted() -> None:

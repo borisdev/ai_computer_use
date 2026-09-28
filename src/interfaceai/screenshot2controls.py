@@ -185,7 +185,7 @@ from typing import Literal, Protocol, TypeVar
 import cv2
 import numpy as np
 from PIL import Image, ImageDraw
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from interfaceai.contracts import Contract
 
@@ -323,6 +323,38 @@ class ControlPolicy(Contract):
     sensitive: bool = False
 
 
+class PanelSpec(Contract):
+    """What a TABLE_CONTROL_PANEL is, beyond where its anchor is.
+
+    The anchor locator finds ONE stable thing -- a column header, which is
+    unique where every row is self-similar. These offsets say where the data
+    sits relative to it, and `columns` is what a reader is asked to return.
+
+    Offsets may be negative: a table usually starts left of and below the header
+    cell its anchor matched. `CropBox` cannot express that (it validates
+    `x >= 0`), which is why these are plain ints.
+    """
+
+    columns: tuple[str, ...] = Field(min_length=1)
+    key_column: str = Field(min_length=1)
+    # The region to crop and read, relative to the matched anchor point.
+    dx: int
+    dy: int
+    width: int = Field(gt=0)
+    height: int = Field(gt=0)
+    # A narrow band over the key column, used to measure the row rhythm so a
+    # row index can be turned into a click point for drilldown.
+    key_dx: int
+    key_dy: int
+    key_width: int = Field(gt=0)
+
+    @model_validator(mode="after")
+    def _key_is_a_column(self) -> PanelSpec:
+        if self.key_column not in self.columns:
+            raise ValueError(f"key_column {self.key_column!r} is not in {self.columns}")
+        return self
+
+
 class LocatedControl(Contract):
     id: str = Field(min_length=1)  # Unique within this saved map.
     label: str | None
@@ -333,6 +365,8 @@ class LocatedControl(Contract):
     locator: VisualLocator | None = None
     reason: str | None = None
     policy: ControlPolicy = ControlPolicy()
+    # Only for role == TABLE_CONTROL_PANEL; None for every other control.
+    panel: PanelSpec | None = None
 
 
 class ScreenOutput(Contract):

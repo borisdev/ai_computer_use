@@ -44,6 +44,8 @@
       },
       "slot": "username",
       "output": null,
+      "row_key": null,
+      "field": null,
       "risky": false,
       "note": "Sensitive slot: the artifact carries the KEY, never the value."
     },
@@ -60,6 +62,8 @@
       },
       "slot": "password",
       "output": null,
+      "row_key": null,
+      "field": null,
       "risky": false,
       "note": "Same. `use_control` logs value_length and never the value."
     },
@@ -73,6 +77,8 @@
       "value": null,
       "slot": null,
       "output": null,
+      "row_key": null,
+      "field": null,
       "risky": false,
       "note": "Reversible: Log Out undoes it, so not risky."
     },
@@ -86,6 +92,8 @@
       "value": null,
       "slot": null,
       "output": null,
+      "row_key": null,
+      "field": null,
       "risky": false,
       "note": "Waiting for the nav rather than the heading: logged-out overview.htm serves HTTP 200 with the SAME heading and an empty table, so the heading proves nothing."
     },
@@ -99,6 +107,8 @@
       "value": null,
       "slot": "first_name",
       "output": "customer_first_name",
+      "row_key": null,
+      "field": null,
       "risky": false,
       "note": "The welcome line is the only per-customer text on the screen."
     }

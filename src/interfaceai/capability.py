@@ -152,6 +152,12 @@ class Step(Contract):
     slot: str | None = None
     # EXTRACT only: names a declared output.
     output: str | None = None
+    # EXTRACT from a TABLE_CONTROL_PANEL only. The panel is read in ONE model
+    # call as typed rows; `row_key` then selects a row IN CODE and `field` picks
+    # the column. Nothing is asked where a row is -- which is the whole point,
+    # since asking lands on the wrong record 3 times in 4 (docs/issues/0009).
+    row_key: Value | None = None
+    field: str | None = None
     # Irreversible. Flows to `use_control(risky=...)`, which refuses unless
     # something upstream confirmed. Risk is a property of the CONTROL -- "Log
     # In" and "Transfer" are both a CLICK -- so it is authored per step and
@@ -175,6 +181,10 @@ class Step(Contract):
             raise ValueError("extract needs an output name")
         if self.verb is not StepVerb.EXTRACT and self.output is not None:
             raise ValueError(f"{self.verb} does not produce an output")
+        if (self.row_key is None) != (self.field is None):
+            raise ValueError("row_key and field go together: a row selector needs a column to read")
+        if self.row_key is not None and self.verb is not StepVerb.EXTRACT:
+            raise ValueError(f"{self.verb} cannot select a row")
         return self
 
 
@@ -363,6 +373,10 @@ def validate_capability(
                 used_params.add(step.control.discriminator.param)
         if isinstance(step.value, ParamValue):
             used_params.add(step.value.param)
+        if step.row_key is not None:
+            check_value(step.row_key, f"{where} row_key", None)
+            if isinstance(step.row_key, ParamValue):
+                used_params.add(step.row_key.param)
         if step.output is not None:
             if step.output not in output_names:
                 raise CapabilityError(f"{where}: {step.output!r} is not a declared output")

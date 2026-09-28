@@ -18,7 +18,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "about_us_link",
@@ -54,7 +55,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "services_link",
@@ -90,7 +92,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "products_link",
@@ -126,7 +129,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "locations_link",
@@ -162,7 +166,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "admin_page_link",
@@ -198,7 +203,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "home_button",
@@ -234,7 +240,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "transfer_funds_link",
@@ -270,7 +277,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "bill_pay_link",
@@ -306,7 +314,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "find_transactions_link",
@@ -342,7 +351,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "update_contact_info_link",
@@ -378,7 +388,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "request_loan_link",
@@ -414,7 +425,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "accounts_overview_link",
@@ -450,7 +462,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "12345_link",
@@ -486,7 +499,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "12456_link",
@@ -522,7 +536,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "13767_link",
@@ -536,7 +551,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "12678_link",
@@ -550,7 +566,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "12789_link",
@@ -564,7 +581,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "13001_link",
@@ -600,7 +618,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "13122_link",
@@ -636,7 +655,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "13323_link",
@@ -650,7 +670,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "13344_link",
@@ -664,7 +685,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "54221_link",
@@ -678,7 +700,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "about_us_link_2",
@@ -714,7 +737,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "services_link_2",
@@ -750,7 +774,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "products_link_2",
@@ -786,7 +811,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "locations_link_2",
@@ -822,7 +848,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "forum_link",
@@ -858,7 +885,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "site_map_link",
@@ -894,7 +922,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "contact_us_link",
@@ -908,6 +937,58 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
+      },
+      "panel": null
+    },
+    {
+      "id": "accounts_table_panel",
+      "label": "Account",
+      "role": "table_control_panel",
+      "description": "The accounts table: one row per account, anchored on its 'Account' header.",
+      "status": "ready",
+      "click_point": {
+        "x": 490,
+        "y": 320
+      },
+      "locator": {
+        "schema_version": 1,
+        "template_png": "iVBORw0KGgoAAAANSUhEUgAAAFoAAAAcCAIAAABuyz8kAAAD4ElEQVR4nO2YcWgbVRjAv1suL1yWhC43mqQkdkklrCm0sAVpCjNVSGSksKqrnUyC6wRBRIZUZf9UJoo6VIp24kBFCjpsq3RgJ7ZjLC6SVtIxu5HrIkkqzUhTSLIklztyl1D_SJr2mmx_ONIWvB8P7u7dg_e9H9937-6wtbU1APjuyhqIAODlg2Rnw9gtlHVI9uxsGLsFUYeAso49og4AEHVsQdQhYF0HtrNh7BZEHQIeUiz5hZ8uvz9XfPLlY69b5NsbFdCR0G2p3qaXbfO8ZQ0YVtWysd_vKfscZHQumqq-W9_G3P3j1tUllt_uedezA9taLIU4FYyozP1WyeoCdTNucmhLI_OhWd_IZHiRRQct5pPHD1lJnMssT456xyga1I12V-epTo0C8suzvi-mYykAwJVWp-2UlYSI751v7_eeOWonAZj42IVroad6zlqyF4c9caMOool4hgXywAsnrPqAZ2QumQpMf5y0vdlrUGxbbmxkx5bGp-f9WVOnTkvquo2MZyHNA2AAqYDvsyna5n7uhyGHA4IjE-FVJnF11ONTHT7_3snh42R40jseyacCvo-mWOdA39dDfR84Cf-E90q0UBFemqJyggpsONM4cOb5L4eOumBpzJvUHnni2QNEu8t5ttegrI6tnq12dtD3Qh5W85JRjmHQYm3ix4PhI7ZWOROej3Fmm7OtQQ3Q4z7WBYQiQ3niyu5e0-P7cdjf-a6BQ2SRGo1xZpvVgGMA2rZW68y1xSjboy1PhGEAGGAAUDqXIlNH02MIABQtesRlWB6TYZX6rX9GbAav1ZkP-UILS_Tbg9R6DzET6WhtK-aYIiIRKvXJlWoAOk7TINlbftTiahIHyAqGSWVqHMIsxz0wBgmSoo0r_hFX9EjU0pGOzvyNBt5y9xtLD_ZC6LepT2ZjyTbdXrmEqyyMuR9KSPYRCgWs5hgAEgAKyeVETkUIhvH5ZEGyT4UQbP5qLibZYj3X9R-p3mALK4EgRRismsomhxsszYoI5V9BLYd1KEj5VwrAZ69f-vXc5WVO1WQns9fnYzQAHbn54QXPL3HZxjAorAQoP9PQZSSQqkED2VAiDwB09J_FRPEh-QJS4Pgd8FWVHXzadyOh7jhk2PSqgbSGLtWdmb_S3c_YBl3ez4dHP80UpZrmN141a-W4023PXfK6X6NzgNqdT_ebZWqwDbp8X10c_5FlowzheNHZReIAekfHrXPD33v0je2W5oN6FH9QXUgJkx59M_HzK0H7-dNmrbROa68BVvobNv2n-DcMoFax_K8RdQgQdQgQdQgQdQgQdQgQdQgQdQgov4aJlPgXuPJycrkKOdUAAAAASUVORK5CYII=",
+        "reference_size": {
+          "width": 1280,
+          "height": 900
+        },
+        "reference_crop": {
+          "x": 486,
+          "y": 316,
+          "width": 90,
+          "height": 28
+        },
+        "click_offset": {
+          "x": 4,
+          "y": 4
+        },
+        "match_threshold": 0.95,
+        "ambiguity_margin": 0.05
+      },
+      "reason": null,
+      "policy": {
+        "irreversible": false,
+        "sensitive": true
+      },
+      "panel": {
+        "columns": [
+          "account_id",
+          "balance",
+          "available"
+        ],
+        "key_column": "account_id",
+        "dx": -20,
+        "dy": 28,
+        "width": 310,
+        "height": 320,
+        "key_dx": 0,
+        "key_dy": 28,
+        "key_width": 40
       }
     }
   ]

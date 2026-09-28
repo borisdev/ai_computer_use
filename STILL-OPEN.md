@@ -10,22 +10,49 @@ change without you.
 
 ## A · Would make the submission stronger
 
-### A1 · Capability 1 does not replay
-**The brief's own worked example** — "look up member 12345 and read their
-current savings balance".
+### A1 · ~~Capability 1 does not replay~~ — **DONE 2026-09-28**
 
-- **Mechanism: proven.** `tests/test_savings_balance_live.py` reads **$1,231.10**
-  for account 13344 — anchor the table header, crop it, one model call against
-  a response schema, select the row *in code* by the parameter. Flip to
-  `env break` and it correctly catches `5022.93` as a violated checkpoint.
-- **Plumbing: missing.** Nothing emits a `TABLE_CONTROL_PANEL` into a control
-  map, and `EXTRACT` targets one control rather than a row set.
-- **Also:** the hand-authored artifact names controls no inventory can produce
-  (`global_nav`, `balance_value`, `account_link`) — 8 faults from
-  `interfaceai capability check`.
+```
+$ interfaceai replay artifacts/read_savings_balance.v2.approved.json --param account_id=13344
+SUCCESS read_savings_balance in 7 steps
+  found_account_id = 13344
+  balance = $1231.10
 
-**Cost:** ~half a day. Closes A2 and A3 as a side effect.
-**Why it matters:** it is the example the reviewer will look for by name.
+  13122  -> $1100.00     12345 -> -$2300.00     both match the seed fixtures
+  99999  -> record_not_found, exit 0            a BUSINESS OUTCOME, not a failure
+```
+
+`interfaceai capability check` went **8 faults → ok**. What it took:
+
+- `PanelSpec` on a control — the anchor's offsets, the columns, the key column
+- `Step.row_key` + `Step.field` — "the row where key = param, read this column"
+- the executor builds the response schema from the panel's own columns, reads
+  the table in ONE call, and selects the row **in code**
+- `scripts/add_accounts_panel.py` — stands in for the discovery step that does
+  not exist yet, committed so the geometry is reviewable
+
+**Two things this bought beyond capability 1:** the first real
+`BusinessOutcome` instance we have ever produced (99999), and issue 0009 is now
+off this path entirely — no row is ever grounded.
+
+⚠️ **One thing it cost.** v1 drilled into `activity.htm` to read `Account Type`,
+so after `env break` it caught 13344 coming back as CHECKING. v2 reads the
+overview, where there is no type column, so it reports the balance of whatever
+13344 now is. Restoring the stronger checkpoint needs the drilldown, which needs
+A3. Recorded in `capabilities.py`.
+
+> **Decision:**
+
+---
+
+### A6 · Capabilities do not compose
+Surfaced by A1. `StepVerb` has no `invoke`, so capability 1 carries its own
+login steps rather than calling `log_in`. The brief's goal is *"log in as john
+**and** read the balance"*, so self-contained matches the ask — but a bank with
+twenty capabilities wants one `log_in` they all call.
+
+**Cost:** ~2h — an `INVOKE` verb, and a rule for what a nested failure does to
+the parent's outcome.
 
 > **Decision:**
 
@@ -190,7 +217,7 @@ do anything the surface cannot express.
 
 ## My ranking, if you want one
 
-1. **A1** — the named example, and it drags A2 and A3 with it
+1. ~~**A1**~~ — **done**, and it closed the `BusinessOutcome` gap too
 2. **A4** — one hour, fixes a defect in our own instrument
 3. **C · session timeout** — one hour, converts a guessed category into a measured one
 4. Everything else is defensible as-is and argued in REPORT §7

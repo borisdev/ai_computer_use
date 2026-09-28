@@ -40,7 +40,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, create_model
 
 from interfaceai.capability import (
     Capability,
@@ -78,6 +78,7 @@ from interfaceai.screenshot2controls import (
     locate_control,
 )
 from interfaceai.surface import ActionPolicy, NotAllowedError, OffLoop, PlaywrightSurface
+from interfaceai.table import Offset, PanelNotFound, extract_panel
 
 _VERB_ACTION = {
     StepVerb.ENTER: ManualActionKind.ENTER_TEXT,
@@ -509,6 +510,10 @@ def _extract(
 ) -> CapabilityResult | None:
     """Read one control's text off the LIVE screen. The only model call."""
     assert step.output is not None
+
+    if control.panel is not None and step.row_key is not None:
+        return _extract_from_panel(ctx, n, step, control, label)
+
     if ctx.vision is None or ctx.off is None:
         return Failed(
             step_index=n,
@@ -548,6 +553,103 @@ def _extract(
     ctx.outputs[step.output] = read.text.strip()
     ctx.evidence.event(
         "extracted", step=n, output=step.output, value=read.text.strip(), frame=str(frame)
+    )
+    ctx.done.append(label)
+    return None
+
+
+def _extract_from_panel(
+    ctx: _Ctx, n: int, step: Step, control: LocatedControl, label: str
+) -> CapabilityResult | None:
+    """Read a whole table in one call, then pick the row IN CODE.
+
+    The parameter selects the row. No model is asked where account 13344 is --
+    asking lands on the wrong record 3 times in 4 (`docs/issues/0009`), and the
+    wrong record is indistinguishable from the right one.
+
+    A row the caller asked for that simply is not in the table is a
+    `BusinessOutcome`, not a failure. "No such member" is a legitimate answer
+    and conflating it with a crash is the mistake the brief's glossary names.
+    """
+    assert control.panel is not None and step.row_key is not None and step.field is not None
+    if ctx.vision is None or ctx.off is None:
+        return Failed(
+            step_index=n,
+            step=label,
+            expected=f"a reader for {step.output}",
+            observed="no vision callable supplied to replay()",
+            evidence_dir=ctx.evidence.dir,
+        )
+
+    spec = control.panel
+    if step.field not in spec.columns:
+        return Failed(
+            step_index=n,
+            step=label,
+            expected=f"a column of {spec.columns}",
+            observed=f"field={step.field!r}",
+            evidence_dir=ctx.evidence.dir,
+        )
+
+    # The response schema is built from the panel's own declared columns, so a
+    # panel that gains a column does not need code changed.
+    row_model = create_model("PanelRow", **{c: (str, ...) for c in spec.columns})
+    table_model = create_model("PanelRows", rows=(list[row_model], ...))
+
+    try:
+        read = ctx.off.run(
+            extract_panel(
+                ctx.surface.screenshot(),
+                control.locator,
+                panel=Offset(dx=spec.dx, dy=spec.dy, width=spec.width, height=spec.height),
+                key_column=Offset(
+                    dx=spec.key_dx, dy=spec.key_dy, width=spec.key_width, height=spec.height
+                ),
+                response_model=table_model,
+                vision=ctx.vision,
+                instruction=(
+                    "This is a crop of a table from a banking application. Return every "
+                    f"row with these fields, exactly as printed: {', '.join(spec.columns)}. "
+                    "Do not invent rows."
+                ),
+            )
+        )
+    except PanelNotFound as exc:
+        return NeedsOperator(
+            why=f"panel {control.id}: {exc}",
+            step_index=n,
+            screen=step.control.screen if step.control else "?",
+            evidence_dir=ctx.evidence.dir,
+            completed_steps=tuple(ctx.done),
+        )
+
+    wanted = _value(ctx, step.row_key)
+    rows = read.data.rows
+    ctx.evidence.event("panel_read", step=n, control=control.id, rows=len(rows), wanted=wanted)
+
+    matches = [
+        r for r in rows if _normalise(getattr(r, spec.key_column)) == _normalise(str(wanted))
+    ]
+    if not matches:
+        seen = [getattr(r, spec.key_column) for r in rows]
+        ctx.evidence.event("row_not_found", step=n, wanted=wanted, seen=seen)
+        return not_found_outcome(
+            f"no row where {spec.key_column} is {wanted!r}; the table holds {len(rows)}",
+            len(ctx.done),
+            ctx.evidence.dir,
+        )
+    if len(matches) > 1:
+        return Failed(
+            step_index=n,
+            step=label,
+            expected=f"one row where {spec.key_column} is {wanted!r}",
+            observed=f"{len(matches)} rows matched",
+            evidence_dir=ctx.evidence.dir,
+        )
+
+    ctx.outputs[step.output] = getattr(matches[0], step.field)
+    ctx.evidence.event(
+        "extracted", step=n, output=step.output, value=ctx.outputs[step.output], via="panel"
     )
     ctx.done.append(label)
     return None

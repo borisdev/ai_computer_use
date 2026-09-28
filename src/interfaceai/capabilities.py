@@ -28,10 +28,20 @@ hand-written artifact can name anything; a discovered one can only name what it
 recorded. These stay as the target SHAPE, and the check staying red on them is
 correct.
 
-`read_savings_balance` is the assignment's own worked example and is
-self-checking: account 13344 is SAVINGS $1,231.10 after a seed, and CHECKING
-$5,022.93 after ParaBank's CLEAN. So its checkpoint has a known-correct answer
-and a known-wrong one, from the app's own admin page.
+`read_savings_balance` is the assignment's own worked example. **v2 reads the
+accounts table as a `TABLE_CONTROL_PANEL`** -- one model call returns every row,
+and the caller's `account_id` selects one IN CODE. No row is grounded, nothing
+is asked where account 13344 is, and `docs/issues/0009` (wrong-row grounding,
+3 in 4) is off its path entirely.
+
+⚠️ **v1 drilled into `activity.htm` to read Account Type, and v2 does not.**
+The balance is already on the overview; the click bought exactly one extra
+field. The trade is real and worth knowing: after `env break`, 13344 comes back
+as CHECKING $5,022.93, and v1's `account_type == SAVINGS` checkpoint caught
+that. v2 cannot -- it reports the balance of whatever 13344 now is. What it DOES
+catch is an account that stopped existing, as a `BusinessOutcome`. Restoring the
+stronger checkpoint needs the detail-page drilldown, which needs
+`docs/issues/0009` fixed.
 """
 
 from __future__ import annotations
@@ -144,7 +154,7 @@ LOG_IN = Capability(
 
 READ_SAVINGS_BALANCE = Capability(
     name="read_savings_balance",
-    version=1,
+    version=2,
     goal="read the current balance of a member's savings account",
     vocabulary_version=VOCABULARY_VERSION,
     target=TARGET,
@@ -153,76 +163,74 @@ READ_SAVINGS_BALANCE = Capability(
     params=(ParamSpec(name="account_id", slot="account_id"),),
     returns=(
         OutputSpec(name="found_account_id", slot="account_id"),
-        OutputSpec(name="account_type", slot="account_type"),
         OutputSpec(name="balance", slot="balance"),
     ),
     requires=(
         Precondition(
-            name="authenticated",
-            control=ControlRef(screen=NAV, control_id="log_out_link"),
+            name="at_the_login_page",
+            control=ControlRef(screen="index", control_id="username_textbox"),
             must="present",
             why=(
-                "Logged-out overview.htm returns HTTP 200 with the right heading "
-                "and an empty table. A checkpoint cannot catch that; the presence "
-                "of Log Out can. Re-checked on resume after a human handoff, "
-                "because the operator may have logged out."
+                "This capability establishes its own session, so it must start from "
+                "the login screen. Re-checked on resume, since a human handed the "
+                "browser back may have navigated anywhere."
             ),
         ),
     ),
     steps=(
+        # ⚠️ The login steps are IN this capability because capabilities do not
+        # compose -- `StepVerb` has no `invoke`. The brief's own goal is "log in
+        # as john AND read the balance", so self-contained matches the ask; but
+        # a bank with twenty capabilities would want one `log_in` they all call,
+        # and that is recorded as a gap rather than worked around silently.
+        Step(
+            verb=StepVerb.ENTER,
+            control=ControlRef(screen="index", control_id="username_textbox"),
+            slot="username",
+            value=SecretValue(input_ref="parabank_username"),
+            note="Sensitive slot: the artifact carries the KEY, never the value.",
+        ),
+        Step(
+            verb=StepVerb.ENTER,
+            control=ControlRef(screen="index", control_id="password_textbox"),
+            slot="password",
+            value=SecretValue(input_ref="parabank_demo_password"),
+            note="Same. `use_control` records value_length and never the value.",
+        ),
         Step(
             verb=StepVerb.CLICK,
-            control=ControlRef(screen=NAV, control_id="accounts_overview_link"),
-            note="Navigation only. Reversible.",
+            control=ControlRef(screen="index", control_id="log_in_button"),
+            note="Reversible: logging out undoes it, so not risky.",
         ),
         Step(
             verb=StepVerb.WAIT_FOR,
-            control=ControlRef(screen="overview", control_id="accounts_overview_heading"),
-            note="The table renders after the nav, so the heading is the gate.",
-        ),
-        Step(
-            verb=StepVerb.CLICK,
-            control=ControlRef(
-                screen="overview",
-                control_id="account_link",
-                discriminator=ParamValue(param="account_id"),
-            ),
-            note=(
-                "The parameterised step, and the one with no mechanism behind it "
-                "yet. Discovery slugs a control from its visible label, so this "
-                "row records as `account_13344_link` -- an id that cannot serve "
-                "another account. The discriminator says WHICH row by value; "
-                "resolving it is docs/issues/0007."
-            ),
-        ),
-        Step(
-            verb=StepVerb.WAIT_FOR,
-            control=ControlRef(screen="activity", control_id="account_details_heading"),
-            note="Account Details. One screen per record id (activity.htm?id=:id).",
+            control=ControlRef(screen="overview", control_id="accounts_table_panel"),
+            note="The table's own header is the anchor -- unique, unlike any of its rows.",
         ),
         Step(
             verb=StepVerb.OBSERVE,
-            note="Evidence frame of the screen every value below is read from (S3.5).",
+            note="Evidence frame of the screen the values below are read from (S3.5).",
         ),
         Step(
             verb=StepVerb.EXTRACT,
-            control=ControlRef(screen="activity", control_id="account_number_value"),
+            control=ControlRef(screen="overview", control_id="accounts_table_panel"),
             slot="account_id",
             output="found_account_id",
-            note="Read back the id we navigated to, so the checkpoint can compare it.",
+            row_key=ParamValue(param="account_id"),
+            field="account_id",
+            note=(
+                "Read the WHOLE table in one call, then select the row in code. "
+                "Reading the id back is what lets the checkpoint prove we answered "
+                "about the account the caller asked for."
+            ),
         ),
         Step(
             verb=StepVerb.EXTRACT,
-            control=ControlRef(screen="activity", control_id="account_type_value"),
-            slot="account_type",
-            output="account_type",
-            note="The field that separates the seeded record from the CLEAN one.",
-        ),
-        Step(
-            verb=StepVerb.EXTRACT,
-            control=ControlRef(screen="activity", control_id="balance_value"),
+            control=ControlRef(screen="overview", control_id="accounts_table_panel"),
             slot="balance",
             output="balance",
+            row_key=ParamValue(param="account_id"),
+            field="balance",
             note="What the caller asked for. Never asserted -- it is the answer.",
         ),
     ),
@@ -231,18 +239,8 @@ READ_SAVINGS_BALANCE = Capability(
             output="found_account_id",
             expected=ParamValue(param="account_id"),
             why=(
-                "Necessary and NOT sufficient: ParaBank's CLEAN state keeps id "
-                "13344 and changes the record behind it, so this passes there."
-            ),
-        ),
-        Checkpoint(
-            output="account_type",
-            expected=LiteralValue(value="SAVINGS"),
-            why=(
-                "This is the one that catches it. After CLEAN, 13344 is CHECKING "
-                "$5,022.93 rather than SAVINGS $1,231.10 -- a different record "
-                "under the same id. Without this the capability returns the wrong "
-                "number to a bank and reports success."
+                "The row we read must be the row that was asked for. An account that "
+                "is absent entirely is a business outcome, not this."
             ),
         ),
     ),
