@@ -25,7 +25,7 @@ artifact, deterministic replay with typed outcomes, human handoff of the live
 session, and one artifact serving two tenants.
 
 ```
-181 tests — 161 offline, 20 live · ruff clean
+246 tests — 215 offline, 31 live · ruff clean
 ```
 
 | Piece | State |
@@ -38,14 +38,23 @@ session, and one artifact serving two tenants.
 | **Discovery (§3.1)** — goal-driven LLM loop against the live app | done; real run, evidence committed |
 | **Deterministic replay (§3.3)** — typed outcome, no model deciding | done; success, business outcome and escalation all demonstrated |
 | **Composition** — a capability invokes another, version pinned | done |
-| **Escalation & handoff (§3.6)** — live session, ownership, verified resume | done |
+| **Escalation & handoff (§3.6)** — live session, ownership, verified resume | done; the handoff window is bracketed by before/after evidence |
 | **Cross-tenant reuse (§3.7)** — one artifact, two tenants | done; adoption verifies and refuses on drift |
+| **Recovery** — a lost session is re-established, once | done; `session_loss_probe` logs itself out and the run survives |
+| **Value-dependent risk** — a payment over the tenant's threshold stops | done; and the tenant policy outranks `--confirm-risky` |
+| **Tenant permissions** — which capabilities a tenant may run | done, and **make-believe**: ParaBank has no roles |
+| **Generated docs** — `interfaceai status`, `interfaceai diagram` | done; [docs/status.md](docs/status.md), [docs/flows.md](docs/flows.md) |
 | Controlled vocabulary, 34 terms | done in code; **not yet in the inventory prompt** |
 | Persistence of runs / interventions | cut — see REPORT §7 |
 
-The two artifacts in `artifacts/` are **hand-authored**: discovery does not
-exist yet, so they are the shape it has to emit rather than evidence that it
-can. `HANDOFF.md` is the honest ledger of what is measured.
+Artifacts in `artifacts/` come from **both** routes, and which is which
+matters: `log_in_discovered` and `read_savings_balance` were produced by a real
+discovery run against the live app; the earliest `log_in` was hand-authored
+before discovery existed. The contrast is measured and unflattering to the hand
+— the hand-written ones carry **3 and 8** faults against a real control map,
+the discovered one carries **0**, because a hand-written artifact can name
+anything and a discovered one can only name what it recorded. `interfaceai
+capability check` is that check, and `interfaceai status` prints the counts.
 
 Setting up a fresh machine: [`docs/vm-setup.md`](docs/vm-setup.md)
 
@@ -192,32 +201,34 @@ docker compose up -d --wait && uv run interfaceai env reset
 > *"look up member 12345 and read their current savings balance"*
 
 ```bash
-uv run interfaceai replay artifacts/read_savings_balance.v2.approved.json \
+uv run interfaceai replay artifacts/read_savings_balance.v3.approved.json \
   --param account_id=13344
 ```
 ```
-SUCCESS read_savings_balance in 9 steps
+SUCCESS read_savings_balance in 12 steps
   found_account_id = 13344
   balance = $1231.10
+  account_type = SAVINGS
 ```
 
 Four things are happening in that one command:
 
 | | |
 |---|---|
-| **Composition** | step 0 is `invoke log_in v2` — written once, called by anything needing a session. The version is pinned, so a newer `log_in` cannot silently change what replays |
+| **Composition** | step 0 is `invoke log_in v2` — written once, called by anything needing a session. The version is pinned, so a newer `log_in` cannot silently change what replays. Three of the twelve steps are its |
 | **A typed parameter** | `--param account_id=…` — try `13122` ($1100.00) or `12345` (**-$2300.00**, negative on purpose) |
 | **No model decides** | step order, controls, values and checkpoints all come from the artifact. One call reads the accounts table; the row is then selected **in code** |
 | **Panel extraction** | the table is a `TABLE_CONTROL_PANEL`: anchor its header, crop it, one model call against a response schema, get typed rows |
+| **A checkpoint with teeth** | `account_type = SAVINGS` is returned *and* checked. Proving the row says SAVINGS is the difference between reading the right record and reading a record |
 
 ### A business outcome is an answer, not a crash
 
 ```bash
-uv run interfaceai replay artifacts/read_savings_balance.v2.approved.json \
+uv run interfaceai replay artifacts/read_savings_balance.v3.approved.json \
   --param account_id=99999        # in no seed row
 ```
 ```
-record_not_found  no row where account_id is '99999'; the table holds 11
+record_not_found no row where account_id is '99999'; the table holds 11
 ```
 
 **Exit 0.** The caller asked a fair question and got a real answer. Conflating
@@ -230,7 +241,8 @@ uv run interfaceai env break     # posts action=CLEAN to ParaBank's own admin pa
 uv run interfaceai replay artifacts/log_in_discovered.v1.approved.json
 ```
 ```
-NEEDS A HUMAN at step 4: cannot read 12345_link: not_found (0.8582)
+NEEDS A HUMAN at step 4: cannot read 12345_link: not_found
+                        (best score 0.8654 is below threshold 0.95)
   completed: enter username_textbox, enter password_textbox,
              click log_in_button, observe
 ```
@@ -255,6 +267,49 @@ uv run interfaceai capability approve log_in_discovered --by "your name"
 
 Replay refuses anything unapproved. Evidence for both phases lands in
 `evidence/runs/`.
+
+### A payment large enough to need a person
+
+```bash
+uv run interfaceai replay artifacts/request_loan.v1.approved.json \
+  --param amount=500 --param down_payment=100 --confirm-risky
+```
+```
+SUCCESS request_loan in 10 steps
+```
+```bash
+uv run interfaceai replay artifacts/request_loan.v1.approved.json \
+  --param amount=25000 --param down_payment=5000 --confirm-risky
+```
+```
+NEEDS A HUMAN at step 5: this step is irreversible and amount=25000,
+  down_payment=5000 is at or above the 1000 threshold for this tenant;
+  a person has to confirm it
+```
+
+Same artifact, same flag, different **value**. `--confirm-risky` is the caller
+saying *this run may do irreversible things*; it cannot answer *this bank
+requires a person above $1,000*, because that question was never addressed to
+the caller. Drop the flag and both stop — but for different, distinguishable
+reasons.
+
+### A session that dies mid-flow
+
+```bash
+uv run interfaceai replay artifacts/session_loss_probe.v1.approved.json \
+  --param account_id=13344
+```
+```
+SUCCESS session_loss_probe in 8 steps
+  found_account_id = 13344
+  recovered accounts_overview_link gone -- log_in no longer holds
+```
+
+The capability logs itself out halfway through. `log_in` declares what it
+`establishes`, so the engine knows which capability puts it back — and
+re-invokes exactly that one, **once**. The run is a `SUCCESS` that says what it
+survived: a recovered condition is not a terminal state, which is why there is
+no `Recoverable` variant.
 
 ### One artifact, two institutions
 

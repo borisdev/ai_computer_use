@@ -10,7 +10,7 @@
 > says so.
 >
 > ```
-> 244 tests — 215 offline, 29 live · ruff clean
+> 246 tests — 215 offline, 31 live · ruff clean
 > ```
 
 Supporting documents:
@@ -196,7 +196,8 @@ row in it has a test.
 ### Why there is still no `Recoverable`, now that we recover
 
 `session_loss_probe` logs itself out mid-flow, and the run comes back
-**`SUCCESS`**, with `recovered: accounts_overview_link gone — log_in re-invoked`.
+**`SUCCESS`**, with `recovered accounts_overview_link gone -- log_in no longer
+holds`.
 That is the point: **a recovered condition is not a terminal state.** Adding a
 fifth variant would make a caller branch on something that is not an answer —
 the run succeeded, and what it survived belongs *on* the success, not instead of
@@ -208,28 +209,33 @@ condition** so a genuinely dead session fails rather than looping.
 The assignment's own worked example, with a typed parameter:
 
 ```
-$ interfaceai replay read_savings_balance.v2.approved.json --param account_id=13344
-SUCCESS read_savings_balance in 9 steps
+$ interfaceai replay artifacts/read_savings_balance.v3.approved.json --param account_id=13344
+SUCCESS read_savings_balance in 12 steps
   found_account_id = 13344
-  balance = $1231.10                                              exit 0
-
-  13122 -> $1100.00      12345 -> -$2300.00      both match the seed fixtures
+  balance = $1231.10
+  account_type = SAVINGS                                          exit 0
 ```
+
+Twelve steps, and three of them are `log_in` — this capability **invokes** it
+rather than repeating it. The `account_type` output is what makes the checkpoint
+strong: proving the row says `SAVINGS` is the difference between reading the
+right record and reading a record.
 
 A fair question with a negative answer — **exit 0**, because the caller can act
 on it:
 
 ```
-$ interfaceai replay read_savings_balance.v2.approved.json --param account_id=99999
-record_not_found  no row where account_id is '99999'; the table holds 11
+$ interfaceai replay artifacts/read_savings_balance.v3.approved.json --param account_id=99999
+record_not_found no row where account_id is '99999'; the table holds 11    exit 0
 ```
 
 And the failure branch, produced by the application rather than a stub:
 
 ```
 $ interfaceai env break        # action=CLEAN — account 12345 stops existing
-$ interfaceai replay log_in_discovered.v1.approved.json
-NEEDS A HUMAN at step 4: cannot read 12345_link: not_found (0.8582)
+$ interfaceai replay artifacts/log_in_discovered.v1.approved.json
+NEEDS A HUMAN at step 4: cannot read 12345_link: not_found
+                        (best score 0.8654 is below threshold 0.95)
   completed: enter username_textbox, enter password_textbox,
              click log_in_button, observe                          exit 1
 ```
@@ -303,11 +309,11 @@ without a DOM.
 
 `src/interfaceai/handoff.py`. Four things, all real.
 
-**Detect.** Seven triggers, and **six need no model judgement**: a guardrail
+**Detect.** Eight triggers, and **seven need no model judgement**: a guardrail
 refusal, a decision refused because the control is `unresolved`, a locate that
-came back `not_found` or `ambiguous`, an unconfirmed irreversible step, an
-unknown secret ref, a malformed move. Only "the model says it is stuck" depends
-on a model.
+came back `not_found` or `ambiguous`, an unconfirmed irreversible step, **a
+money amount at or above the tenant's threshold**, an unknown secret ref, a
+malformed move. Only "the model says it is stuck" depends on a model.
 
 **Route with context.** `InterventionRequest` carries why, which capability,
 which step, the screen and URL, a frame, and **what was already completed** —
@@ -406,7 +412,39 @@ pairing again.
 button moves money*; it cannot say *this one moves too much*. So a tenant policy
 carries `confirm_money_above`, the engine tracks the money amounts typed onto
 the **current form**, and the irreversible step is judged on what is about to be
-submitted. A $500 loan goes through; **$25,000 stops and asks a person.**
+submitted. The two reasons stay distinguishable, because *"this button always
+does"* and *"this amount needs a look"* call for different responses:
+
+```
+   500   step 5 is irreversible and was not confirmed: Submits a loan application
+ 25000   this step is irreversible and amount=25000 is at or above the 1000
+         threshold for this tenant; a person has to confirm it
+```
+
+⚠️ **And the threshold was bypassable, which is the worst thing found here.**
+The gate read `if irreversible and not confirm_risky:` — so a run started with
+`--confirm-risky` skipped the value check **entirely**:
+
+```
+$ interfaceai replay …/request_loan.v1.approved.json --param amount=25000 --confirm-risky
+SUCCESS request_loan in 10 steps                                   ← submitted
+```
+
+A $25,000 loan, no human, against a $1,000 threshold. The threshold was not
+raised or misread — **it was never consulted.** Collapsing the two into one
+condition inverted their precedence, and they are different authorities:
+`--confirm-risky` is the *caller* saying "this run may do irreversible things";
+`confirm_money_above` is the *bank* saying "a person signs off above this
+amount" — a question never addressed to the caller, so the caller's blanket yes
+cannot answer it. The tenant policy is now checked first and is not bypassable;
+$500 with the same flag still goes through, because a guard that stops
+everything passes the regression test and is useless.
+
+⚠️ **Note the level, because it is the transferable part.**
+`needs_human_confirmation` was correct throughout, and a unit test of it passed
+the entire time the bypass existed. The defect was in the *branch*. It was found
+by running the demo to capture real output for this document — not by reading
+the code, and not by any test that existed.
 
 ⚠️ **The rule has to fire at the right step, and my first cut did not.**
 Checking at the moment of *typing* would also have blocked a transaction
