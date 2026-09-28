@@ -82,9 +82,55 @@ capability 2 (transfer funds) is exactly that shape.
 
 **Fix:** the same move as capability 1 — extract the panel, select in code,
 then use the row rhythm to turn an index into a click point. `PanelRead.point_for_row`
-already exists and is tested; nothing calls it yet.
+already exists and is tested; **nothing in the executor calls it.**
 
-> **Decision:**
+### Why it is worth doing — the rationale, corrected
+
+My first framing was *"makes the product better, not the submission more
+complete"*. That is wrong, and Boris's version is better. Re-read §7:
+
+> **Robustness & error handling.** … sound **locator**, wait, and **checkpoint**
+> strategy.
+
+Both halves of A3 are in that one sentence. Wrong-row grounding **is** an
+unsound locator strategy, silently. And v2's checkpoint is demonstrably weaker
+than the v1 one it replaced.
+
+> **Correctness of the core loop.** … the artifact replays deterministically
+> **and verifies success**.
+
+Today it verifies *"I answered about the account you named"*. It cannot verify
+*"that account is what the recording said it was"* — the exact case `env break`
+produces.
+
+**Robustness is weighed THIRD. Feature breadth is weighed not at all.** §5 says
+*"go deep where it matters — the artifact schema, deterministic replay plus
+error handling"*. A3 is depth on a weighed criterion, achieved by REMOVING a
+defect rather than adding a feature.
+
+And it has a track record: building the next real thing has exposed a design
+flaw twice today. Composition showed the checkpoint rule was too broad;
+capability 1 showed a panel could not be named in an artifact. Neither was
+visible from reading the code.
+
+⚠️ **One claim to NOT make.** This is not "generality" in the brief's sense —
+§7's *generalization* means heterogeneous **surfaces** and **tenant** reuse, both
+already done and demonstrated. A drilldown does not touch that criterion.
+
+**What it concretely restores:**
+
+```
+env break, then replay read_savings_balance --param account_id=13344
+v1  ->  FAILED, account_type: expected SAVINGS, observed CHECKING   caught it
+v2  ->  SUCCESS, balance = $5022.93                                 wrong record, reported fine
+```
+
+**The work:** `PanelSpec.key_click_dx` (measured: 18px from the anchor), a step
+shape for "click the row where key = param", ~20 executor lines reusing the
+CACHED panel read, capability 1 v3 with the drilldown, and a live test that is
+self-proving in both DB states. **~2h.**
+
+> **Decision:** DO IT — rationale above (Boris, 2026-09-28)
 
 ---
 
@@ -260,8 +306,8 @@ do anything the surface cannot express.
 1. ~~**A1**~~ · ~~**A6**~~ · ~~**A4**~~ — **all done.** A1 closed the
    `BusinessOutcome` gap, A6 made the checkpoint rule more correct, A4 took
    reading from 6/11 to 11/11
-2. **A3** — highest severity still open, and capability 2 would hit it
-   immediately. The fix is the move capability 1 already proves works
+2. **A3** — **agreed, on the plan.** Depth on §7's third-weighed criterion
+   (sound locator and checkpoint strategy), achieved by removing a defect
 3. **C · session timeout** — one hour, and it earns the `recoverable` type
    instead of guessing it
 4. **A5** — worth re-measuring after A4 before deciding it is still needed
