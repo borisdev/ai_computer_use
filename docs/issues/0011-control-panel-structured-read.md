@@ -142,6 +142,49 @@ admin lever rather than a stub.
 ⚠️ It is **not** capability 1 replaying from an artifact — there is no replay
 engine. It proves the mechanism reaches the right answer.
 
+## ⛔ Fixed-interval markers do NOT work — measured 2026-09-28
+
+The obvious way to handle a table whose rows are not uniform: draw a ruler in
+the margin at a fixed pitch, ask the model which tick is level with each row,
+and skip the autocorrelation entirely. Tested at 7px — 48 ticks over the
+accounts table, three runs:
+
+```
+deltas from the true row centre
+run 1   [ 9, 9, 9, -5,-5,-5,-5,-5, -19,-19,-19]   spread 28px
+run 2   [ 9, 9, 9, -5,-5,-5,-5,-5, -19,-19,-19]   spread 28px
+run 3   [ 9, 9, 9,  9, 9, 9, 9, 9,  -5, -5, -5]   spread 14px
+```
+
+**Those are not errors, they are bands 14px apart — two ticks.** The model gave
+eleven rows about three distinct markers, assigning one to each group and
+jumping in steps. A 28px spread against a 28px row pitch puts rows a full row
+out.
+
+### Why, and it is the distinction that matters
+
+This is [0009](0009-wrong-row-grounding-is-silent.md) in miniature: **counting
+along a dense numeric scale**. 48 ticks is the same task as "which of 192
+cells", and it fails the same way.
+
+It also explains why the earlier marker test scored **11/11**: there was **one
+marker per row**, so the model was doing 1:1 MATCHING, not counting.
+
+```
+one marker per row    matching   11/11, three runs        ✅
+48 ticks, pick one    counting   spread 28px              ❌
+```
+
+**Matching it can do. Counting it cannot.** And that is circular for the
+non-uniform case, because one-marker-per-row needs to know where the rows are.
+
+### So non-uniform tables remain unsolved
+
+⚠️ **And unobserved.** Both ParaBank tables are uniform — 28px and 23px. The
+non-uniform case is a limitation *inferred*, never seen. `find_row_rhythm`
+refuses on a weak or split autocorrelation peak, which is the honest behaviour
+until a real one turns up.
+
 ## Open, and the naming question is a human's
 
 - **Step 1 has no mechanism.** Something must decide "this region is a panel"
