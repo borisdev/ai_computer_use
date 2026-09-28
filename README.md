@@ -5,6 +5,7 @@ recorded as a typed capability artifact, and the artifact is then replayed
 deterministically with no model in the decision loop.
 
 - **Start here** — [`HANDOFF.md`](HANDOFF.md): scope, what is proven, what is next
+- **What is still open**, with a decision line per item — [`STILL-OPEN.md`](STILL-OPEN.md)
 - Assignment brief — [`Assignment-A-Computer-Use-Automation.md`](Assignment-A-Computer-Use-Automation.md)
 - Design write-up — [`REPORT.md`](REPORT.md)
 - Target application notes — [`docs/parabank.md`](docs/parabank.md)

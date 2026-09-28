@@ -27,7 +27,8 @@ def slug(heading: str) -> str:
 
 def main() -> int:
     faults: list[str] = []
-    for doc in sorted((ROOT / "docs").rglob("*.md")):
+    docs = sorted((ROOT / "docs").rglob("*.md")) + sorted(ROOT.glob("*.md"))
+    for doc in docs:
         for match in LINK.finditer(doc.read_text()):
             target = match.group(1)
             if target.startswith(("http://", "https://", "#", "mailto:")):
