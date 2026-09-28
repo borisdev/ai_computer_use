@@ -366,6 +366,34 @@ def _run(ctx: _Ctx) -> CapabilityResult:
     return _checkpoints(ctx)
 
 
+def _bracket(ctx: _Ctx, label: str) -> tuple[str, str]:
+    """One edge of the window in which a human, not the worker, owns the page.
+
+    Returns (url, frame path).
+
+    WHY A BRACKET AND NOT A RECORDER. While the human has control they may act
+    through the operator surface -- gated by `use_control`, recorded as
+    `human_acted` -- or they may simply reach past it and click the visible
+    browser, which we cannot see. So the per-action log is complete for one of
+    those paths and blind to the other, and a log that is silently partial is
+    worse than one that states its scope.
+
+    Capturing both edges downgrades the claim to one that holds either way:
+    not "here is what the human did" but "here is what the page looked like
+    when we handed it over and when we got it back". `handoff_returned` also
+    reports whether the URL moved, which is the cheapest evidence that
+    something happened at all.
+
+    Both edges are captured the same way, deliberately. `blocked.frame` already
+    exists and is nearly identical to the opening shot, but it was taken when
+    the step FAILED rather than when control transferred -- and a before/after
+    pair sourced from two different moments is not a pair.
+    """
+    url = ctx.surface.current_url()
+    frame = ctx.evidence.frame(ctx.surface.screenshot(), label)
+    return url, str(frame)
+
+
 def _hand_over(ctx: _Ctx, n: int, step: Step, blocked: NeedsOperator) -> str | NeedsOperator:
     """Pause, give the human the live session, then VERIFY before resuming.
 
@@ -383,7 +411,15 @@ def _hand_over(ctx: _Ctx, n: int, step: Step, blocked: NeedsOperator) -> str | N
     """
     assert ctx.operator is not None
     ctx.owner = Owner.HUMAN
-    ctx.evidence.event("handoff_requested", step=n, why=blocked.why, owner=str(ctx.owner))
+    before_url, before_frame = _bracket(ctx, f"handoff-{n}-before")
+    ctx.evidence.event(
+        "handoff_requested",
+        step=n,
+        why=blocked.why,
+        owner=str(ctx.owner),
+        url=before_url,
+        frame=before_frame,
+    )
 
     resolution = ctx.operator.resolve(
         InterventionRequest(
@@ -407,6 +443,7 @@ def _hand_over(ctx: _Ctx, n: int, step: Step, blocked: NeedsOperator) -> str | N
             url=action.url,
             value_length=action.value_length,
         )
+    after_url, after_frame = _bracket(ctx, f"handoff-{n}-after")
     ctx.owner = Owner.WORKER
     ctx.evidence.event(
         "handoff_returned",
@@ -414,6 +451,9 @@ def _hand_over(ctx: _Ctx, n: int, step: Step, blocked: NeedsOperator) -> str | N
         resolution=str(resolution.resolution),
         human_actions=len(resolution.actions),
         owner=str(ctx.owner),
+        url=after_url,
+        frame=after_frame,
+        url_changed=after_url != before_url,
     )
 
     if resolution.resolution is Resolution.ABORTED:
