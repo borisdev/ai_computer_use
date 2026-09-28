@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "name": "request_loan",
+  "version": 1,
+  "goal": "apply for a loan of a given amount with a given down payment",
+  "vocabulary_version": 1,
+  "target": {
+    "app": "parabank",
+    "tenant": "baseline",
+    "base_url": "http://localhost:8080/parabank"
+  },
+  "viewport_width": 1280,
+  "viewport_height": 900,
+  "params": [
+    {
+      "name": "amount",
+      "slot": "amount",
+      "required": true
+    },
+    {
+      "name": "down_payment",
+      "slot": "down_payment",
+      "required": true
+    }
+  ],
+  "returns": [],
+  "requires": [
+    {
+      "name": "at_the_login_page",
+      "control": {
+        "screen": "index",
+        "control_id": "username_textbox",
+        "discriminator": null
+      },
+      "must": "present",
+      "why": "This capability establishes its session by invoking `log_in`."
+    }
+  ],
+  "steps": [
+    {
+      "verb": "invoke",
+      "control": null,
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": "log_in",
+      "invokes_version": 2,
+      "bind": [],
+      "risky": false,
+      "note": "Establish a session."
+    },
+    {
+      "verb": "click",
+      "control": {
+        "screen": "overview",
+        "control_id": "account_services_nav",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": {
+        "kind": "literal",
+        "value": "Request Loan"
+      },
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "Navigation only, by row key. Reversible."
+    },
+    {
+      "verb": "wait_for",
+      "control": {
+        "screen": "requestloan",
+        "control_id": "loan_amount_textbox",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "The loan form."
+    },
+    {
+      "verb": "enter",
+      "control": {
+        "screen": "requestloan",
+        "control_id": "loan_amount_textbox",
+        "discriminator": null
+      },
+      "value": {
+        "kind": "param",
+        "param": "amount"
+      },
+      "slot": "amount",
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "Typing an amount is harmless -- nothing has moved. The value is remembered and judged at the irreversible step below."
+    },
+    {
+      "verb": "enter",
+      "control": {
+        "screen": "requestloan",
+        "control_id": "down_payment_textbox",
+        "discriminator": null
+      },
+      "value": {
+        "kind": "param",
+        "param": "down_payment"
+      },
+      "slot": "down_payment",
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "A second money field, so the rule must consider both."
+    },
+    {
+      "verb": "click",
+      "control": {
+        "screen": "requestloan",
+        "control_id": "apply_now_button",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "Submits a loan application. Irreversible."
+    }
+  ],
+  "checkpoints": [],
+  "approval": "approved",
+  "approved_by": "Boris Dev"
+}

@@ -261,7 +261,91 @@ READ_SAVINGS_BALANCE = Capability(
 )
 
 
-REGISTRY: tuple[Capability, ...] = (LOG_IN, READ_SAVINGS_BALANCE)
+REQUEST_LOAN = Capability(
+    name="request_loan",
+    version=1,
+    goal="apply for a loan of a given amount with a given down payment",
+    vocabulary_version=VOCABULARY_VERSION,
+    target=TARGET,
+    viewport_width=_VIEWPORT.width,
+    viewport_height=_VIEWPORT.height,
+    params=(
+        ParamSpec(name="amount", slot="amount"),
+        ParamSpec(name="down_payment", slot="down_payment"),
+    ),
+    returns=(),
+    requires=(
+        Precondition(
+            name="at_the_login_page",
+            control=ControlRef(screen="index", control_id="username_textbox"),
+            must="present",
+            why="This capability establishes its session by invoking `log_in`.",
+        ),
+    ),
+    steps=(
+        Step(
+            verb=StepVerb.INVOKE,
+            invokes="log_in",
+            invokes_version=2,
+            note="Establish a session.",
+        ),
+        # ⛔ Through the NAV PANEL, not by clicking `request_loan_link`.
+        #
+        # The nav is a vertical list of eight near-identical links, and
+        # grounding scores **0 of 8** on it -- `request_loan_link` lands on
+        # Transfer Funds, which is exactly where an earlier version of this
+        # capability ended up. That is `docs/issues/0009` outside a table, and
+        # it is why the rule is "repeated structures need panels" rather than
+        # "tables need panels".
+        Step(
+            verb=StepVerb.CLICK,
+            control=ControlRef(screen="overview", control_id="account_services_nav"),
+            row_key=LiteralValue(value="Request Loan"),
+            note="Navigation only, by row key. Reversible.",
+        ),
+        Step(
+            verb=StepVerb.WAIT_FOR,
+            control=ControlRef(screen="requestloan", control_id="loan_amount_textbox"),
+            note="The loan form.",
+        ),
+        Step(
+            verb=StepVerb.ENTER,
+            control=ControlRef(screen="requestloan", control_id="loan_amount_textbox"),
+            slot="amount",
+            value=ParamValue(param="amount"),
+            note=(
+                "Typing an amount is harmless -- nothing has moved. The value is "
+                "remembered and judged at the irreversible step below."
+            ),
+        ),
+        Step(
+            verb=StepVerb.ENTER,
+            control=ControlRef(screen="requestloan", control_id="down_payment_textbox"),
+            slot="down_payment",
+            value=ParamValue(param="down_payment"),
+            note="A second money field, so the rule must consider both.",
+        ),
+        # ⛔ The irreversible step. `apply_now_button` carries
+        # `ControlPolicy.irreversible` in the control map, so ANY capability
+        # touching it inherits the requirement -- no author has to remember.
+        #
+        # With a tenant threshold configured, a large enough amount stops the
+        # run HERE and hands the session to a person. That is why every live
+        # test of this capability uses an amount over the threshold: the loan
+        # is never actually submitted, so the fixtures stay clean.
+        Step(
+            verb=StepVerb.CLICK,
+            control=ControlRef(screen="requestloan", control_id="apply_now_button"),
+            note="Submits a loan application. Irreversible.",
+        ),
+    ),
+    # Nothing is returned, so nothing needs checking -- reaching the submit is
+    # the whole of this capability, and the confirmation gate is the point.
+    checkpoints=(),
+)
+
+
+REGISTRY: tuple[Capability, ...] = (LOG_IN, READ_SAVINGS_BALANCE, REQUEST_LOAN)
 
 LIBRARY: dict[str, Capability] = {c.name: c for c in REGISTRY}
 """What an `invoke` step resolves against. Keyed by name; the STEP pins the

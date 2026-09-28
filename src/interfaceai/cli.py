@@ -405,14 +405,17 @@ def replay_cmd(
         console.print(f"[red]cannot load {artifact}:[/] {exc}")
         raise typer.Exit(1) from exc
 
+    def retarget(c: capability.Capability, name: str, base: str) -> capability.Capability:
+        return c.model_copy(
+            update={"target": c.target.model_copy(update={"tenant": name, "base_url": base})}
+        )
+
     if tenant and tenant != loaded.target.tenant:
         # 3.7: the artifact is tenant-agnostic; only the control maps and the
         # entry URL are tenant-specific. `maps adopt` is what establishes that
         # the locators actually transfer.
         base = settings.parabank_b_base_url if tenant != "baseline" else settings.parabank_base_url
-        loaded = loaded.model_copy(
-            update={"target": loaded.target.model_copy(update={"tenant": tenant, "base_url": base})}
-        )
+        loaded = retarget(loaded, tenant, base)
         console.print(f"[cyan]cross-tenant[/] replaying on {tenant} ({base})")
 
     # Everything approved in artifacts/ is callable by an `invoke` step. The
@@ -425,6 +428,16 @@ def replay_cmd(
         except (OSError, ValueError):
             continue
         library[found.name] = found
+
+    if tenant and tenant != capability.load_capability(artifact).target.tenant:
+        # ⚠️ Retarget the WHOLE call tree, not just the entry capability. An
+        # invoked capability recorded for another tenant is refused by
+        # `validate_invocations` -- correctly, since its control maps are that
+        # tenant's pixels. Cross-tenant replay predates composition here, so
+        # the two were never exercised together until a loan capability that
+        # invokes `log_in` was pointed at tenant B.
+        base = settings.parabank_b_base_url if tenant != "baseline" else settings.parabank_base_url
+        library = {n: retarget(c, tenant, base) for n, c in library.items()}
 
     result = replay_mod.replay(
         loaded,
@@ -532,13 +545,22 @@ def maps_adopt(
                 )
             surface.wait(2.0)
         surface.navigate(f"{url}/{screen}.htm")
-        surface.wait(1.0)
-        report = control_map_store.adopt_control_map(
-            store,
-            control_map_store.MapKey(app="parabank", tenant=source, screen=screen),
-            control_map_store.MapKey(app="parabank", tenant=target, screen=screen),
-            surface.screenshot(),
-        )
+        # ⚠️ POLL rather than sleep once. A page still fetching its content
+        # looks exactly like a drifted tenant to a locator check -- ParaBank's
+        # loan form shows "Loading..." where its account dropdown will be, and
+        # a single 1s wait reported all four form controls as drift. The
+        # checker cannot tell "different" from "not ready", so give it time to
+        # become ready and only call it drift if it never does.
+        source_key = control_map_store.MapKey(app="parabank", tenant=source, screen=screen)
+        target_key = control_map_store.MapKey(app="parabank", tenant=target, screen=screen)
+        deadline = time.monotonic() + 15.0
+        while True:
+            report = control_map_store.adopt_control_map(
+                store, source_key, target_key, surface.screenshot()
+            )
+            if report.clean or time.monotonic() > deadline:
+                break
+            surface.wait(1.0)
 
     console.print(f"{source} -> {target}   {report}")
     if report.clean:

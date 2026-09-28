@@ -282,18 +282,43 @@ Three decisions worth knowing, each with a test:
 
 ---
 
-### A7b · The live demo: capability 2, transfer funds — **LATER**
+### A7b · ~~The live demo~~ — **DONE 2026-09-28, via a loan rather than a transfer**
 
-The policy rule above is tested but has never stopped a real transfer, because
-there is no transfer capability. Building one needs a multi-field form, two
-dropdowns (our `SELECT` is `click + type`, which is crude for a `<select>`), a
-confirmation screen, and ParaBank's own minimum-balance validation error.
+```
+$ replay request_loan.v1 --param amount=1500 --param down_payment=200
+NEEDS A HUMAN at step 5: this step is irreversible and amount=1500 is at or
+above the 1000 threshold for this tenant; a person has to confirm it
+  completed: invoke log_in (4 steps), ... enter loan_amount_textbox,
+             enter down_payment_textbox
+```
 
-**~3h with real unknowns**, and it is the most impressive thing left in the
-backlog: a $1,500 transfer stopping mid-flow and handing the session to a
-person is the assignment's story in one command.
+**No loan is ever submitted** — the run stops at the irreversible step, so the
+fixtures stay clean and the demo is safe to repeat. That is the feature, not a
+limitation of the test.
 
-> **Decision:** later (Boris, 2026-09-28)
+`requestloan.htm` was chosen over `transfer.htm` because it has **two** money
+fields and no dropdown on the critical path. Boris's point was right: a PoC does
+not need the canonical case, it needs a real one plus a rationale for what was
+left.
+
+### Three things it exposed, each a real defect
+
+**1. The rule fired at the wrong step.** It checked when the amount was TYPED,
+which is wrong twice: nothing has moved yet, and ParaBank's *Find Transactions*
+page has an `amount` field too — so searching for £1,500 would have been
+blocked as if it moved money. Now the amount is remembered and judged at the
+**irreversible** step, which is also how a bank behaves.
+
+**2. `money_on_form` was cleared after every action**, so it was empty by the
+time the submit was reached and the generic "irreversible" message hid the
+value rule entirely. Now it clears only when the URL changes.
+
+**3. Cross-tenant replay and composition had never been exercised together.**
+`--tenant feature` retargeted only the entry capability, so `validate_invocations`
+refused the baseline `log_in` it invoked — **correctly**, since its control maps
+are the wrong tenant's pixels. Retargeting now applies to the whole call tree.
+
+> **Decision:** DONE
 
 ---
 

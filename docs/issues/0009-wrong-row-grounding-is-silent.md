@@ -1,4 +1,20 @@
-# 0009 — A grounded account link points at the **wrong row**, and reports `ready`
+# 0009 — A grounded row points at the **wrong row**, and reports `ready`
+
+> ⛔ **BROADER THAN TABLES. Re-measured 2026-09-28 on the account-services NAV:
+> 0 of 8.** Five of the eight links are grounded on "Open New Account";
+> `request_loan_link` lands on **Transfer Funds**, which is how a loan
+> capability ended up on the transfer page.
+>
+> ```
+> accounts table   1/11 grounded on their own row
+> nav menu         0/8
+> ```
+>
+> The nav is not a table. It is a vertical list of near-identical controls, and
+> that is the actual precondition for this defect. **The rule is "repeated
+> structures need panels", not "tables need panels"** — and the same mechanism
+> covers both: the nav is now a `TABLE_CONTROL_PANEL` with one column and a
+> 24px pitch, reached by `row_key="Request Loan"`.
 
 > ⚠️ **Still unfixed. Re-measured 2026-09-28 and it is WORSE, then made
 > unreachable by a guard.**

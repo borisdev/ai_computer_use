@@ -60,6 +60,7 @@ from interfaceai.control_map_store import ControlMapMiss, ControlMapStore, MapKe
 from interfaceai.decisions import (
     AgentDecision,
     ManualActionKind,
+    money_entered,
     needs_human_confirmation,
     validate_decision,
 )
@@ -134,6 +135,9 @@ class _Ctx:
     # One panel read serves every field taken from it. Cleared by any step
     # with side effects, because a click can change the table underneath.
     panel_cache: dict[str, object] = field(default_factory=dict)
+    # Money amounts typed onto the CURRENT form, so an irreversible step can
+    # be judged on what is about to be submitted. Cleared when the page moves.
+    money_on_form: dict[str, Decimal] = field(default_factory=dict)
 
 
 def replay(
@@ -458,14 +462,22 @@ def _step(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
             why=str(exc), step_index=n, screen=step.control.screen, evidence_dir=ctx.evidence.dir
         )
 
-    # Risk that depends on the VALUE, not only on the control. Classified here
-    # because the slot is known here; enforced at `use_control` like any other
-    # risky step, so there is still one place that can act.
-    value_risk = needs_human_confirmation(step.slot, typed, above=ctx.policy.confirm_money_above)
-    risky = step.risky or value_risk is not None
-    if risky and not ctx.confirm_risky:
+    before_url = ctx.surface.current_url()
+
+    # Remember what this step puts on the form. Typing an amount is harmless --
+    # ParaBank's Find Transactions page has an `amount` field too -- so the
+    # value is recorded and judged at the IRREVERSIBLE step, not here.
+    amount = money_entered(step.slot, typed)
+    if amount is not None:
+        ctx.money_on_form[step.slot or "?"] = amount
+
+    irreversible = step.risky or control.policy.irreversible
+    if irreversible and not ctx.confirm_risky:
+        value_risk = needs_human_confirmation(
+            ctx.money_on_form, above=ctx.policy.confirm_money_above
+        )
         return NeedsOperator(
-            why=value_risk or f"step {n} is marked irreversible and was not confirmed: {step.note}",
+            why=value_risk or f"step {n} is irreversible and was not confirmed: {step.note}",
             step_index=n,
             screen=step.control.screen,
             evidence_dir=ctx.evidence.dir,
@@ -519,7 +531,7 @@ def _step(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
             _VERB_ACTION[step.verb],
             typed,
             policy=ctx.policy,
-            risky=risky,
+            risky=irreversible,
             confirmed=ctx.confirm_risky,
         )
     except NotAllowedError as exc:
@@ -542,6 +554,12 @@ def _step(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
     )
     ctx.done.append(label)
     ctx.panel_cache.clear()
+    # A NEW PAGE means a new form, so amounts typed on the old one are spent.
+    # ⚠️ Only on navigation. An earlier version cleared after every action,
+    # which emptied the form before the submit could be judged -- the value
+    # rule then never fired and the generic "irreversible" message hid it.
+    if acted.url != before_url:
+        ctx.money_on_form.clear()
     ctx.surface.wait(1.0)
     return None
 

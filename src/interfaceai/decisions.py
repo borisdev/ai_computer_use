@@ -31,6 +31,11 @@ class ManualActionKind(StrEnum):
     TOGGLE = "toggle"
 
 
+# A money value that was present but could not be parsed. Distinct from
+# absent, because absent is safe and unreadable is not.
+UNREADABLE = Decimal("NaN")
+
+
 ACTIONS_BY_ROLE: dict[ControlRole, list[ManualActionKind]] = {
     ControlRole.TEXTBOX: [ManualActionKind.ENTER_TEXT],
     ControlRole.BUTTON: [ManualActionKind.CLICK],
@@ -112,40 +117,57 @@ def validate_decision(
     return control
 
 
-def needs_human_confirmation(
-    slot: str | None, value: str | None, *, above: Decimal | None
-) -> str | None:
-    """Why this step needs a person, or None if it does not.
+def money_entered(slot: str | None, value: str | None) -> Decimal | None:
+    """The amount this step puts on the form, if it is a money field at all.
 
-    Risk that depends on the VALUE rather than on the control. `ControlPolicy.
-    irreversible` covers "this control moves money"; this covers "this amount
-    is one a person should see". Both end at the same enforcement point --
-    `use_control` refuses a risky action that nobody confirmed -- so there is
-    still exactly one place that can act.
-
-    Only MONEY slots are considered, read from the controlled vocabulary. An
-    account number that happens to parse as a number is not an amount, and
-    `account_id` is deliberately a STRING there for the same reason.
-
-    An unparseable money value returns a reason rather than passing. A field
-    the system cannot read is not a field it may decide is small.
+    Only MONEY slots count, read from the controlled vocabulary. An account
+    number that happens to parse as a number is not an amount -- `account_id`
+    is deliberately a STRING there for exactly this reason.
     """
-    if above is None or slot is None or value is None:
+    if slot is None or value is None:
         return None
     if not VOCABULARY.has(slot) or VOCABULARY.qualifier(slot).type is not SlotType.MONEY:
         return None
-
     cleaned = value.strip().replace("$", "").replace(",", "").replace(" ", "")
     try:
-        amount = Decimal(cleaned)
+        return Decimal(cleaned)
     except InvalidOperation:
+        # Unreadable, but still a money field. `UNREADABLE` rather than None so
+        # the caller can refuse it: a field we cannot read is not a field we may
+        # decide is small.
+        return UNREADABLE
+
+
+def needs_human_confirmation(entered: dict[str, Decimal], *, above: Decimal | None) -> str | None:
+    """Why this IRREVERSIBLE step needs a person, or None if it does not.
+
+    ⛔ **Checked at the irreversible action, not at the keystroke.** An earlier
+    version fired when the amount was TYPED, which is wrong twice: nothing has
+    moved yet, and ParaBank's *Find Transactions* form has an `amount` field
+    too -- so searching for £1,500 would have been blocked as if it moved money.
+    The vocabulary has one `amount` term and cannot tell "amount to move" from
+    "amount to look up". **The control can: only an irreversible one moves
+    anything.**
+
+    That is also how a bank behaves. You confirm at submit, not while typing.
+
+    `ControlPolicy.irreversible` says *this control moves money*; this says
+    *and this much of it*. Both end at `use_control`, which refuses a risky
+    action nobody confirmed, so there is still exactly one place that can act.
+    """
+    if above is None or not entered:
+        return None
+    unreadable = sorted(k for k, v in entered.items() if v is UNREADABLE)
+    if unreadable:
         return (
-            f"{slot}={value!r} is a money field this system cannot read, so it "
-            "cannot be judged against the confirmation threshold"
+            f"{', '.join(unreadable)} holds a money value this system cannot read, so "
+            "this irreversible step cannot be judged against the confirmation threshold"
         )
-    if abs(amount) >= above:
-        return (
-            f"{slot} is {amount}, at or above the {above} threshold for this tenant; "
-            "a person has to confirm it"
-        )
-    return None
+    over = {k: v for k, v in entered.items() if abs(v) >= above}
+    if not over:
+        return None
+    detail = ", ".join(f"{k}={v}" for k, v in sorted(over.items()))
+    return (
+        f"this step is irreversible and {detail} is at or above the {above} "
+        "threshold for this tenant; a person has to confirm it"
+    )

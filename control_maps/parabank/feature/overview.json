@@ -1125,6 +1125,57 @@
         "key_click_dx": 18,
         "row_pitch": 28
       }
+    },
+    {
+      "id": "account_services_nav",
+      "label": "Account Services",
+      "role": "table_control_panel",
+      "description": "The account-services menu: one row per destination.",
+      "status": "ready",
+      "click_point": {
+        "x": 300,
+        "y": 287
+      },
+      "locator": {
+        "schema_version": 1,
+        "template_png": "iVBORw0KGgoAAAANSUhEUgAAAKgAAAAgCAIAAAAJyqRWAAAJsElEQVR4nO2aXUwbVxbH_8WeYQCbGDvTjIlsQyK7CU4d4qhgJYJ0FdhGoVKoulu6K1ArtV01bapukaiibtW-dFfdRmKL0irSJpVSNQ8pbSUiLajZwqo1AtmJYopTIOtRTOwR2MTYuJnBjMcf3QdM-GggZEWSB_snP1j3zNx75vzvOffesR_55ZdfkCP7yHvYDuR4OOSEz1JywmcpOeGzlJzwWUpO-CwlJ3yWkhM-S8kJn3U4pzgA8pXNieiXZ_o6uDRA1DTV_3130UNwbSPgJ_1ddm-vN8oKCYBgtCqbdUdLFaMlNnAQ8bsvvn1_LMFYaz7_HaPcwI7vPyszPh4K9gbSAIDEkDsUfvAerZdUwPn9b9_p_tgr_doWD3neO-M85Q6xQkKhKFRTiWAg1NXd_9aFiY19Ig2tNms3GTd0Nj0YVmR8Kjg-wSYBOUEmE8K43zVTVl_ycDy7C4lZhzssgLqTLeUbveEUAZWu_ajNpgSQCgw7Xvly0u--1ruPaSqVbZATlPVQ7elDG9TZg2W58Ane4Y5KyDNXVRhGh3uikV7_bH3JYrWPh_ynuq72crFIMo_RMc8cePy5iuL8u5l4v6ejm7VzMQFQqNS1ByrfrNYoASRufXnmYgcH81P1nxxQ5QPh0YE_nJsUFLr2N2w2THxwcrBHKGxsttn81z5zBdkkVV21992DjCLqaT05PJQEEOs8c6FT-9jZVy2mJVkn8fNFiyAzzyfTVjxx-pgIZZFWKQOAhOgavNIxEGSFNEkV7rFWvv3UVi0B8AuDNpkVl9ydoeI_bp89OxzD4hApn7P_hQshSaFrf6OS71pW6tcKwuSNU90jvVxMSOaptVtfOmJ9Rk_OO-sbvfbZD5yDiwlyQq9V26osL-1V3e-FY1mpj4eCvVwaclWddWvdtsIV1T4-c-Ovp52d4zGJpmt0RJCbPHWuv2NUXNvEe388dma4h4uR2i11xk1kNNJz4fvWb2_yd3VNLiPlAGL2fw18zKYYmiLFmNPu-Mh9CwrN4SqaAYA8485tzVWMZvmtGpoiAUS9x072ffDtdbs3GgapLS3OqA7pp4v2YxcnWZHas3OLATHn4OBb3UF-cVDR1ffjOS6toCiDmdEDCIWGQikASIg_jYYlgDGVmZeLs3Z8Pjh7uWs8RtJbanSUEOBOnHV0h1IAAsOu18_9tzcA407dYaNS4qY6v7F3eMR7EfH_YWnGp4LsBAuQ2q02ukhtoRmXL7hY7SV24FqvAGiN7S9X7ioQHV19rZdiPQMTLUZdeDVTGe3ou84mobZUf_6sXkOkAlcGXvhmauTSqL1a06BYl4tSyY5PXzQZCNF-_t_H3fEhdyRiKWvYX2Z3hYIitWf_469tI5ffIdNaKtvGHSfcvBSN9NgjPXYAeUaL-ehTRluJLD7Dfeb6GSh87sX6P28j4yFP68nhIfd1xwGmPrN0pP0oa2_ba1MCczfHNnv901E7N9tYWpwvhOxcGii0WVYk5V3i0y9AYbSebt6uJUTH132trqnOK9G6Q0U-9mYE0Fc98eHTjyqBsP-GPQBDyX0_bS0RPsE7RqMSYK6gGQL5Wr1N5eu6Xe0T_NA4D4DRlRoKAFC2xobBxvkbw72rmOIz1-1cGiCsOzUaAoBMu01vpqacYtTuFxsq1uNhnrGCYQgABKOl4I4LgniH7dwKClQNz9fb9k30XLph90yNCADSrPtq6-St9leqjP7giAhQSnMJCSBfoTGrMDQdHZqR6rWZDowVZXuUma7qTMrOaZ4dDUWsxaR_YkQEVHSdjgKW5OU64qOmVWoCAGUoVypcMR8XjiRUagUJxP2Dg8dmyhottIGm66qLHsABYVH4TJ0H2IHLf3IDiVQ4iky1312kSabCcwCgpGQr8gtrmOZmI0kAeYqChRVYTmjkAFKCkIqvy0OZQiGbXybz5TISkCCt80aNXt-i17cgxc9Eh9wjH1-cCk5zX7i3vy1PSADEqfdPfPX-4vWJ8EwCGeEJhqbyM-2koYLWD_J-LviTwCjHwhFAb9IbC9YdhAWTf_A_vxlc0s7HwknZrv3WN0OXO8Zi7Bh7YowFANWWtmbbM6Uru9lYbguf8rH-EQCAJPCssHhFZm-vkGkKgCh4MSUB-cv6WN1EFCnkQDItzKUzLclEOIkFOVPzbTw__yUlzKwjm-9KQvSwwZEZSWMqq6VJQKYs0dTuqwyPfneCSwdCKZQTJCDJNzU_a7Hd1k-ep6EpYGHvsaQUKrU622avfzrs9IbgjwOFNot6ZVKuEYQFk3rn7nerixf1pJSGAgCPNrU0NPK3WC5od3N2T8QfnTrVN1nbUrZi47KxLKwlCX5olAegr6q5-LffD85_2qprKECM9PpnQRQZ6HwAQW7SNwcg5fmh78l3vtp30u3BqiZfvsqsApBwjd0MA0Aq4PWPiIC80EpTgExBEQCCXCiYABKzrtHoPQqfkpLplW3JWWff5RPdw--dv2oPLfQnRkdm0kCelqbUtMYgB5JpSam2mhhreaE0cyvApyFf5ZhXoKozKYG4Y9DjiAKbmTrtr9JxHfGRkjJDOWM1MQZK9M3MCpCRED3D1z76-kovX7SrwvTa8wc_PbJFAUhiSkrcWyDulczEXnhvU2hdOpdLNHXlRP_YfLUvq67dUe0ZdgbY1lPRPQWzTi4mIb-udruJoAyrmYop5SGD_ZzP73a-MHPDSsUcLC8gz1xlqSuVAZRxm5JkIxJ39fUzN81JfmSOIBFfl_YUpaEAMd578Qo8WxsPlplu526B5vBBQ_c5nz_gPf4PL6hCvQLCdCwCkNqylyzFSkrWYrl-3MV3nh8UTBQfCPYHEqT2sU9MzCqDkQYLox_k_YGfARhNOkPBr6-h1oiPtta0x3N1iP3x-PmwGbyDjQST-XVNTK1eFmGvd7liXV5-yKRUQBwZnRJA1Fhp9X1-JzSf8Skf6x9JAip6-Vwu2mWhFZlqj_xS04dHq58rL0Q01M_FJEp5-Mj-tt1FwBommbai6vSruw_rCiVuqpedJVXqxmcPtj89fwCTmaoqjxoJAJFQDOXmDxu3MgCQWsf2jW7cTysAITDZM76yTmgq9n766hPNFjUjB8SYf1qEalNNlfWfL--1KgGiqPbIwX82PVZHz9pd3NBcYbX18fYXzbvuIGcGJa2r3Zz5Wr1yP59hjfgoS3e0H61pq6LBcV0sT2pLm5tq23YXAZStYf9frJsU0VDPJW_npVC4pLS56cl39xbn32mIDeSR3L9ssw3nFFe9RZf7dS5LyQmfpeSEz1JywmcpOeGzlJzwWUpO-CwlJ3yWkhM-S_kfvq71FpXtcvwAAAAASUVORK5CYII=",
+        "reference_size": {
+          "width": 1280,
+          "height": 900
+        },
+        "reference_crop": {
+          "x": 291,
+          "y": 270,
+          "width": 168,
+          "height": 32
+        },
+        "click_offset": {
+          "x": 9,
+          "y": 17
+        },
+        "match_threshold": 0.95,
+        "ambiguity_margin": 0.05
+      },
+      "reason": null,
+      "policy": {
+        "irreversible": false,
+        "sensitive": false
+      },
+      "panel": {
+        "columns": [
+          "label"
+        ],
+        "key_column": "label",
+        "dx": -7,
+        "dy": 17,
+        "width": 170,
+        "height": 192,
+        "key_dx": -7,
+        "key_dy": 17,
+        "key_width": 170,
+        "key_click_dx": 20,
+        "row_pitch": 24
+      }
     }
   ]
 }

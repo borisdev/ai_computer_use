@@ -1,11 +1,17 @@
 """Risk that depends on the VALUE, not only on the control (assignment 3.4).
 
 `ControlPolicy.irreversible` says *"this control moves money"*. This says
-*"this amount is one a person should see"*. Two axes, and a bank needs both —
-the handoff bundle named context-dependent risk as integration work left open.
+*"and this much of it"*. Two axes, and a bank needs both — the handoff bundle
+named context-dependent risk as integration work left open.
 
-Both end at the same enforcement point: `use_control` refuses a risky action
-nobody confirmed, so there is still exactly one place that can act.
+⛔ **Checked at the irreversible action, not at the keystroke.** The first cut
+fired when the amount was TYPED, which is wrong twice: nothing has moved yet,
+and ParaBank's *Find Transactions* page has an `amount` field too — so
+searching for £1,500 would have been blocked as if it moved money. The
+vocabulary has one `amount` term and cannot tell the two apart. The **control**
+can: only an irreversible one moves anything.
+
+That is also how a bank behaves — you confirm at submit, not while typing.
 """
 
 from __future__ import annotations
@@ -14,35 +20,28 @@ from decimal import Decimal
 
 import pytest
 
-from interfaceai.decisions import ManualActionKind, needs_human_confirmation
+from interfaceai.decisions import (
+    UNREADABLE,
+    ManualActionKind,
+    money_entered,
+    needs_human_confirmation,
+)
 from interfaceai.settings import Settings
-from interfaceai.surface import ActionPolicy, NotAllowedError
+from interfaceai.surface import ActionPolicy, NotAllowedError, use_control
 from interfaceai.vocabulary import VOCABULARY, SlotType
 
 ABOVE = Decimal(1000)
 
 
-# --- what counts as needing a person ---------------------------------------
+# --- what lands on the form ------------------------------------------------
 
 
-@pytest.mark.parametrize("amount", ["1000", "1000.00", "1500", "$1,500.00", "20000"])
-def test_an_amount_at_or_above_the_threshold_needs_a_person(amount: str) -> None:
-    reason = needs_human_confirmation("amount", amount, above=ABOVE)
-    assert reason is not None
-    assert "threshold" in reason
-
-
-@pytest.mark.parametrize("amount", ["999.99", "500", "$50.00", "0", "0.01"])
-def test_an_amount_below_it_does_not(amount: str) -> None:
-    assert needs_human_confirmation("amount", amount, above=ABOVE) is None
-
-
-def test_a_large_WITHDRAWAL_counts_too() -> None:
-    """The magnitude is what matters; a sign does not make it safe."""
-    assert needs_human_confirmation("amount", "-5000.00", above=ABOVE) is not None
-
-
-# --- what does NOT trigger it, and why ------------------------------------
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [("1500", Decimal(1500)), ("$1,500.00", Decimal("1500.00")), ("-5000", Decimal(-5000))],
+)
+def test_a_money_field_is_recorded(value: str, expected: Decimal) -> None:
+    assert money_entered("amount", value) == expected
 
 
 def test_an_account_number_is_not_an_amount() -> None:
@@ -53,28 +52,61 @@ def test_an_account_number_is_not_an_amount() -> None:
     the value.
     """
     assert VOCABULARY.qualifier("account_id").type is not SlotType.MONEY
-    assert needs_human_confirmation("account_id", "13344", above=ABOVE) is None
+    assert money_entered("account_id", "13344") is None
 
 
-def test_a_slot_outside_the_vocabulary_is_ignored() -> None:
-    assert needs_human_confirmation("mystery", "99999", above=ABOVE) is None
+@pytest.mark.parametrize("slot", ["balance", "down_payment"])
+def test_every_money_slot_counts_not_just_amount(slot: str) -> None:
+    assert VOCABULARY.qualifier(slot).type is SlotType.MONEY
+    assert money_entered(slot, "5000") == Decimal(5000)
 
 
-def test_no_threshold_means_no_rule() -> None:
-    assert needs_human_confirmation("amount", "999999", above=None) is None
+def test_an_unreadable_money_value_is_recorded_as_unreadable_not_absent() -> None:
+    """Absent is safe; unreadable is not, and they must not look the same."""
+    assert money_entered("amount", "one thousand") is UNREADABLE
 
 
-def test_an_unreadable_money_value_needs_a_person_rather_than_passing() -> None:
-    """A field the system cannot read is not a field it may call small."""
-    reason = needs_human_confirmation("amount", "one thousand", above=ABOVE)
+# --- what needs a person, at the irreversible step -------------------------
+
+
+def test_an_amount_at_or_above_the_threshold_needs_a_person() -> None:
+    reason = needs_human_confirmation({"amount": Decimal(1500)}, above=ABOVE)
+    assert reason is not None
+    assert "irreversible" in reason and "1500" in reason
+
+
+def test_an_amount_below_it_does_not() -> None:
+    assert needs_human_confirmation({"amount": Decimal("999.99")}, above=ABOVE) is None
+
+
+def test_a_large_WITHDRAWAL_counts_too() -> None:
+    """Magnitude decides; a sign does not make it safe."""
+    assert needs_human_confirmation({"amount": Decimal(-5000)}, above=ABOVE) is not None
+
+
+def test_any_ONE_field_over_the_threshold_is_enough() -> None:
+    """A loan form has both an amount and a down payment."""
+    entered = {"amount": Decimal(500), "down_payment": Decimal(2000)}
+    reason = needs_human_confirmation(entered, above=ABOVE)
+    assert reason is not None
+    assert "down_payment" in reason
+    assert "amount=500" not in reason, "only the fields that tripped it are named"
+
+
+def test_an_unreadable_value_needs_a_person_rather_than_passing() -> None:
+    reason = needs_human_confirmation({"amount": UNREADABLE}, above=ABOVE)
     assert reason is not None
     assert "cannot read" in reason
 
 
-@pytest.mark.parametrize("slot", ["balance", "down_payment"])
-def test_every_money_slot_is_covered_not_just_amount(slot: str) -> None:
-    assert VOCABULARY.qualifier(slot).type is SlotType.MONEY
-    assert needs_human_confirmation(slot, "5000", above=ABOVE) is not None
+def test_nothing_typed_means_nothing_to_judge() -> None:
+    """An irreversible step with no money on the form is still irreversible,
+    but that is the CONTROL's risk, reported by the caller — not this rule."""
+    assert needs_human_confirmation({}, above=ABOVE) is None
+
+
+def test_no_threshold_means_no_rule() -> None:
+    assert needs_human_confirmation({"amount": Decimal(999999)}, above=None) is None
 
 
 # --- per tenant (assignment 3.7) -------------------------------------------
@@ -87,34 +119,31 @@ def test_the_threshold_is_tenant_configuration() -> None:
     assert settings.confirm_money_above("feature") == Decimal(250)
     assert settings.confirm_money_above("unlisted") is None
 
-    amount = "500.00"
-    assert needs_human_confirmation("amount", amount, above=Decimal(1000)) is None
-    assert needs_human_confirmation("amount", amount, above=Decimal(250)) is not None
+    five_hundred = {"amount": Decimal(500)}
+    assert needs_human_confirmation(five_hundred, above=Decimal(1000)) is None
+    assert needs_human_confirmation(five_hundred, above=Decimal(250)) is not None
 
 
 def test_a_malformed_threshold_disables_the_rule_rather_than_crashing() -> None:
-    settings = Settings(interfaceai_confirm_money_above="baseline=lots")
-    assert settings.confirm_money_above("baseline") is None
+    assert (
+        Settings(interfaceai_confirm_money_above="baseline=lots").confirm_money_above("baseline")
+        is None
+    )
 
 
 # --- it ends at the same chokepoint ----------------------------------------
 
 
-def test_enforcement_is_still_use_control_and_nothing_reaches_the_app() -> None:
+def test_enforcement_is_still_use_control() -> None:
     """The classification is new; the gate is the one that already existed."""
-    policy = ActionPolicy(confirm_money_above=ABOVE)
     with pytest.raises(NotAllowedError, match="irreversible"):
-        # `risky` is what the classification sets; `confirmed` is what a person
-        # supplies. use_control refuses the pair, as it always has.
-        from interfaceai.surface import use_control
-
         use_control(
             None,  # never reached: the risk check precedes any surface call
             1,
             1,
-            ManualActionKind.ENTER_TEXT,
-            "1500.00",
-            policy=policy,
+            ManualActionKind.CLICK,
+            None,
+            policy=ActionPolicy(),
             risky=True,
             confirmed=False,
         )

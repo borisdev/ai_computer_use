@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Add ParaBank's two TABLE_CONTROL_PANELs to their control maps.
+"""Add ParaBank's TABLE_CONTROL_PANELs to their control maps.
 
 ⚠️ **This stands in for a discovery step that does not exist yet.** Discovery
 inventories interactive controls; it has no notion of a region with structure,
@@ -112,6 +112,46 @@ DETAILS = LocatedControl(
 )
 DETAILS_ANCHOR = (CropBox(x=488, y=314, width=106, height=25), ClickPoint(x=495, y=326))
 
+# --- the account-services NAV: eight links, 24px apart ----------------------
+#
+# ⛔ This is the finding that made the panel idea general. The nav is not a
+# table, but it IS a vertical list of near-identical controls -- and grounding
+# scores **0 of 8** on it, with five links landing on "Open New Account".
+# `request_loan_link` lands on Transfer Funds, which is how a loan capability
+# ended up on the transfer page.
+#
+# So the rule is not "tables need panels", it is **repeated structures need
+# panels**, and the same mechanism covers both.
+#
+# Anchored on the "Account Services" heading: unique, directly above the list,
+# and unlike any of its rows. Measured: links at y 304..496, pitch 24, all at
+# x 293..457.
+NAV = LocatedControl(
+    id="account_services_nav",
+    label="Account Services",
+    role=ControlRole.TABLE_CONTROL_PANEL,
+    description="The account-services menu: one row per destination.",
+    status="ready",
+    click_point=ClickPoint(x=300, y=287),
+    locator=None,
+    policy=ControlPolicy(irreversible=False, sensitive=False),
+    panel=PanelSpec(
+        columns=("label",),
+        key_column="label",
+        dx=-7,
+        dy=17,
+        width=170,
+        height=192,
+        key_dx=-7,
+        key_dy=17,
+        key_width=170,
+        # The whole row is the link, so click near its left text.
+        key_click_dx=20,
+        row_pitch=24,
+    ),
+)
+NAV_ANCHOR = (CropBox(x=291, y=270, width=168, height=32), ClickPoint(x=300, y=287))
+
 
 def _anchored(control: LocatedControl, shot: Path, anchor, point) -> LocatedControl:
     return control.model_copy(
@@ -124,16 +164,20 @@ def _anchored(control: LocatedControl, shot: Path, anchor, point) -> LocatedCont
 def main() -> int:
     store = ControlMapStore(ROOT / "control_maps")
     panels = {
-        "overview": _anchored(ACCOUNTS, OVERVIEW_SHOT, *ACCOUNTS_ANCHOR),
-        "activity": _anchored(DETAILS, ACTIVITY_SHOT, *DETAILS_ANCHOR),
+        "overview": [
+            _anchored(ACCOUNTS, OVERVIEW_SHOT, *ACCOUNTS_ANCHOR),
+            _anchored(NAV, OVERVIEW_SHOT, *NAV_ANCHOR),
+        ],
+        "activity": [_anchored(DETAILS, ACTIVITY_SHOT, *DETAILS_ANCHOR)],
     }
     for tenant in store.tenants("parabank"):
         recorded = store.screens("parabank", tenant)
-        for screen, panel in panels.items():
+        for screen, group in panels.items():
             key = MapKey(app="parabank", tenant=tenant, screen=screen)
+            ids = {p.id for p in group}
             if screen in recorded:
                 control_map = store.get(key)
-                controls = [c for c in control_map.controls if c.id != panel.id] + [panel]
+                controls = [c for c in control_map.controls if c.id not in ids] + group
                 store.put(key, control_map.model_copy(update={"controls": controls}))
             else:
                 # activity.htm was never inventoried -- the panel is the only
@@ -144,10 +188,10 @@ def main() -> int:
                     ScreenOutput(
                         screenshot_sha256="0" * 64,
                         image_size=ImageSize(width=1280, height=900),
-                        controls=[panel],
+                        controls=list(group),
                     ),
                 )
-            print(f"  {tenant}/{screen}: {panel.id}")
+            print(f"  {tenant}/{screen}: {', '.join(sorted(ids))}")
     return 0
 
 
