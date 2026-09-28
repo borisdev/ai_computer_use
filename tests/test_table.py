@@ -14,7 +14,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 from PIL import Image, ImageDraw
-from pydantic import BaseModel
 
 from interfaceai.decisions import supported_actions
 from interfaceai.screenshot2controls import (
@@ -279,13 +278,38 @@ def test_the_annotated_panel_is_written_for_a_human_to_look_at(tmp_path) -> None
 # --- the panel: extract, then drill down -----------------------------------
 
 
-class Row(BaseModel):
-    account_id: str
-    balance: str
+ACCOUNT_IDS = [
+    "12345",
+    "12456",
+    "12567",
+    "12678",
+    "12789",
+    "12900",
+    "13011",
+    "13122",
+    "13233",
+    "13344",
+    "54321",
+]
 
 
-class Accounts(BaseModel):
-    rows: list[Row]
+async def _fake_vision(*, prompt, image_png, response_model):
+    """Stands in for the model, and ANSWERS THE BANDS.
+
+    `extract_panel` builds its own schema now, adding a `row_marker` field when
+    it has drawn bands. This double reports row i in band i -- agreement -- so
+    tests that are not about the cross-check are not perturbed by it. The
+    disagreement path is exercised live in `test_cross_check_live.py`, where a
+    real model looks at a real doubled pitch.
+    """
+    marked = "row_marker" in response_model.model_fields["rows"].annotation.__args__[0].model_fields
+    rows = []
+    for n, account in enumerate(ACCOUNT_IDS):
+        fields = {"account_id": account, "balance": "$0.00", "available": "$0.00"}
+        if marked:
+            fields["row_marker"] = n
+        rows.append(fields)
+    return response_model(rows=rows)
 
 
 def _anchor() -> VisualLocator:
@@ -297,40 +321,16 @@ def _anchor() -> VisualLocator:
     )
 
 
-async def _fake_vision(*, prompt, image_png, response_model):
-    """Stands in for the model. The real 11/11 read is measured in 0011."""
-    return response_model(
-        rows=[
-            Row(account_id=a, balance="$0.00")
-            for a in [
-                "12345",
-                "12456",
-                "12567",
-                "12678",
-                "12789",
-                "12900",
-                "13011",
-                "13122",
-                "13233",
-                "13344",
-                "54321",
-            ]
-        ]
-    )
-
-
-def _read() -> PanelRead:
-    return asyncio.run(
-        extract_panel(
-            shot(OVERVIEW),
-            _anchor(),
-            panel=Offset(dx=-10, dy=20, width=310, height=320),
-            key_column=Offset(dx=10, dy=20, width=40, height=320),
-            response_model=Accounts,
-            vision=_fake_vision,
-            instruction="read the table",
-        )
-    )
+def _read(**overrides) -> PanelRead:
+    kwargs = {
+        "panel": Offset(dx=-10, dy=20, width=310, height=320),
+        "key_column": Offset(dx=10, dy=20, width=40, height=320),
+        "columns": ("account_id", "balance", "available"),
+        "key_column_name": "account_id",
+        "vision": _fake_vision,
+    }
+    kwargs.update(overrides)
+    return asyncio.run(extract_panel(shot(OVERVIEW), _anchor(), **kwargs))
 
 
 def test_a_panel_read_carries_the_rhythm_it_measured() -> None:
@@ -357,9 +357,9 @@ def test_a_panel_whose_anchor_is_absent_refuses() -> None:
                 _anchor(),
                 panel=Offset(dx=0, dy=0, width=100, height=100),
                 key_column=Offset(dx=0, dy=0, width=40, height=200),
-                response_model=Accounts,
+                columns=("account_id",),
+                key_column_name="account_id",
                 vision=_fake_vision,
-                instruction="read the table",
             )
         )
 
@@ -370,17 +370,11 @@ def test_a_panel_with_no_rhythm_still_READS_but_cannot_be_drilled() -> None:
     The guard used to reject the whole extract, which made a legitimate
     one-row result look like a failure.
     """
-    read = asyncio.run(
-        extract_panel(
-            shot(OVERVIEW),
-            _anchor(),
-            panel=Offset(dx=-10, dy=20, width=310, height=320),
-            key_column=Offset(dx=420, dy=-20, width=200, height=260),  # blank margin
-            response_model=Accounts,
-            vision=_fake_vision,
-            instruction="read the table",
-        )
-    )
+    # Too SHORT to hold two periods, which is the deterministic way to make
+    # measurement refuse. An earlier version pointed at a "blank" strip that
+    # turned out to autocorrelate at 8px -- there is very little truly
+    # featureless area on a real page.
+    read = _read(key_column=Offset(dx=0, dy=20, width=40, height=12))
     assert read.rhythm is None
     assert len(read.data.rows) == 11
     with pytest.raises(PanelNotFound, match="cannot be drilled"):

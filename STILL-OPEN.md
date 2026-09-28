@@ -245,6 +245,76 @@ propagate, the latter because a human resolves in the same live session.
 
 ---
 
+### A7 · Value-dependent risk: a transfer over $1,000 needs a person — **LATER**
+
+Boris, 2026-09-28. Today `irreversible` is a property of the **control** —
+"clicking Transfer moves money". This makes risk a property of the **control
+plus the value**: `amount > 1000` requires a human, and the threshold is
+per-tenant config.
+
+**It is the gap the handoff bundle named:**
+
+> a click's risk depends on the operation. The reference gate covers basic
+> allowlists; **context-dependent risk** … remain integration work.
+
+**Three graded criteria at once:** §3.4 (risky actions handled conservatively),
+§3.6 (a real escalation with a real reason), §3.7 (Bank A's threshold is not
+Bank B's).
+
+**And it is the more interesting half of human-in-the-loop.** Every
+`NeedsOperator` we produce today means *"I could not do this."* This one means
+**"I could, and I should not without you."**
+
+**Cost:** the policy rule alone is ~1h and testable without a live run — a step
+binding `amount=1500` is refused, `amount=500` is not. Demonstrating it live
+needs **capability 2 (transfer funds)**: a multi-field form, a confirmation
+screen, and ParaBank's own minimum-balance validation error. ~3h more.
+
+> **Decision:** later (Boris, 2026-09-28)
+
+---
+
+### A8 · ~~Cross-check the row position~~ — **DONE 2026-09-28**
+
+Geometry proposes, perception verifies. `extract_panel` measures the rhythm
+before the vision call, draws one numbered **band** per row at the computed
+positions, and the same call reports which band each row sits inside. **Zero
+extra model calls.**
+
+Forced the failure and watched it fire:
+
+```
+true pitch 28 (measured)   11 rows read   0 misaligned
+HARMONIC 56 (2x)           11 rows read   11 misaligned
+   "row 1 (12456) reports marker 0: the markers we drew do not line up
+    with the rows, so the row pitch or phase is wrong"
+```
+
+**Bands, not dots — containment beats proximity.** The first cut drew a dot at
+the y we would click, which sits near the *bottom* of a row's text, and the
+model consistently read row 0's dot as belonging to row 1 — a false alarm on a
+correct run. "Which band is this row inside" has one answer; "which dot is level
+with this row" is a judgement about distance. Same shape as
+[0011](docs/issues/0011-control-panel-structured-read.md)'s finding: the model
+**matches** reliably and **estimates** badly.
+
+**A disagreement stops a click, not a read.** The values came from the model and
+are still good; only the click point comes from the disputed geometry. So
+extraction proceeds and drilling escalates — a second and qualitatively
+different `NeedsOperator`: *"I could, and my two sources disagree, so I will not
+guess."*
+
+⚠️ **My test harness was wrong twice**, both times painting over the data or
+picking a fixture that did not test the thing. The forced key column must keep
+its x (moving it 420px right made the margin 440px and the bands covered the
+whole table — 0 rows read, green for the wrong reason), and "a blank strip"
+turned out to autocorrelate at 8px, so the deterministic way to refuse a
+measurement is a column too SHORT to hold two periods.
+
+> **Decision:** DONE
+
+---
+
 ## B · Deliberate cuts — revisit if you disagree
 
 ### B1 · No persistence
@@ -362,7 +432,8 @@ session cookie. ParaBank hands us the lever.
 1. ~~**A1**~~ · ~~**A6**~~ · ~~**A4**~~ — **all done.** A1 closed the
    `BusinessOutcome` gap, A6 made the checkpoint rule more correct, A4 took
    reading from 6/11 to 11/11
-2. ~~**A3**~~ — **done.** The savings capability now refuses a checking account
+2. ~~**A3**~~ · ~~**A8**~~ — **done.** The savings capability refuses a checking
+   account, and a disputed row position refuses to click at all
 3. **C1 · session timeout** — **agreed, on the plan.** Earns the `recoverable`
    type instead of guessing it, and composition already supplies the mechanism
 4. **A5** — reframed: constrain the SCHEMA, not the prompt. Measure the

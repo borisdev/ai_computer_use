@@ -41,7 +41,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from pydantic import BaseModel, create_model
+from pydantic import BaseModel
 
 from interfaceai.capability import (
     Capability,
@@ -711,6 +711,25 @@ def _drill_into_row(
             "pitch_from_record", step=n, control=control.id, pitch=pitch, rows=len(read.data.rows)
         )
 
+    if read.misaligned:
+        # Geometry and perception disagree about where the rows are. Reading a
+        # value from the table is still fine -- the values came from the model.
+        # CLICKING is not: the click point comes from the geometry, and the
+        # geometry is what is in dispute.
+        ctx.evidence.event(
+            "geometry_disputed", step=n, control=control.id, faults=list(read.misaligned)
+        )
+        return NeedsOperator(
+            why=(
+                f"the row positions computed for {control.id} do not match what the "
+                f"screen shows, so this row will not be clicked: {read.misaligned[0]}"
+            ),
+            step_index=n,
+            screen=step.control.screen if step.control else "?",
+            evidence_dir=ctx.evidence.dir,
+            completed_steps=tuple(ctx.done),
+        )
+
     keys = [_normalise(getattr(r, spec.key_column)) for r in read.data.rows]
     target = _normalise(str(wanted))
     if target not in keys:
@@ -807,11 +826,6 @@ def _read_panel(
         ctx.evidence.event("panel_reused", step=n, control=control.id)
         return cached, wanted
 
-    # The response schema is built from the panel's own declared columns, so a
-    # panel that gains a column needs no code change.
-    row_model = create_model("PanelRow", **{c: (str, ...) for c in spec.columns})
-    table_model = create_model("PanelRows", rows=(list[row_model], ...))
-
     try:
         read = ctx.off.run(
             extract_panel(
@@ -821,13 +835,10 @@ def _read_panel(
                 key_column=Offset(
                     dx=spec.key_dx, dy=spec.key_dy, width=spec.key_width, height=spec.height
                 ),
-                response_model=table_model,
+                columns=spec.columns,
+                key_column_name=spec.key_column,
                 vision=ctx.vision,
-                instruction=(
-                    "This is a crop of a table from a banking application. Return every "
-                    f"row with these fields, exactly as printed: {', '.join(spec.columns)}. "
-                    "Do not invent rows."
-                ),
+                row_pitch=spec.row_pitch,
             )
         )
     except PanelNotFound as exc:

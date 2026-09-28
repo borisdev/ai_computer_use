@@ -55,7 +55,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from PIL import Image, ImageDraw
-from pydantic import BaseModel
+from pydantic import create_model
 
 from interfaceai.screenshot2controls import (
     ClickPoint,
@@ -271,7 +271,7 @@ class Offset:
 
 @dataclass(frozen=True)
 class PanelRead[T]:
-    """What a panel read returned, and the geometry to act on it.
+    """What a panel read returned, the geometry to act on it, and its disagreements.
 
     ⛔ **Drilling into a row ALWAYS depends on having extracted the panel first**
     (Boris, 2026-09-26), so there is no way to get a click point except through
@@ -279,17 +279,18 @@ class PanelRead[T]:
     the row for account 13344 on screen -- is
     [issue 0009](../../docs/issues/0009-wrong-row-grounding-is-silent.md),
     measured landing on the wrong record 3 times in 4.
-
-    The extract says 13344 is index 9. The rhythm turns index 9 into a y. No
-    model is ever asked where a row is.
     """
 
     data: T
     first_row_y: int
-    # None when the panel has too few rows to establish a period. Reading a
-    # one-row table is fine; DRILLING into it is what needs the rhythm, so the
-    # absence is only fatal at `point_for_row`.
     rhythm: RowRhythm | None = None
+    # Rows where the marker WE drew did not line up with the row the model saw.
+    # Empty when the cross-check passed or could not run.
+    misaligned: tuple[str, ...] = ()
+
+    @property
+    def cross_checked(self) -> bool:
+        return self.rhythm is not None
 
     def point_for_row(self, index: int, x: int) -> ClickPoint:
         """Where to click to drill into row `index`. `x` picks the column."""
@@ -302,44 +303,162 @@ class PanelRead[T]:
         return ClickPoint(x=x, y=y)
 
 
-async def extract_panel[T: BaseModel](
+# The marker column the cross-check adds to every panel schema. Named here so
+# the schema, the instruction and the verification cannot disagree about it.
+MARKER_FIELD = "row_marker"
+
+
+async def extract_panel(
     screenshot_png: bytes,
     locator: VisualLocator,
     *,
     panel: Offset,
     key_column: Offset,
-    response_model: type[T],
+    columns: tuple[str, ...],
+    key_column_name: str,
     vision: VisionCall,
-    instruction: str,
-) -> PanelRead[T]:
-    """Locate a `TABLE_CONTROL_PANEL`, crop it, and read it against a schema.
+    what: str = "a table from a banking application",
+    row_pitch: int | None = None,
+) -> PanelRead:
+    """Locate a `TABLE_CONTROL_PANEL`, crop it, read it, and CHECK the geometry.
 
-    One model call returns the whole panel as typed rows. The parameter that
-    selects a row is then applied in CODE to that list -- no per-row grounding,
-    no cell assignment, and nothing asked to find a row on screen.
+    One model call returns the whole panel as typed rows. The caller then
+    selects a row IN CODE -- nothing is asked where a row is, which is what
+    keeps `docs/issues/0009` off this path.
 
-    `panel` and `key_column` are offsets from the MATCHED anchor, so the crop
-    follows the anchor if the page reflows -- the same trick a click offset uses.
+    ## Geometry proposes, perception verifies
 
-    Measured on ParaBank's accounts table, three runs: 11/11 account ids and
-    11/11 balances. See `docs/issues/0011`.
+    The rhythm is measured BEFORE the call, so one marker per row can be drawn
+    at the computed positions and the SAME call asked which marker each row sits
+    beside. Zero extra model calls, and margin markers are measured harmless
+    (11/11 ids and balances, three runs -- `docs/issues/0011`).
+
+    It catches the three ways the geometry goes wrong, all of which have
+    happened here: a phase error (the first autocorrelation was a constant 7px
+    out), a pitch HARMONIC (zebra striping returns twice the row pitch), and a
+    table that changed between the read and the click.
+
+    ⚠️ This is not a second position algorithm. One marker per row needs the
+    pitch, so the marker pass is downstream of the autocorrelation -- what the
+    model supplies is an independent CONFIRMATION of what we computed, which is
+    stronger than recomputing it.
+
+    A disagreement is reported on `PanelRead.misaligned` rather than raised:
+    only the caller knows whether it is about to act on the row or merely read
+    a value from it.
     """
     found = locate_control(ResolveInput(screenshot_png=screenshot_png, locator=locator))
     if found.status != "matched" or found.point is None:
         raise PanelNotFound(f"panel anchor {found.status}: {found.reason}")
+    if key_column_name not in columns:
+        raise PanelNotFound(f"key column {key_column_name!r} is not in {columns}")
 
     origin_x, origin_y = found.point.x, found.point.y
     absolute = key_column.at(origin_x, origin_y)
-    # Not fatal: extraction does not need it, only drilldown does.
-    rhythm = find_row_rhythm(screenshot_png, absolute)
+    measured = find_row_rhythm(screenshot_png, absolute)
+    # A shrunken table has too few rows for a period; the pitch recorded when
+    # the panel was authored is a measurement, not a guess.
+    rhythm = measured or (RowRhythm(pitch=row_pitch, confidence=0.0) if row_pitch else None)
 
     image = Image.open(io.BytesIO(screenshot_png)).convert("RGB")
     box = panel.at(origin_x, origin_y)
     crop = image.crop((box.x, box.y, box.x + box.width, box.y + box.height))
+
+    marker_of_index: dict[int, int] = {}
+    if rhythm is not None:
+        crop, marker_of_index = _mark_rows(crop, box, absolute, rhythm)
+
+    fields: dict[str, object] = {c: (str, ...) for c in columns}
+    if marker_of_index:
+        fields[MARKER_FIELD] = (int | None, None)
+    row_model = create_model("PanelRow", **fields)
+    table_model = create_model("PanelRows", rows=(list[row_model], ...))
+
+    instruction = (
+        f"This is a crop of {what}. Return every row with these fields, exactly "
+        f"as printed: {', '.join(columns)}. Do not invent rows."
+    )
+    if marker_of_index:
+        instruction += (
+            f" The left margin is divided into numbered bands by our tooling -- "
+            f"annotation, not page content. Also return `{MARKER_FIELD}`: the "
+            f"number of the band that this row sits INSIDE."
+        )
+
     buffer = io.BytesIO()
     crop.save(buffer, "PNG")
+    data = await vision(prompt=instruction, image_png=buffer.getvalue(), response_model=table_model)
 
-    data = await vision(
-        prompt=instruction, image_png=buffer.getvalue(), response_model=response_model
-    )
-    return PanelRead(data=data, first_row_y=absolute.y, rhythm=rhythm)
+    misaligned = _check_alignment(data.rows, marker_of_index, key_column_name)
+    return PanelRead(data=data, first_row_y=absolute.y, rhythm=rhythm, misaligned=misaligned)
+
+
+def _mark_rows(
+    crop: Image.Image, box: CropBox, key_column: CropBox, rhythm: RowRhythm
+) -> tuple[Image.Image, dict[int, int]]:
+    """Draw one numbered BAND per row, in the margin, at the computed positions.
+
+    ⚠️ **Bands, not dots — containment beats proximity.** The first version drew
+    a dot at the y we would click, which is near the BOTTOM of a row's text, and
+    the model consistently read row 0's dot as belonging to row 1. "Which band
+    is this row inside" has one answer; "which dot is level with this row" is a
+    judgement about distance, and a 14px row inside a 28px pitch makes that
+    judgement close.
+
+    Same shape as the finding in `docs/issues/0011`: the model matches reliably
+    and estimates badly.
+
+    In the margin because a marker over a glyph destroys the read -- a probe
+    once scored 0/11 that way. If there is no room the crop comes back unmarked
+    and the cross-check simply does not run, because silently covering the data
+    would be worse than not checking.
+    """
+    margin = key_column.x - box.x
+    if margin < 16:
+        return crop, {}
+
+    marked = crop.copy()
+    draw = ImageDraw.Draw(marked)
+    marker_of_index: dict[int, int] = {}
+    index = 0
+    top = key_column.y
+    while top + rhythm.pitch <= box.y + box.height:
+        y0, y1 = top - box.y, top + rhythm.pitch - box.y
+        shade = "#ffd0d0" if index % 2 == 0 else "#ffe8e8"
+        draw.rectangle((0, y0, margin - 3, y1 - 1), fill=shade, outline="#e00000")
+        draw.text((3, y0 + rhythm.pitch // 2 - 6), str(index), fill="#900000")
+        # The y we would CLICK for this row -- the thing being verified.
+        marker_of_index[index] = top + rhythm.pitch // 2
+        index += 1
+        top += rhythm.pitch
+    return marked, marker_of_index
+
+
+def _check_alignment(
+    rows: list, marker_of_index: dict[int, int], key_column_name: str
+) -> tuple[str, ...]:
+    """Row `i` must sit beside marker `i`. Anything else means the geometry lied.
+
+    Rows the model returned without a marker are not a disagreement -- it may
+    simply not have answered that field -- but a marker that names a DIFFERENT
+    row is, and so is a row count the markers cannot cover.
+    """
+    if not marker_of_index:
+        return ()
+    faults: list[str] = []
+    for index, row in enumerate(rows):
+        seen = getattr(row, MARKER_FIELD, None)
+        if seen is None:
+            continue
+        if seen != index:
+            key = getattr(row, key_column_name, "?")
+            faults.append(
+                f"row {index} ({key}) reports marker {seen}: the markers we drew do "
+                f"not line up with the rows, so the row pitch or phase is wrong"
+            )
+    if len(rows) > len(marker_of_index):
+        faults.append(
+            f"the model read {len(rows)} rows but only {len(marker_of_index)} markers "
+            "fit the panel, so the pitch is too large"
+        )
+    return tuple(faults)

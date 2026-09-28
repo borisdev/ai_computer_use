@@ -24,7 +24,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from pydantic import BaseModel
 
 from interfaceai import parabank
 from interfaceai.control_map_store import ControlMapMiss, ControlMapStore, MapKey
@@ -47,15 +46,6 @@ MAPS = ROOT / "control_maps"
 RECORDED = ROOT / "evidence" / "runs" / "20260926T022551Z" / "frames" / "004-03-overview.png"
 
 pytestmark = pytest.mark.live
-
-
-class AccountRow(BaseModel):
-    account_id: str
-    balance: str
-
-
-class AccountsTable(BaseModel):
-    rows: list[AccountRow]
 
 
 def _act(surface, control, action, value=None):
@@ -128,14 +118,15 @@ def test_read_the_savings_balance_of_account_13344() -> None:
                 anchor,
                 panel=Offset(dx=-20, dy=28, width=310, height=320),
                 key_column=Offset(dx=0, dy=28, width=40, height=320),
-                response_model=AccountsTable,
+                columns=("account_id", "balance"),
+                key_column_name="account_id",
                 vision=call_vision_llm,
-                instruction=(
-                    "This is a crop of an accounts table. Return every row: the "
-                    "account number and its balance, exactly as printed."
-                ),
             )
         )
+
+    # Geometry proposes, perception verifies: the same call that read the table
+    # also confirmed each row sits in the band we drew for it.
+    assert read.misaligned == (), read.misaligned
 
     # The parameter selects the row. In code. No model asked where it is.
     wanted = str(parabank.DEMO_SAVINGS_ACCOUNT_ID)
