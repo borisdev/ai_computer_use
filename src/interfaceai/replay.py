@@ -571,17 +571,28 @@ def _step(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
         ctx.money_on_form[step.slot or "?"] = amount
 
     irreversible = step.risky or control.policy.irreversible
-    if irreversible and not ctx.confirm_risky:
+    if irreversible:
+        # A TENANT policy outranks a RUN flag, and the order here is the whole
+        # point. `--confirm-risky` is the caller saying "this run may do
+        # irreversible things". It cannot answer "this bank requires a person
+        # above $1,000", because that question was never addressed to the
+        # caller -- so the threshold is checked FIRST and is not bypassable.
+        #
+        # Measured 2026-09-28: with the two collapsed into one condition, a
+        # $25,000 loan against a $1,000 threshold replayed SUCCESS and
+        # submitted, with no human. A blanket confirmation silently answered a
+        # question about a specific amount.
         value_risk = needs_human_confirmation(
             ctx.money_on_form, above=ctx.policy.confirm_money_above
         )
-        return NeedsOperator(
-            why=value_risk or f"step {n} is irreversible and was not confirmed: {step.note}",
-            step_index=n,
-            screen=step.control.screen,
-            evidence_dir=ctx.evidence.dir,
-            completed_steps=tuple(ctx.done),
-        )
+        if value_risk or not ctx.confirm_risky:
+            return NeedsOperator(
+                why=value_risk or f"step {n} is irreversible and was not confirmed: {step.note}",
+                step_index=n,
+                screen=step.control.screen,
+                evidence_dir=ctx.evidence.dir,
+                completed_steps=tuple(ctx.done),
+            )
 
     try:
         validate_decision(

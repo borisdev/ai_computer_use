@@ -4,10 +4,13 @@
 > live app, the run is recorded as a typed artifact, a human approves it, and it
 > replays deterministically to a typed outcome — including the failure and
 > human-handoff branches, and on a second tenant it was never recorded against.
-> Every number here came from a run; where something is inferred it says so.
+> Capabilities **compose**, a lost session is **re-established**, a payment over
+> a threshold **stops and asks a person**, and every one of those has a run
+> behind it. Every number here came from a run; where something is inferred it
+> says so.
 >
 > ```
-> 165 tests — 151 offline, 14 live · ruff clean
+> 244 tests — 215 offline, 29 live · ruff clean
 > ```
 
 Supporting documents:
@@ -59,6 +62,17 @@ recorded at.
 `OffLoop` runs model calls on a worker while Playwright keeps the main thread.
 An earlier note in this repo concluded discovery and capture must be separate
 *phases*; they only need separate *threads*.
+
+**The system describes itself, and §3.2 is why.** The brief asks that *both a
+human reviewer and a calling agent* understand what a capability does, needs and
+returns. The agent half was typed and validated from the start; the human half
+was a 200-line JSON file. `interfaceai status` now lists every capability with
+its signature, approval state, composition and fault count, and `interfaceai
+diagram <name>` draws one **from its artifact** — so a diagram cannot claim a
+step the system will not take. [docs/status.md](docs/status.md) is that view
+committed. [docs/flows.md](docs/flows.md) draws the two *engine* flows, a
+different picture from a capability's own: those two are hand-drawn, and are
+flagged as the only diagrams a reader must check against the code.
 
 ## 2. Artifact schema
 
@@ -124,6 +138,19 @@ a run handing back a *value* it never proved came from the right record, and a
 capability returning nothing cannot do that. The narrower rule is the correct
 one; composition is what exposed the difference.
 
+### 7 · A capability can declare what it ESTABLISHES
+
+`Capability.establishes` names a `ControlRef` that is true *after* the
+capability succeeds — for `log_in`, the authenticated nav. It is a
+**postcondition**, and it is what makes recovery possible without a model: when
+a step fails because that ref is gone, the engine knows which capability
+re-establishes it and re-invokes exactly that one.
+
+⚠️ **A postcondition added after approval does nothing.** The approved `log_in`
+predated the field, so recovery silently did not fire until it was re-approved.
+Version pinning is what makes that visible rather than mysterious — and it is
+the argument for pinning in one sentence.
+
 ⚠️ **Hand-authored artifacts name controls that do not exist.** Measured against
 real control maps: the two written by hand carry 3 and 8 faults; the one
 produced by discovery carries **0**. A hand-written artifact can name anything;
@@ -162,9 +189,19 @@ row in it has a test.
 |---|---|---|
 | `Success` | many | `balance = $1231.10` for account 13344, read off the live screen |
 | `BusinessOutcome` | 2 | **account 99999 through the whole replay path** — and `Could not find account #54321`, HTTP **200** with plain text, so status codes cannot detect it |
-| `Failed` | 6 | checkpoint read `5022.93` where the artifact said `1231.10` |
-| `NeedsOperator` | 1 live + 6 forceable | a locator at 0.8582, below threshold |
+| `Failed` | 6 | checkpoint read `5022.93` where the artifact said `1231.10`; also `request_loan not permitted for this tenant` |
+| `NeedsOperator` | several live | a locator at 0.8654, below threshold — and a **$25,000 loan over the tenant's threshold**, which is a different trigger entirely |
 | ~~`Recoverable`~~ | **0** | **no type exists.** A test asserts its absence, so adding it is a conscious act |
+
+### Why there is still no `Recoverable`, now that we recover
+
+`session_loss_probe` logs itself out mid-flow, and the run comes back
+**`SUCCESS`**, with `recovered: accounts_overview_link gone — log_in re-invoked`.
+That is the point: **a recovered condition is not a terminal state.** Adding a
+fifth variant would make a caller branch on something that is not an answer —
+the run succeeded, and what it survived belongs *on* the success, not instead of
+it. `Success.recovered` names it, and recovery is bounded to **once per
+condition** so a genuinely dead session fails rather than looping.
 
 ### Demonstrated, not argued
 
@@ -293,11 +330,22 @@ An irreversible step is **never** retried on the strength of "it looks like it
 did not happen": a submission that silently succeeded and one that failed can
 look identical, and repeating one moves money twice.
 
-### What is mocked, and what that costs
+### What is MINIMAL, and what that costs — the UI is not mocked
 
-The operator drives the page through a **terminal console** rather than by
-clicking in a window. The brief permits mocking the operator UI provided the
-handoff mechanism and control-transfer model are real; they are.
+Worth being precise, because the loose word understates what is here. The brief
+says *"mock the operator UI if needed"*, and we did not need to. `ScriptedOperator`
+is the mock — canned resolutions, tests only. `TerminalOperator` is a **real
+operator surface with a minimal interface**: it reads a real person, drives the
+**real live page** through `use_control`, is subject to the same allowlist and
+the same redaction as the agent, and writes real `HumanAction` records. Nothing
+about it pretends. The axis is *fidelity of the interface*, not realness of the
+implementation:
+
+```
+ScriptedOperator    MOCKED     canned, tests only, no human
+TerminalOperator    MINIMAL    real human, real page, terminal-grade affordances
+a graphical console RICH       same mechanism, better affordances — not built
+```
 
 ⚠️ **Not `page.pause()`**, which was the earlier plan. Playwright documents it
 opening Inspector with codegen controls, but it needs a **headed** browser and
@@ -317,6 +365,25 @@ Two consequences, both deliberate:
 browser nothing physically stops a person clicking during automation. Stated
 rather than implied.
 
+**So the handoff window is bracketed.** The per-action log is complete for
+actions taken *through* the operator surface and blind to a hand on the mouse,
+and a log that is silently partial is worse than one that states its scope. Each
+edge of the window therefore records a frame, a URL and `url_changed`. Not *"here
+is what the human did"* but *"here is what the page looked like when we handed it
+over and when we got it back"* — **the action may be invisible; the effect is
+not.** Both edges are captured the same way on purpose: a before/after pair
+sourced from two different moments is not a pair.
+
+⚠️ **A co-browsing console would not fix this, and §3.6 puts it out of scope.**
+The design that would is a *headless mirror* — the human sees only a screenshot
+and clicks it, so every action necessarily passes through `use_control` and the
+unlogged path stops existing. That is a real option and it is written down rather
+than built, because it buys enforcement at the cost of expressiveness at exactly
+the moment expressiveness matters: you escalate to a human *because* the system
+ran out of ideas, and a mirror can only offer verbs you anticipated. The honest
+resolution is two modes with the takeover itself audited, which §7 records as
+designed-and-unbuilt.
+
 ## 6. Safety
 
 **One chokepoint.** `use_control` is the only function that touches the
@@ -334,6 +401,30 @@ recorded on the control in `ControlPolicy`, every capability touching it
 inherits that, and `validate_decision` refuses without an explicit
 confirmation — one layer earlier than the action gate, which enforces the same
 pairing again.
+
+**Some risk depends on the VALUE, not the control.** `irreversible` says *this
+button moves money*; it cannot say *this one moves too much*. So a tenant policy
+carries `confirm_money_above`, the engine tracks the money amounts typed onto
+the **current form**, and the irreversible step is judged on what is about to be
+submitted. A $500 loan goes through; **$25,000 stops and asks a person.**
+
+⚠️ **The rule has to fire at the right step, and my first cut did not.**
+Checking at the moment of *typing* would also have blocked a transaction
+*search*, because `findtrans.htm` has an `amount` field too. Reading a number is
+not spending it. The check belongs at the irreversible step and nowhere else.
+
+⚠️ **And the tracked amounts have to be cleared at the right moment.** Clearing
+after every action left the set empty by the time submit was reached — the rule
+present, configured, and silently never firing. They are cleared when the **URL
+moves**, because that is what "a different form" means.
+
+**A tenant permits a capability, or it does not.** A static allowlist checked
+before step 0, so a forbidden capability produces `Failed` without touching the
+app — and it is checked for **invoked children too**, so a permitted capability
+cannot smuggle in a forbidden one. ⚠️ This one is **make-believe and labelled
+as such**: ParaBank has no roles, so the permission is ours, not the
+application's. It demonstrates the enforcement point; it does not demonstrate
+integration with a real entitlement system.
 
 **Secrets never land.** A sensitive slot cannot hold a literal or a caller
 param, only an `input_ref` resolved at replay. The audit record carries
@@ -356,34 +447,65 @@ not a log. Enforced by a test that reads the committed artifacts off disk.
 
 What was left out on purpose, and what I would do next.
 
-**Grid cell assignment is still broken, and is being removed rather than
-fixed.** A grounded account link lands on the wrong row **3 times in 4**
+**Grid cell assignment was never fixed. It was made unreachable.** A grounded
+account link lands on the wrong row **3 times in 4**
 ([issue 0009](docs/issues/0009-wrong-row-grounding-is-silent.md)), silently,
 because a wrong cell in a uniform table looks exactly like a right one.
-Relabelling the grid does not help — three schemes measured, best 3/15.
-Capability 1 no longer touches it (the panel path grounds no rows), but any
-capability that must *click* one of N identical rows still would.
+Relabelling does not help — three schemes measured, best 3/15. So a repeated
+structure is a `TABLE_CONTROL_PANEL`: read the whole region in one call, index
+the row **in code**, and reach it by a **measured row pitch** (28px, found by
+autocorrelation at 0.899) rather than by grounding. `check_capability` then
+**refuses a direct click on any control whose click point falls inside a panel
+region**, which is what turns "we stopped doing that" into "that cannot be
+done". Verified over all 11 rows.
 
-**Discovery reads labels through an overlay that corrupts them.** The coarse
-pass makes one call do two jobs on one image: name the controls *and* assign
-cell numbers. Measured, those want opposite images — **11/11** reading a clean
-screenshot against **8/11** through our 192-cell grid, with the gridded run
-reproducing one of the exact wrong ids from the live run. The split (read
-clean, locate gridded) is one extra call per screen and is **not done**; every
-control map written until it lands inherits the defect.
+⚠️ **This generalises past tables, which is the part worth keeping.** The site
+nav was **0/8** grounded — the same defect wearing different clothes. Repeated
+structure needs a panel, not just a table.
 
-**Extraction cannot point at data** ([issue 0010](docs/issues/0010-extraction-cannot-point-at-data.md)).
-`EXTRACT` names a control; the inventory prompt is told to ignore static text;
-so a balance has no id. The fix is a region locator — a landmark plus an offset
-*and a size* — reusing the matcher that already exists.
+**A8: geometry proposes, perception verifies.** A row reached by arithmetic is
+checked by re-reading the row it landed on. An early cut drew a marker dot at
+the click point and false-alarmed on a *correct* run; numbered **bands** work,
+because containment beats proximity. ⚠️ And fixed-interval markers do **not**
+work at all — at 7px the deltas land in 14px bands. Matching it can do;
+counting it cannot.
 
-**Grid cell assignment is broken and is on the way out.** A grounded account
-link lands on the wrong row **3 times in 4**
-([issue 0009](docs/issues/0009-wrong-row-grounding-is-silent.md)), silently,
-because a wrong cell in a uniform table looks exactly like a right one.
-Relabelling the grid does not fix it — measured across three schemes, best
-3/15. The answer is to remove cell assignment from the positioning path, which
-is what the panel approach does.
+**Discovery read labels through an overlay that corrupted them — fixed.** One
+call was doing two jobs on one image: name the controls *and* assign cell
+numbers. Those want opposite images — **11/11** reading a clean screenshot
+against **8/11** through the 192-cell grid, the gridded run reproducing an exact
+wrong id from a live failure. Split into read-clean / locate-gridded.
+
+**Extraction still cannot point at unstructured data**
+([issue 0010](docs/issues/0010-extraction-cannot-point-at-data.md), backlog
+[#4](https://github.com/borisdev/ai_computer_use/issues/4)). `EXTRACT` names a
+control and the inventory ignores static text, so a lone `Balance: $1,231.10`
+has no id. **Half solved:** a value inside a table is reachable, and the account
+detail page is label/value pairs, which is a two-column table wearing different
+clothes — both are panels. What remains is a value with *no* repeating structure
+around it, whose one real victim is `log_in` wanting to return the customer
+name. The fix is a region locator — landmark plus offset *and size* — reusing
+the matcher that exists. **Cut because nothing needs it:** every capability in
+the library works without it, so building it now is an abstraction with no
+caller.
+
+**A5: the naming churn was measured, and it was already gone.** The plan was to
+close `control_id` to an enum because unlabelled controls got names that drifted
+between runs. That measurement predated the read/locate split, so it was re-run
+first — one screenshot, three draws, so the only variable is the model:
+**62 ids over two screens, 6 draws, 0 churn.** The reason is structural: an id
+is derived from label + role + position, not invented. **We were one step from
+building a second fix for something already fixed.** What survives is narrower
+and was never about the same call — the *inventory* does not invent names, but a
+later `NextMove` once named `13767_link`, an account that does not exist. A
+per-call `Literal` built from the ids actually in the map would make that
+unrepresentable. Cut: it is already caught fail-closed, so the enum buys
+enforcement rather than correctness.
+
+**The operator console.** §3.6 puts a full co-browsing console out of scope and
+permits a mocked UI; we built something better than a mock (above) and stopped
+there. The *headless mirror* — the human sees a screenshot and clicks it — is
+designed and unbuilt, with the trade recorded in §5.
 
 **No persistence.** Evidence is files: `trace.jsonl` plus every frame. A SQLite
 `runs`/`events`/`interventions` schema would add durability across process
@@ -399,10 +521,13 @@ eight passing tests and `OffLoop`, which exists *because* we measured
 discovery actually populates. A catalogue of placeholder image paths describes
 controls nobody has grounded.
 
-**Conditions with no instance.** `Recoverable`, permission denial and
-unexpected dialog are named by the brief and have never occurred here. No types
-were invented for them; `docs/failure-modes.md` lists them as gaps. Session
-timeout and slow-load are *reachable* and untried — those are the honest TODOs.
+**Conditions with no instance.** Unexpected dialog and a *real* permission
+denial are named by the brief and have never occurred here — ParaBank has no
+roles, so our permission gate demonstrates the enforcement point and not the
+integration. No types were invented for them; `docs/failure-modes.md` lists them
+as gaps. **Session timeout is no longer on this list** — `session_loss_probe`
+logs itself out mid-flow and the run recovers. Slow-load remains reachable and
+untried.
 
 **The controlled vocabulary is not in the inventory prompt.** It exists and
 types every artifact, but the 15/24/22 inventory variance it was meant to fix
@@ -416,11 +541,19 @@ desktop surface, code generation, multi-run stability scoring.
 
 ### If I had another day
 
-1. **Split the coarse pass** — read labels from a clean screenshot, assign cells
-   from the gridded one. One hour, and it fixes a defect in our own instrument
-   rather than in the application.
-2. **A `TABLE_CONTROL_PANEL` producer in discovery.** The panel is hand-added by
+1. **A `TABLE_CONTROL_PANEL` producer in discovery.** The panel is hand-added by
    a committed script today; discovery has no notion of a region with structure.
-3. **A session-timeout capability** — log out mid-flow. That would give the
-   `recoverable` class its first real instance instead of a guess, and it is the
-   honest way to earn the type.
+   This is the largest remaining gap between what discovery produces and what
+   replay can use, and it is the reason capability 1's artifact needed a human
+   step the recorder could not supply.
+2. **A restyled tenant.** Both images ship the stock UI, so every locator
+   matches at `1.0000` and the reuse path is proven while the reuse *claim* is
+   not. A CSS-only skin would be the cheapest honest test of the one design
+   decision with the most to lose.
+3. **The headless mirror, as a second operator mode** — because it closes the
+   unlogged-input path by construction rather than by protocol, and because
+   having both modes is what makes the trade in §5 a decision rather than an
+   excuse.
+
+*Items 1 and 3 of the previous list — splitting the coarse pass and a
+session-timeout capability — were done, and are written up above.*

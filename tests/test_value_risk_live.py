@@ -21,7 +21,7 @@ from interfaceai import parabank
 from interfaceai.capabilities import LIBRARY
 from interfaceai.capability import approve, load_capability
 from interfaceai.control_map_store import ControlMapStore
-from interfaceai.outcomes import NeedsOperator
+from interfaceai.outcomes import NeedsOperator, Success
 from interfaceai.replay import replay
 from interfaceai.settings import get_settings
 from interfaceai.vision_llm import call_vision_llm
@@ -39,7 +39,13 @@ def seeded():
     parabank.ParaBankAdmin().init_db()
 
 
-def _run(amount: str, down_payment: str, *, threshold: str | None = "1000"):
+def _run(
+    amount: str,
+    down_payment: str,
+    *,
+    threshold: str | None = "1000",
+    confirm_risky: bool = False,
+):
     settings = get_settings()
     from decimal import Decimal
 
@@ -55,6 +61,7 @@ def _run(amount: str, down_payment: str, *, threshold: str | None = "1000"):
         vision=call_vision_llm,
         allowed_origins=settings.allowed_origins,
         confirm_money_above=Decimal(threshold) if threshold else None,
+        confirm_risky=confirm_risky,
         library={n: approve(c, "test") for n, c in LIBRARY.items()},
     )
 
@@ -95,3 +102,35 @@ def test_the_threshold_is_the_tenants_and_a_lower_one_catches_the_same_loan() ->
     assert "threshold" not in lenient.why
     assert "threshold" in strict.why
     assert "amount=500" in strict.why
+
+
+def test_a_RUN_flag_cannot_answer_a_TENANT_policy() -> None:
+    """`--confirm-risky` must not buy its way past the money threshold.
+
+    ⚠️ REGRESSION. Both conditions used to sit in one `if`, so confirming
+    irreversible steps skipped the value check entirely and this exact call
+    replayed SUCCESS -- a $25,000 loan submitted with no human against a $1,000
+    threshold. Measured against the live app on 2026-09-28.
+
+    The two are different authorities. The flag is the CALLER saying "this run
+    may do irreversible things". The threshold is the BANK saying "a person
+    signs off above this amount" -- a question never addressed to the caller,
+    so the caller's blanket yes cannot answer it.
+
+    Note the level: `needs_human_confirmation` was correct throughout and a
+    test of it passed the whole time the bypass existed. The defect was the
+    branch, so the test has to run the branch.
+    """
+    result = _run("25000", "5000", confirm_risky=True)
+    assert isinstance(result, NeedsOperator), result
+    assert "threshold" in result.why
+    assert "25000" in result.why
+
+
+def test_confirming_still_lets_an_ORDINARY_loan_through() -> None:
+    """The other direction, so the fix is not just a blanket refusal.
+
+    A guard that stops everything passes the test above and is useless.
+    """
+    result = _run("500", "50", confirm_risky=True)
+    assert isinstance(result, Success), result
