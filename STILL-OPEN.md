@@ -183,11 +183,42 @@ mode rejects an out-of-enum value before it reaches us. And we already do this:
 `Literal` types for `control_id` and `value_ref` built with `create_model` from
 what is actually on the screen and actually bound. ~1.5h.
 
-⚠️ **Measure the naming churn first, separately.** The original A5 was about
-unlabelled icons getting prose names that differ between runs. That was measured
-with the read pass fighting the grid overlay, which A4 removed. Re-measuring is
-20 minutes — run discovery 3x on one screen, diff the id sets — and it may show
-the problem shrank or went.
+### ⛔ MEASURED 2026-09-28: the naming churn is GONE. Half of A5 dies here.
+
+`scripts/measure_naming_churn.py` — one screenshot, three draws, so the only
+variable is the model. Two screens:
+
+```
+overview      36 ids   3 draws   0 churned
+requestloan   26 ids   3 draws   0 churned
+```
+
+**62 ids, 6 draws, not one disagreement** — including the unlabelled controls
+(`button`, `button_2`, `button_3`) that were the original complaint.
+
+The reason is structural, which is what makes it trustworthy rather than a
+lucky sample: an id is `_slug(label, role)` plus `_unique`'s positional
+suffix. It is **derived, not invented**, and only moves if the model misreads a
+*label* — and on a server-rendered bank page the labels are crisp text. The old
+measurement was taken while the READ pass fought the grid overlay; **A4 fixed
+this, and we were one step from building a second fix for it.**
+
+### What SURVIVES the measurement, and it is narrower
+
+The churn argument is dead. The *unrepresentable* argument is not, because it
+was never about the same call. The inventory does not invent names — a LATER
+call does:
+
+```
+the inventory   names controls from what is on screen   MEASURED STABLE
+NextMove        names a control_id to ACT on            13767_link, which
+                                                        does not exist
+```
+
+So the fix is not a global `SlotName` enum. It is a per-call `Literal` on
+`NextMove.control_id` and `value_ref`, built with `create_model` from the ids
+actually in the map and the refs actually bound — the trick `extract_panel`
+already uses for its row schema. Smaller than the original ~1.5h.
 
 ### One vocabulary across apps and tenants
 
@@ -200,7 +231,13 @@ concretely conflicts* is the right default, and it is the same argument as the
 vocabulary itself — **fixed beats perfect**, and drifting early gives you a
 synonym list.
 
-> **Decision:**
+> **Decision:** SPLIT. The churn half is **closed by measurement** — no fix,
+> because there is nothing left to fix, and that is a better outcome than
+> building one. The unrepresentable half is **cut**: the failure it prevents is
+> already caught fail-closed, so the enum buys enforcement rather than
+> correctness, and `project.md` says add the guard when the failing case
+> justifies it. Recorded with the number so the next person inherits a
+> measurement and not a hunch.
 
 ---
 
