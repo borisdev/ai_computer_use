@@ -183,18 +183,18 @@ def test_a_checkpoint_cannot_compare_against_a_secret() -> None:
         validate_capability(broken)
 
 
-def test_capability_one_v2_CANNOT_catch_the_changed_record_and_that_is_recorded() -> None:
-    """The cost of reading the overview instead of drilling into the detail page.
+def test_capability_one_checkpoints_the_field_that_separates_the_two_db_states() -> None:
+    """The strong checkpoint, restored in v3 and pinned here.
 
-    v1 clicked through to `activity.htm` and checkpointed
-    `account_type == SAVINGS`, which caught ParaBank's CLEAN state serving 13344
-    as CHECKING $5,022.93. v2 reads the accounts table, where there is no type
-    column — so it reports the balance of whatever 13344 now is.
+    The history is the lesson. v1 drilled into `activity.htm` by GROUNDING the
+    account's row link -- which lands on the wrong row 3 times in 4, silently
+    (`docs/issues/0009`). v2 dropped the drilldown and with it this checkpoint,
+    so it reported the balance of whatever 13344 had become. v3 drills in by
+    ARITHMETIC: the row index comes from the panel read, the y from the measured
+    28px rhythm, and no model is asked where a row is.
 
-    This test exists so the loss is PINNED rather than discovered later. It
-    passes today because v2 has no `account_type` checkpoint; if someone
-    restores the drilldown, it fails and points them at the note explaining why
-    that is good news.
+    The previous version of this test asserted the LOSS and told whoever
+    restored the drilldown to come here. That is what happened.
     """
     seeded = next(a for a in parabank.ACCOUNTS if a.id == parabank.DEMO_SAVINGS_ACCOUNT_ID)
     cleaned = next(
@@ -202,14 +202,30 @@ def test_capability_one_v2_CANNOT_catch_the_changed_record_and_that_is_recorded(
     )
     assert seeded.type != cleaned.type, "the two states must differ, or this proves nothing"
 
-    checkpoints = {c.output for c in capabilities.READ_SAVINGS_BALANCE.checkpoints}
-    assert "account_type" not in checkpoints, (
-        "account_type is checkpointed again — the drilldown must be back, so update "
-        "capabilities.py's note and this test"
+    checkpoints = {c.output: c for c in capabilities.READ_SAVINGS_BALANCE.checkpoints}
+    assert "found_account_id" in checkpoints, "must prove it answered about the right record"
+
+    account_type = checkpoints["account_type"]
+    assert isinstance(account_type.expected, LiteralValue)
+    assert account_type.expected.value == seeded.type
+    assert account_type.expected.value != cleaned.type, (
+        "the checkpoint must assert the value that DIFFERS between the two states"
     )
-    assert "found_account_id" in checkpoints, (
-        "v2 must at least prove it answered about the account that was asked for"
-    )
+
+
+def test_the_drilldown_goes_through_a_row_key_not_a_grounded_row() -> None:
+    """`docs/issues/0009` stays off this capability's path, by construction."""
+    clicks = [
+        s
+        for s in capabilities.READ_SAVINGS_BALANCE.steps
+        if s.verb is StepVerb.CLICK and s.control is not None
+    ]
+    assert clicks, "v3 drills into the account's row"
+    for step in clicks:
+        assert step.row_key is not None, (
+            f"{step.control.control_id} is clicked without a row_key -- that is a "
+            "grounded row, which is the defect this design removes"
+        )
 
 
 def test_balance_is_returned_and_never_asserted() -> None:

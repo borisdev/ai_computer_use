@@ -38,14 +38,14 @@ is asked where account 13344 is, and `docs/issues/0009` (wrong-row grounding,
 of having a vocabulary: a small canonical set composes. The version is pinned,
 so a new `log_in` cannot silently change what replay does.
 
-⚠️ **v1 drilled into `activity.htm` to read Account Type, and v2 does not.**
-The balance is already on the overview; the click bought exactly one extra
-field. The trade is real and worth knowing: after `env break`, 13344 comes back
-as CHECKING $5,022.93, and v1's `account_type == SAVINGS` checkpoint caught
-that. v2 cannot -- it reports the balance of whatever 13344 now is. What it DOES
-catch is an account that stopped existing, as a `BusinessOutcome`. Restoring the
-stronger checkpoint needs the detail-page drilldown, which needs
-`docs/issues/0009` fixed.
+⚠️ **v3 restores the checkpoint v2 gave up.** v1 drilled into `activity.htm`
+by grounding the account's row link -- which lands on the WRONG row 3 times in
+4, silently (`docs/issues/0009`). v2 dropped the drilldown and with it the
+`account_type == SAVINGS` check, so it reported the balance of whatever 13344
+had become. v3 drills in again, but by ARITHMETIC: the row index comes from the
+panel read and the y from the measured 28px rhythm, so nothing is ever asked
+where a row is. The panel read is reused, so the drilldown costs no extra model
+call.
 """
 
 from __future__ import annotations
@@ -54,6 +54,7 @@ from interfaceai.capability import (
     Capability,
     Checkpoint,
     ControlRef,
+    LiteralValue,
     OutputSpec,
     ParamSpec,
     ParamValue,
@@ -144,7 +145,7 @@ LOG_IN = Capability(
 
 READ_SAVINGS_BALANCE = Capability(
     name="read_savings_balance",
-    version=2,
+    version=3,
     goal="read the current balance of a member's savings account",
     vocabulary_version=VOCABULARY_VERSION,
     target=TARGET,
@@ -154,6 +155,7 @@ READ_SAVINGS_BALANCE = Capability(
     returns=(
         OutputSpec(name="found_account_id", slot="account_id"),
         OutputSpec(name="balance", slot="balance"),
+        OutputSpec(name="account_type", slot="account_type"),
     ),
     requires=(
         Precondition(
@@ -208,6 +210,33 @@ READ_SAVINGS_BALANCE = Capability(
             field="balance",
             note="What the caller asked for. Never asserted -- it is the answer.",
         ),
+        # The drilldown. Its click position comes from the row INDEX and the
+        # measured 28px rhythm, never from grounding the row -- which lands on
+        # the wrong record 3 times in 4, silently (docs/issues/0009). The panel
+        # read above is reused, so this costs no extra model call.
+        Step(
+            verb=StepVerb.CLICK,
+            control=ControlRef(screen="overview", control_id="accounts_table_panel"),
+            row_key=ParamValue(param="account_id"),
+            note="Open this account's detail page. Navigation only; reversible.",
+        ),
+        Step(
+            verb=StepVerb.WAIT_FOR,
+            control=ControlRef(screen="activity", control_id="account_details_panel"),
+            note="Account Details. One screen per record id (activity.htm?id=:id).",
+        ),
+        Step(
+            verb=StepVerb.EXTRACT,
+            control=ControlRef(screen="activity", control_id="account_details_panel"),
+            slot="account_type",
+            output="account_type",
+            row_key=LiteralValue(value="Account Type:"),
+            field="value",
+            note=(
+                "The field that separates the seeded record from the CLEAN one, and "
+                "the only reason this capability visits the detail page at all."
+            ),
+        ),
     ),
     checkpoints=(
         Checkpoint(
@@ -216,6 +245,16 @@ READ_SAVINGS_BALANCE = Capability(
             why=(
                 "The row we read must be the row that was asked for. An account that "
                 "is absent entirely is a business outcome, not this."
+            ),
+        ),
+        Checkpoint(
+            output="account_type",
+            expected=LiteralValue(value="SAVINGS"),
+            why=(
+                "This is the one that catches a changed record. After ParaBank's "
+                "CLEAN, account 13344 still resolves -- as CHECKING $5,022.93 rather "
+                "than SAVINGS $1,231.10. Without this the capability returns the "
+                "wrong number to a bank and reports success."
             ),
         ),
     ),

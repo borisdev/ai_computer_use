@@ -208,9 +208,13 @@ class Step(Contract):
             raise ValueError("extract needs an output name")
         if self.verb is not StepVerb.EXTRACT and self.output is not None:
             raise ValueError(f"{self.verb} does not produce an output")
-        if (self.row_key is None) != (self.field is None):
-            raise ValueError("row_key and field go together: a row selector needs a column to read")
-        if self.row_key is not None and self.verb is not StepVerb.EXTRACT:
+        if self.verb is StepVerb.EXTRACT and (self.row_key is None) != (self.field is None):
+            raise ValueError(
+                "extract with a row_key needs a field: which column of that row to read"
+            )
+        if self.field is not None and self.verb is not StepVerb.EXTRACT:
+            raise ValueError(f"{self.verb} reads no column, so it takes no field")
+        if self.row_key is not None and self.verb not in (StepVerb.EXTRACT, StepVerb.CLICK):
             raise ValueError(f"{self.verb} cannot select a row")
         return self
 

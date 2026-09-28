@@ -1,5 +1,15 @@
 # 0009 — A grounded account link points at the **wrong row**, and reports `ready`
 
+> ⚠️ **Still unfixed, and now unreachable.** Grounding a row visually still
+> lands on the wrong one 3 times in 4. As of 2026-09-28 nothing does it:
+> `read_savings_balance` v3 drills into a row by INDEX from a panel read plus
+> the measured 28px rhythm, never by grounding. The defect has no caller.
+>
+> A `check_capability` rule enforces that — a panel may be drilled with a
+> `row_key`, never clicked at its anchor — so a future capability cannot
+> quietly reintroduce the path. Repairing the grounding itself is still open,
+> and still has no user.
+
 > **Severity: highest open.** Every other issue in this repo fails loudly. This
 > one produces a confident click on a different customer's record and reports
 > success — the exact failure the project exists to prevent.

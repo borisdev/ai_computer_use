@@ -62,75 +62,53 @@ that already exists. `locate_control` already returns `matched_crop`.
 
 ---
 
-### A3 · Grid cell assignment is still wrong 3 times in 4
-[issue 0009](docs/issues/0009-wrong-row-grounding-is-silent.md) — **highest
-severity open**, because it is *silent*.
+### A3 · ~~Row drilldown by grounding~~ — **DONE 2026-09-28**
 
 ```
-12345_link   grounded (500,361)   INSIDE its own link      ok
-12456_link   grounded (500,359)   that is 12345's row      WRONG
-13122_link   grounded (511,466)   that is 12789's row      WRONG
+$ replay read_savings_balance.v3 --param account_id=13344
+SUCCESS in 12 steps
+  found_account_id = 13344
+  balance          = $1231.10
+  account_type     = SAVINGS          <- the checkpoint v2 gave up
+
+$ replay read_savings_balance.v3 --param account_id=12345      # a CHECKING account
+FAILED at checkpoint on account_type
+  expected  SAVINGS
+  observed  CHECKING                                            exit 1
 ```
 
-`status: ready`, unique landmark, ~1.0 at replay — and it clicks another
-customer's account. Relabelling the grid does not help: three schemes measured,
-best 3/15.
+**A capability that promises a savings balance now refuses to hand back a
+checking one** — on seeded data, no database manipulation.
 
-⚠️ **Capability 1 no longer touches this** — the panel path grounds no rows. But
-any capability that must *click* one of N identical rows still would, and
-capability 2 (transfer funds) is exactly that shape.
-
-**Fix:** the same move as capability 1 — extract the panel, select in code,
-then use the row rhythm to turn an index into a click point. `PanelRead.point_for_row`
-already exists and is tested; **nothing in the executor calls it.**
-
-### Why it is worth doing — the rationale, corrected
-
-My first framing was *"makes the product better, not the submission more
-complete"*. That is wrong, and Boris's version is better. Re-read §7:
-
-> **Robustness & error handling.** … sound **locator**, wait, and **checkpoint**
-> strategy.
-
-Both halves of A3 are in that one sentence. Wrong-row grounding **is** an
-unsound locator strategy, silently. And v2's checkpoint is demonstrably weaker
-than the v1 one it replaced.
-
-> **Correctness of the core loop.** … the artifact replays deterministically
-> **and verifies success**.
-
-Today it verifies *"I answered about the account you named"*. It cannot verify
-*"that account is what the recording said it was"* — the exact case `env break`
-produces.
-
-**Robustness is weighed THIRD. Feature breadth is weighed not at all.** §5 says
-*"go deep where it matters — the artifact schema, deterministic replay plus
-error handling"*. A3 is depth on a weighed criterion, achieved by REMOVING a
-defect rather than adding a feature.
-
-And it has a track record: building the next real thing has exposed a design
-flaw twice today. Composition showed the checkpoint rule was too broad;
-capability 1 showed a panel could not be named in an artifact. Neither was
-visible from reading the code.
-
-⚠️ **One claim to NOT make.** This is not "generality" in the brief's sense —
-§7's *generalization* means heterogeneous **surfaces** and **tenant** reuse, both
-already done and demonstrated. A drilldown does not touch that criterion.
-
-**What it concretely restores:**
+The drilldown lands by arithmetic, not by grounding. From the run trace:
 
 ```
-env break, then replay read_savings_balance --param account_id=13344
-v1  ->  FAILED, account_type: expected SAVINGS, observed CHECKING   caught it
-v2  ->  SUCCESS, balance = $5022.93                                 wrong record, reported fine
+row_resolved   key=13344  index=9  pitch=28  x=508  y=614
 ```
 
-**The work:** `PanelSpec.key_click_dx` (measured: 18px from the anchor), a step
-shape for "click the row where key = param", ~20 executor lines reusing the
-CACHED panel read, capability 1 v3 with the drilldown, and a live test that is
-self-proving in both DB states. **~2h.**
+Index 9 comes from the panel read; y comes from the measured rhythm; 614 is
+inside 13344's link box (602..616). **No model is asked where a row is**, which
+is what keeps issue 0009 off this path.
 
-> **Decision:** DO IT — rationale above (Boris, 2026-09-28)
+**What it took:** `PanelSpec.key_click_dx` (18px, measured), `CLICK + row_key`
+in the schema, a `_read_panel` helper so extraction and drilldown share ONE
+cached call, and `account_details_panel` — the detail page is itself a
+label/value table, so it needed no new mechanism.
+
+⚠️ **A panel is not clickable at its anchor.** `check_capability` refuses a
+bare click on a panel and requires a `row_key` plus a declared `key_click_dx`.
+Widening `ACTIONS_BY_ROLE` instead would have permitted a meaningless click at
+the header.
+
+⚠️ **A one-row table cannot be drilled** — autocorrelation has no period to
+find, so it refuses (`NeedsOperator`, exit 1) rather than guessing a position.
+Reading a one-row table still works. Pinned by a live test against `env break`.
+
+⚠️ **Issue 0009 itself is NOT fixed** — grounding a row visually still lands
+wrong 3 times in 4. It is now *off the path* rather than repaired, which is the
+better outcome: the defect has no caller.
+
+> **Decision:** DONE
 
 ---
 
@@ -384,8 +362,7 @@ session cookie. ParaBank hands us the lever.
 1. ~~**A1**~~ · ~~**A6**~~ · ~~**A4**~~ — **all done.** A1 closed the
    `BusinessOutcome` gap, A6 made the checkpoint rule more correct, A4 took
    reading from 6/11 to 11/11
-2. **A3** — **agreed, on the plan.** Depth on §7's third-weighed criterion
-   (sound locator and checkpoint strategy), achieved by removing a defect
+2. ~~**A3**~~ — **done.** The savings capability now refuses a checking account
 3. **C1 · session timeout** — **agreed, on the plan.** Earns the `recoverable`
    type instead of guessing it, and composition already supplies the mechanism
 4. **A5** — reframed: constrain the SCHEMA, not the prompt. Measure the

@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "screenshot_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "image_size": {
+    "width": 1280,
+    "height": 900
+  },
+  "controls": [
+    {
+      "id": "account_details_panel",
+      "label": "Account Number:",
+      "role": "table_control_panel",
+      "description": "The account detail table: one row per field, anchored on 'Account Number:'.",
+      "status": "ready",
+      "click_point": {
+        "x": 495,
+        "y": 326
+      },
+      "locator": {
+        "schema_version": 1,
+        "template_png": "iVBORw0KGgoAAAANSUhEUgAAAGoAAAAZCAIAAABW9SyvAAAFqElEQVR4nO2Yf2gTdxTAn-O-kDuSJQcX4Qo96JXGGmllKTSyFtvMUsMi1OGKWnF1Wlx1UEUdOkoHQ0cdm2N2g4JkPzpZVYLY0oZ1osZKJjuhJ22xakoiXKA3TOB6XMgFvgfuj9ja2LVVMyaDfP66fHl5730_9313JKuePHkCBV6VN153A_9vCvryoqAvLwr68qKgLy8K-vKioC8vFuvTHwyeOXjyS_-U9t93o0rjoqznrmFp9OyezlO9E8qzsKn-T78bij4X-MJg6bfPvvoxrKwcuSKL9GmxsEx7qll5IpbE_0KBl0GL3rkZimmLyhKUyZi8fm3yNdzQFSByP-Lk9Jhkq-qoJtRLwuSs02NHAACgS8Kw_8a4lDFxZVXNvoYKGmHl4cDgQGhaAVuxa-N7Le4iCnRJHO4bjakGgMnuqvFudRWBNHT6UsLXttdNA-hSwH9BrtnfsVbp8weSHA_yTFLTgF63tWkzGwn03ZXV--d7UlvaNq-xLmjLWlJfC0LgxsPSpjXUgvX0MslZHmRJSmpUidtXlgqLMXkW2Epv27vrrQBg6NHbvwTFKdkwl1Y0tPo2cCSAFgsODoXkDADBOr2tjesYpIkXzw0Az8jjEtt8YpPi9wvc9oMtPJltIPf04YQ4oXCVPEPzblYXphLZg6BGhntvKe5tHWcPf-AxxvzBiaQ-E7o8MGluOHqss8tXJN0IBCVdjYz0Xtdqdxz5-pMjJ-pMYvBKSF7yACNDk5Tiln2Hug_v98C9gdt_MdXexmJz-Tu7O3LdAQAA7dpUZ41cC8ZeaGKRocmGo7X9aPe-eurR6IDsPNB-vLu1Ek-FhexMZeQHmqO1vbN7Vy2aHukXZzB-HLrcHyLqTxw-3t3mtUau9ImPMQCALse18qZD3TvWMbb1Lbt2NrLkfKEcfWl5XMhwtSUWALL0LR7fH5N0ANCkiRgurql1rLbSnGf7x11NldZUTFTMtTWVpbSFdW452r7XxxnSRAQXu10sAkBM2YYKsxKVU0tskAAwcWvXsAgAWTg7ibXFM5sDxVQ1v42Eq4K0skACwMQ6OAYBZWc5G805OCsCiuZYUyapGwAAJnttXVW53cI6qhpLyGRcUWcjgmzx1DkZBIh2-KppeTKSxACArOx6N08jAEAWjitiyJxK8-jROxPRuHL6lDC3Yg49qi8tM9QURjSZHWMgaQYgnVBUg6RM2SVkpRFgJSeMMDEEyDpeUgqBEPm0OiKWCloAQpzL65680C862ugVBSLKlE2KAGDumgAAMAAIAIKknhYlKJLASkZPKWpKDnzfFZhPYitSDQAAZDGhpeo8u1Qi4bjZ91FHM5fVi6XRc71iTC3jrWaEdf2pCP1xdBYxJE2BlM5kl3BSlrHZnBNmZJIGoiwkBQQAzEk00kYe7yOS8zU6T18eEarnvL9yckNPG3Pf0g1kNr9ppq02vnHPh3OP-yyauGya-eHFcmQsSvJu-_zRRKxjHSUL4qyJc_IoPjaZwIAVYfCnnt8fYhvvtqfCYjwNkI5d6_05EEqQXKUDxQVRxgA4Of3npGF3FZuQZTUDmqToAJCW70Vnl9kigQCwYSzTLsXXNzuU4K2Ymm3xJZLnkkkIYkwFwEokHMcsv9pqc7jtSuh2RMUAoEf_CPSLM89nw5okzSQXPD3mTh9OiHdnrCUNCx6LgBiHyxIOTyVq67Yc0K74_Z_7UwbYKtv2VDEk8mzbqg4GjnUqaTCVbtzp40kreA9sGu67-E0woyUzFnfTbjeNABwex82eH74QGK7c6SxlyeRSW0IWrpjsv9pzLN7ctb2K-eeBsVRs9FZMnReykukXTv4cZq4chDNfBVQDMWUNrWtpQODZ1pweHDr57QgCPW3im9-nEeTcSzw73v9rzpt3VeHv0nwo_GjLi4K-vCjoy4uCvrwo6MuLgr68KOjLi78BflaKjWwu5aMAAAAASUVORK5CYII=",
+        "reference_size": {
+          "width": 1280,
+          "height": 900
+        },
+        "reference_crop": {
+          "x": 488,
+          "y": 314,
+          "width": 106,
+          "height": 25
+        },
+        "click_offset": {
+          "x": 7,
+          "y": 12
+        },
+        "match_threshold": 0.95,
+        "ambiguity_margin": 0.05
+      },
+      "reason": null,
+      "policy": {
+        "irreversible": false,
+        "sensitive": true
+      },
+      "panel": {
+        "columns": [
+          "field",
+          "value"
+        ],
+        "key_column": "field",
+        "dx": -10,
+        "dy": -16,
+        "width": 190,
+        "height": 104,
+        "key_dx": -10,
+        "key_dy": -16,
+        "key_width": 110,
+        "key_click_dx": null
+      }
+    }
+  ]
+}

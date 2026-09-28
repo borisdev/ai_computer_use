@@ -43,6 +43,7 @@ from pathlib import Path
 from interfaceai.capability import Capability, ControlRef, StepVerb
 from interfaceai.decisions import ManualActionKind, supported_actions
 from interfaceai.screenshot2controls import (
+    ControlRole,
     LocatedControl,
     ResolveInput,
     ScreenOutput,
@@ -168,7 +169,9 @@ def check_capability(capability: Capability, store: ControlMapStore) -> list[str
     faults: list[str] = []
     target = capability.target
 
-    def check_ref(ref: ControlRef, where: str, verb: StepVerb | None) -> None:
+    def check_ref(
+        ref: ControlRef, where: str, verb: StepVerb | None, row_key: object = None
+    ) -> None:
         try:
             key = MapKey(app=target.app, tenant=target.tenant, screen=ref.screen)
         except ValueError as exc:
@@ -200,7 +203,22 @@ def check_capability(capability: Capability, store: ControlMapStore) -> list[str
 
         if verb is not None and verb in _VERB_ACTIONS:
             action = _VERB_ACTIONS[verb]
-            if action not in supported_actions(control.role):
+            if control.role is ControlRole.TABLE_CONTROL_PANEL:
+                # A panel is not clickable AT ITS ANCHOR -- that point means
+                # nothing. It is drillable through a row key, which is a
+                # different thing and gets its own check. Widening
+                # ACTIONS_BY_ROLE instead would permit the meaningless click.
+                if action is not ManualActionKind.CLICK or row_key is None:
+                    faults.append(
+                        f"{where}: {ref.control_id} is a panel -- it is read, or drilled "
+                        f"into with a row_key, never {action}ed directly"
+                    )
+                elif control.panel is None or control.panel.key_click_dx is None:
+                    faults.append(
+                        f"{where}: {ref.control_id} does not declare key_click_dx, so its "
+                        "rows are readable but not openable"
+                    )
+            elif action not in supported_actions(control.role):
                 faults.append(
                     f"{where}: {ref.control_id} is a {control.role}, which does not accept {action}"
                 )
@@ -210,7 +228,7 @@ def check_capability(capability: Capability, store: ControlMapStore) -> list[str
 
     for n, step in enumerate(capability.steps):
         if step.control is not None:
-            check_ref(step.control, f"step {n} ({step.verb})", step.verb)
+            check_ref(step.control, f"step {n} ({step.verb})", step.verb, step.row_key)
 
     return faults
 

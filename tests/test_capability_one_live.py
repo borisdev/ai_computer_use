@@ -25,6 +25,8 @@ from interfaceai.control_map_store import ControlMapStore
 from interfaceai.outcomes import (
     BusinessOutcome,
     BusinessOutcomeKind,
+    Failed,
+    NeedsOperator,
     Success,
     is_actionable_by_caller,
 )
@@ -33,7 +35,7 @@ from interfaceai.settings import get_settings
 from interfaceai.vision_llm import call_vision_llm
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTIFACT = ROOT / "artifacts" / "read_savings_balance.v2.approved.json"
+ARTIFACT = ROOT / "artifacts" / "read_savings_balance.v3.approved.json"
 
 pytestmark = pytest.mark.live
 
@@ -72,20 +74,66 @@ def test_the_assignments_own_example() -> None:
     assert isinstance(result, Success), result
     assert result.outputs["found_account_id"] == "13344"
     assert _money(result.outputs["balance"]) == parabank.DEMO_SAVINGS_BALANCE
+    assert result.outputs["account_type"] == "SAVINGS"
 
 
-@pytest.mark.parametrize("account_id", ["13122", "12345"])
-def test_the_same_artifact_answers_for_other_accounts(account_id: str) -> None:
+def test_a_CHECKING_account_violates_the_savings_checkpoint() -> None:
+    """The capability promises a SAVINGS balance. 12345 is CHECKING.
+
+    No database manipulation — this is seeded data. The drilldown reaches the
+    detail page by ARITHMETIC (row index from the panel read, y from the
+    measured 28px rhythm), reads `Account Type`, and the checkpoint refuses.
+
+    This is the check v2 could not make: it read the overview, which has no
+    type column, so it would have returned a checking balance and called it a
+    success.
+    """
+    checking = next(a for a in parabank.ACCOUNTS if a.type == "CHECKING")
+    result = _run(str(checking.id))
+    assert isinstance(result, Failed), result
+    assert result.expected == "SAVINGS"
+    assert result.observed == "CHECKING"
+    assert not is_actionable_by_caller(result)
+
+
+def test_a_one_row_table_refuses_the_drilldown_rather_than_guessing() -> None:
+    """A documented limit, pinned.
+
+    After `env break` only account 13344 remains, so the table has ONE row and
+    autocorrelation has no period to find. The drilldown needs a row pitch to
+    turn an index into a y, so it refuses — `NeedsOperator`, exit 1, no wrong
+    answer. Reading a one-row table still works; only opening it does not.
+    """
+    parabank.ParaBankAdmin().clean_db()
+    try:
+        result = _run(str(parabank.DEMO_SAVINGS_ACCOUNT_ID))
+    finally:
+        parabank.ParaBankAdmin().init_db()
+    assert isinstance(result, NeedsOperator), result
+    assert "rhythm" in result.why
+    assert not is_actionable_by_caller(result)
+
+
+@pytest.mark.parametrize("account_id", ["12678"])
+def test_the_same_artifact_answers_for_another_savings_account(account_id: str) -> None:
     """Parameterisation, against the seed fixtures.
 
-    12345 is deliberately included: its balance is NEGATIVE (-$2300.00), which
-    is where a naive money parse falls over.
+    ⚠️ Only SAVINGS accounts, and that is the capability's contract rather than
+    a convenience. v2 accepted any account because it read the overview, which
+    has no type column. v3 drills in and checkpoints `account_type == SAVINGS`,
+    so asking it for a checking account is a violated checkpoint — asserted
+    directly in the test above.
+
+    12678 is the other seeded savings account and its balance is **negative**
+    (-$100.00), which is where a naive money parse falls over.
     """
     expected = next(a for a in parabank.ACCOUNTS if str(a.id) == account_id)
+    assert expected.type == "SAVINGS"
     result = _run(account_id)
     assert isinstance(result, Success), result
     assert result.outputs["found_account_id"] == account_id
     assert _money(result.outputs["balance"]) == expected.balance
+    assert result.outputs["account_type"] == "SAVINGS"
 
 
 def test_an_account_that_does_not_exist_is_a_BUSINESS_OUTCOME() -> None:

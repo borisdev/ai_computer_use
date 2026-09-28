@@ -347,6 +347,10 @@ class PanelSpec(Contract):
     key_dx: int
     key_dy: int
     key_width: int = Field(gt=0)
+    # Where to click, horizontally, to DRILL INTO a row -- relative to the
+    # matched anchor. None means the panel is read-only: rows can be extracted
+    # but not opened, which is true of any table whose cells are not links.
+    key_click_dx: int | None = None
 
     @model_validator(mode="after")
     def _key_is_a_column(self) -> PanelSpec:

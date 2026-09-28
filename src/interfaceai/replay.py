@@ -79,7 +79,13 @@ from interfaceai.screenshot2controls import (
     VisionCall,
     locate_control,
 )
-from interfaceai.surface import ActionPolicy, NotAllowedError, OffLoop, PlaywrightSurface
+from interfaceai.surface import (
+    ActionPolicy,
+    NotAllowedError,
+    OffLoop,
+    PlaywrightSurface,
+    use_control,
+)
 from interfaceai.table import Offset, PanelNotFound, extract_panel
 
 _VERB_ACTION = {
@@ -430,6 +436,9 @@ def _step(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
     if step.verb is StepVerb.EXTRACT:
         return _extract(ctx, n, step, control, label)
 
+    if step.verb is StepVerb.CLICK and step.row_key is not None and control.panel is not None:
+        return _drill_into_row(ctx, n, step, control, label)
+
     # ENTER / CLICK / SELECT -- the only verbs with side effects.
     try:
         typed = _value(ctx, step.value)
@@ -485,8 +494,6 @@ def _step(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
             evidence_dir=ctx.evidence.dir,
             completed_steps=tuple(ctx.done),
         )
-
-    from interfaceai.surface import use_control
 
     try:
         acted = use_control(
@@ -652,6 +659,182 @@ def _invoke(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
     return None
 
 
+def _drill_into_row(
+    ctx: _Ctx, n: int, step: Step, control: LocatedControl, label: str
+) -> CapabilityResult | None:
+    """Open the row whose key matches, by ARITHMETIC rather than by grounding.
+
+    The defect this exists to avoid: grounding a row visually lands on the wrong
+    one 3 times in 4, silently -- `status: ready`, a unique landmark, ~1.0 at
+    replay, and a click on another customer's account
+    (`docs/issues/0009`). Here the index comes from the panel read and the y
+    from the measured row rhythm. No model is asked where the row is.
+
+    The panel read is the SAME cached one the extract steps use, so opening a
+    row after reading it costs no extra model call.
+    """
+    assert control.panel is not None and step.row_key is not None
+    spec = control.panel
+    if spec.key_click_dx is None:
+        return Failed(
+            step_index=n,
+            step=label,
+            expected=f"{control.id} to declare key_click_dx",
+            observed="the panel is read-only; its rows cannot be opened",
+            evidence_dir=ctx.evidence.dir,
+        )
+
+    found = _read_panel(ctx, n, step, control)
+    if not isinstance(found, tuple):
+        return found
+    read, wanted = found
+
+    if read.rhythm is None:
+        return NeedsOperator(
+            why=(
+                f"{control.id} has no measurable row rhythm, so a row position cannot "
+                "be computed; the panel can be read but not opened"
+            ),
+            step_index=n,
+            screen=step.control.screen if step.control else "?",
+            evidence_dir=ctx.evidence.dir,
+            completed_steps=tuple(ctx.done),
+        )
+
+    keys = [_normalise(getattr(r, spec.key_column)) for r in read.data.rows]
+    target = _normalise(str(wanted))
+    if target not in keys:
+        return not_found_outcome(
+            f"no row where {spec.key_column} is {wanted!r}; the table holds {len(keys)}",
+            len(ctx.done),
+            ctx.evidence.dir,
+        )
+    if keys.count(target) > 1:
+        return Failed(
+            step_index=n,
+            step=label,
+            expected=f"one row where {spec.key_column} is {wanted!r}",
+            observed=f"{keys.count(target)} rows matched",
+            evidence_dir=ctx.evidence.dir,
+        )
+
+    index = keys.index(target)
+    anchor = _find(ctx, control)
+    if anchor.status != "matched" or anchor.point is None:
+        return NeedsOperator(
+            why=f"lost the panel anchor before clicking: {anchor.status}",
+            step_index=n,
+            screen=step.control.screen if step.control else "?",
+            evidence_dir=ctx.evidence.dir,
+            completed_steps=tuple(ctx.done),
+        )
+    point = read.point_for_row(index, x=anchor.point.x + spec.key_click_dx)
+    ctx.evidence.event(
+        "row_resolved",
+        step=n,
+        control=control.id,
+        key=wanted,
+        index=index,
+        pitch=read.rhythm.pitch,
+        x=point.x,
+        y=point.y,
+    )
+
+    try:
+        acted = use_control(
+            ctx.surface,
+            point.x,
+            point.y,
+            ManualActionKind.CLICK,
+            None,
+            policy=ctx.policy,
+            risky=step.risky,
+            confirmed=ctx.confirm_risky,
+        )
+    except NotAllowedError as exc:
+        return NeedsOperator(
+            why=f"guardrail refused the drilldown at step {n}: {exc}",
+            step_index=n,
+            screen=step.control.screen if step.control else "?",
+            evidence_dir=ctx.evidence.dir,
+            completed_steps=tuple(ctx.done),
+        )
+
+    ctx.evidence.event("acted", step=n, control=control.id, action=str(acted.action), url=acted.url)
+    ctx.done.append(label)
+    # The page has changed, so any cached panel read is about the old screen.
+    ctx.panel_cache.clear()
+    ctx.surface.wait(1.0)
+    return None
+
+
+def _read_panel(
+    ctx: _Ctx, n: int, step: Step, control: LocatedControl
+) -> tuple[object, str | None] | CapabilityResult:
+    """One panel read, shared by extraction and drilldown, cached per row key.
+
+    Returns `(PanelRead, wanted)` or a result explaining why it could not.
+    Reading the table twice would double the cost and -- worse -- could return
+    two different readings of one screen, so a row can be extracted and then
+    opened on the strength of a single call.
+    """
+    assert control.panel is not None and step.row_key is not None
+    if ctx.vision is None or ctx.off is None:
+        return Failed(
+            step_index=n,
+            step=f"{step.verb} {control.id}",
+            expected="a reader for this panel",
+            observed="no vision callable supplied to replay()",
+            evidence_dir=ctx.evidence.dir,
+        )
+
+    spec = control.panel
+    wanted = _value(ctx, step.row_key)
+    cache_key = f"{control.id}:{wanted}"
+    cached = ctx.panel_cache.get(cache_key)
+    if cached is not None:
+        ctx.evidence.event("panel_reused", step=n, control=control.id)
+        return cached, wanted
+
+    # The response schema is built from the panel's own declared columns, so a
+    # panel that gains a column needs no code change.
+    row_model = create_model("PanelRow", **{c: (str, ...) for c in spec.columns})
+    table_model = create_model("PanelRows", rows=(list[row_model], ...))
+
+    try:
+        read = ctx.off.run(
+            extract_panel(
+                ctx.surface.screenshot(),
+                control.locator,
+                panel=Offset(dx=spec.dx, dy=spec.dy, width=spec.width, height=spec.height),
+                key_column=Offset(
+                    dx=spec.key_dx, dy=spec.key_dy, width=spec.key_width, height=spec.height
+                ),
+                response_model=table_model,
+                vision=ctx.vision,
+                instruction=(
+                    "This is a crop of a table from a banking application. Return every "
+                    f"row with these fields, exactly as printed: {', '.join(spec.columns)}. "
+                    "Do not invent rows."
+                ),
+            )
+        )
+    except PanelNotFound as exc:
+        return NeedsOperator(
+            why=f"panel {control.id}: {exc}",
+            step_index=n,
+            screen=step.control.screen if step.control else "?",
+            evidence_dir=ctx.evidence.dir,
+            completed_steps=tuple(ctx.done),
+        )
+
+    ctx.panel_cache[cache_key] = read
+    ctx.evidence.event(
+        "panel_read", step=n, control=control.id, rows=len(read.data.rows), wanted=wanted
+    )
+    return read, wanted
+
+
 def _extract_from_panel(
     ctx: _Ctx, n: int, step: Step, control: LocatedControl, label: str
 ) -> CapabilityResult | None:
@@ -665,16 +848,7 @@ def _extract_from_panel(
     `BusinessOutcome`, not a failure. "No such member" is a legitimate answer
     and conflating it with a crash is the mistake the brief's glossary names.
     """
-    assert control.panel is not None and step.row_key is not None and step.field is not None
-    if ctx.vision is None or ctx.off is None:
-        return Failed(
-            step_index=n,
-            step=label,
-            expected=f"a reader for {step.output}",
-            observed="no vision callable supplied to replay()",
-            evidence_dir=ctx.evidence.dir,
-        )
-
+    assert control.panel is not None and step.field is not None
     spec = control.panel
     if step.field not in spec.columns:
         return Failed(
@@ -685,53 +859,11 @@ def _extract_from_panel(
             evidence_dir=ctx.evidence.dir,
         )
 
-    # The response schema is built from the panel's own declared columns, so a
-    # panel that gains a column does not need code changed.
-    row_model = create_model("PanelRow", **{c: (str, ...) for c in spec.columns})
-    table_model = create_model("PanelRows", rows=(list[row_model], ...))
+    found = _read_panel(ctx, n, step, control)
+    if not isinstance(found, tuple):
+        return found
+    read, wanted = found
 
-    cache_key = f"{control.id}:{_value(ctx, step.row_key)}"
-    cached = ctx.panel_cache.get(cache_key)
-    if cached is not None:
-        read = cached
-        ctx.evidence.event("panel_reused", step=n, control=control.id)
-    else:
-        try:
-            read = ctx.off.run(
-                extract_panel(
-                    ctx.surface.screenshot(),
-                    control.locator,
-                    panel=Offset(dx=spec.dx, dy=spec.dy, width=spec.width, height=spec.height),
-                    key_column=Offset(
-                        dx=spec.key_dx, dy=spec.key_dy, width=spec.key_width, height=spec.height
-                    ),
-                    response_model=table_model,
-                    vision=ctx.vision,
-                    instruction=(
-                        "This is a crop of a table from a banking application. Return every "
-                        f"row with these fields, exactly as printed: {', '.join(spec.columns)}. "
-                        "Do not invent rows."
-                    ),
-                )
-            )
-        except PanelNotFound as exc:
-            return NeedsOperator(
-                why=f"panel {control.id}: {exc}",
-                step_index=n,
-                screen=step.control.screen if step.control else "?",
-                evidence_dir=ctx.evidence.dir,
-                completed_steps=tuple(ctx.done),
-            )
-        ctx.panel_cache[cache_key] = read
-        ctx.evidence.event(
-            "panel_read",
-            step=n,
-            control=control.id,
-            rows=len(read.data.rows),
-            wanted=_value(ctx, step.row_key),
-        )
-
-    wanted = _value(ctx, step.row_key)
     rows = read.data.rows
 
     matches = [
@@ -811,11 +943,17 @@ def _checkpoints(ctx: _Ctx) -> CapabilityResult:
 def _normalise(text: str) -> str:
     """Compare what a person would call the same value.
 
-    A screen prints `$1,231.10` where an artifact recorded `1231.10`. Comparing
-    raw strings would report a violated checkpoint for a correct read, which is
-    the loudest possible false alarm.
+    A screen prints `$1,231.10` where an artifact recorded `1231.10`, and a
+    field label printed `Account Type:` reads back as `Account Type`. Comparing
+    raw strings would report a violated checkpoint -- or a missing row -- for a
+    correct read, which is the loudest possible false alarm.
+
+    Deliberately narrow: currency symbols, thousands separators, and trailing
+    punctuation that is typography rather than content. It does NOT fold
+    whitespace inside the value or strip letters, because two labels that
+    differ by a word are two labels.
     """
-    return text.strip().lstrip("$").replace(",", "").rstrip(".").casefold()
+    return text.strip().lstrip("$").replace(",", "").rstrip(".:").strip().casefold()
 
 
 def not_found_outcome(detail: str, steps: int, evidence_dir: Path | None) -> BusinessOutcome:
