@@ -164,15 +164,60 @@ a new test pins the improvement so a regression is loud.
 
 ---
 
-### A5 · The controlled vocabulary is not in the prompt
-34 terms exist and type every artifact. `VOCABULARY.as_prompt_block()` is
-written and **nothing calls it**, so the 15/24/22 inventory variance it was built
-to fix has never been re-measured.
+### A5 · Constrain the RESPONSE SCHEMA, not just the prompt
 
-⚠️ Worth re-measuring *after* A4 regardless: the two-pass split may have moved
-that number on its own, since the read pass is no longer fighting the overlay.
+Reframed 2026-09-28 by Boris: *"every single LLM extraction step uses a pydantic
+model … and the values are typed and constrained by our controlled language
+wherever feasible."*
 
-**Cost:** ~1h to wire, plus a measurement run.
+**The first half is already structurally true.** `VisionCall` requires
+`response_model: type[T]` bound to `BaseModel`. Seven call sites, seven models,
+**no unstructured call path exists.**
+
+**The second half is half true.** Audited:
+
+| | field | |
+|---|---|---|
+| closed | `role` · `_Refinement.action` · `NextMove.kind` · `NextMove.action` | enums / Literals |
+| **free** | `NextMove.slot` · `Extracted.slot` | should be the 21 vocabulary qualifiers |
+| **free** | `NextMove.control_id` · `Extracted.control_id` | **the valid ids are known at call time** |
+| **free** | `NextMove.value_ref` | **the offered secret refs are known at call time** |
+| free | `label`, `description`, `ReadValue.text` | genuinely open — this is transcription |
+
+### The better fix: make it unrepresentable
+
+A prompt is advisory. A schema is **enforced by the provider** — Azure strict
+mode rejects an out-of-enum value before it reaches us. And we already do this:
+`extract_panel` builds its row schema from `PanelSpec.columns` with
+`create_model` at call time.
+
+**Two failures from today it would have made impossible:**
+
+- the model naming `13767_link`, an account that does not exist
+- the model naming an **ungrounded** control as an extraction source — patched
+  with a fail-closed check after the fact; a closed enum of READY ids removes
+  the need for the check entirely
+
+**Work:** a `SlotName` StrEnum generated from `VOCABULARY.qualifiers`; per-call
+`Literal` types for `control_id` and `value_ref` built with `create_model` from
+what is actually on the screen and actually bound. ~1.5h.
+
+⚠️ **Measure the naming churn first, separately.** The original A5 was about
+unlabelled icons getting prose names that differ between runs. That was measured
+with the read pass fighting the grid overlay, which A4 removed. Re-measuring is
+20 minutes — run discovery 3x on one screen, diff the id sets — and it may show
+the problem shrank or went.
+
+### One vocabulary across apps and tenants
+
+Cross-**tenant**: not even a question. Same vendor product, same concepts, and
+the artifact is already tenant-agnostic — only the control map is tenant-specific.
+
+Cross-**app**: the weaker claim. These 34 terms are retail banking; a back-office
+tool needs holds, memo posting, maker-checker. But *keep one until something
+concretely conflicts* is the right default, and it is the same argument as the
+vocabulary itself — **fixed beats perfect**, and drifting early gives you a
+synonym list.
 
 > **Decision:**
 
@@ -276,18 +321,51 @@ do anything the surface cannot express.
 
 `docs/failure-modes.md` has the full table.
 
-| condition | status |
+### C1 · Session timeout → earns the `recoverable` type — **ON THE PLAN**
+
+**The gap:** `Recoverable` is one of the brief's three result classes and we
+have **zero** instances. Every run ends one of four ways — succeeds, business
+outcome, fails, escalates. **Nothing ever recovers and continues.**
+
+**What it looks like here:** the session dies mid-capability. `overview.htm`
+starts serving the logged-out page — HTTP 200, right heading, empty table — and
+the next step's control is not there. Today that is a `NeedsOperator`: a human
+summoned to fix something the system could fix itself.
+
+**Composition already handed us the mechanism.** Capability 1 declares:
+
+```
+requires:  at_the_login_page      a precondition
+step 0:    invoke log_in v2       a capability that ESTABLISHES a session
+```
+
+So the rule falls out:
+
+> If a step fails **and** a precondition that was satisfied is now unsatisfied,
+> **and** the capability invoked something that establishes it — re-invoke that
+> **once**, re-check, retry the step. Fail again and escalate.
+
+Deterministic, bounded to one attempt, and **no LLM involved** — which the
+handoff bundle was explicit about (*"No hidden LLM recovery in deterministic
+replay"*).
+
+**Forcing it for a test:** navigate to `logout.htm` mid-run, or clear the
+session cookie. ParaBank hands us the lever.
+
+**~1.5h**, and it earns the type honestly instead of declaring one and hoping.
+
+> **Decision:** DO IT (Boris, 2026-09-28)
+
+### C2 · The rest, with no instance and no plan
+
+| condition | why we have none |
 |---|---|
-| **recoverable** | never observed one. **No type exists**, and a test asserts its absence so adding one is deliberate |
-| **permission denial** | ParaBank has no roles. ⚠️ Our policy refusing is a §3.4 *guardrail*; the app denying an operator is §3.3. A per-tenant ACL gives more of the first and none of the second |
+| **permission denial** | ParaBank has no roles. ⚠️ Our own `ActionPolicy` refusing is a §3.4 *guardrail*; the app denying an operator is §3.3. A per-tenant ACL gives more of the first and none of the second |
 | **unexpected dialog** | ParaBank raises none. Seam named (`page.on("dialog")`), cut rather than mocked |
-| **session timeout** | **reachable** — log out mid-flow. Untried. ~1h, and it would give `recoverable` its first real instance |
 | **slow / failed load** | plausibly reachable via `jms.htm` queue shutdown. **Unverified** — nothing has ever POSTed to it |
 | **`ambiguous`** | ours, not the brief's. Implemented, defensible, **zero instances** — `findings.md`'s cited example does not reproduce under the ambiguity margin |
 
 > **Decision:**
-
----
 
 ## D · Not attempted
 
@@ -308,9 +386,10 @@ do anything the surface cannot express.
    reading from 6/11 to 11/11
 2. **A3** — **agreed, on the plan.** Depth on §7's third-weighed criterion
    (sound locator and checkpoint strategy), achieved by removing a defect
-3. **C · session timeout** — one hour, and it earns the `recoverable` type
-   instead of guessing it
-4. **A5** — worth re-measuring after A4 before deciding it is still needed
+3. **C1 · session timeout** — **agreed, on the plan.** Earns the `recoverable`
+   type instead of guessing it, and composition already supplies the mechanism
+4. **A5** — reframed: constrain the SCHEMA, not the prompt. Measure the
+   naming churn first (20 min) before building the rest
 5. Everything else is defensible as-is and argued in REPORT §7
 
 > **Your ranking:**
