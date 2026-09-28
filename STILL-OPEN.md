@@ -245,30 +245,53 @@ propagate, the latter because a human resolves in the same live session.
 
 ---
 
-### A7 · Value-dependent risk: a transfer over $1,000 needs a person — **LATER**
+### A7a · ~~Value-dependent risk, the policy rule~~ — **DONE 2026-09-28**
 
-Boris, 2026-09-28. Today `irreversible` is a property of the **control** —
-"clicking Transfer moves money". This makes risk a property of the **control
-plus the value**: `amount > 1000` requires a human, and the threshold is
-per-tenant config.
+Boris's idea. Today `irreversible` is a property of the **control** — "clicking
+Transfer moves money". This is a property of the **control plus the value** —
+"moving $1,500 moves money somebody should look at". Two axes, and a bank needs
+both.
 
 **It is the gap the handoff bundle named:**
 
 > a click's risk depends on the operation. The reference gate covers basic
 > allowlists; **context-dependent risk** … remain integration work.
 
-**Three graded criteria at once:** §3.4 (risky actions handled conservatively),
-§3.6 (a real escalation with a real reason), §3.7 (Bank A's threshold is not
-Bank B's).
+**Classified where the slot is known, enforced where it always was.**
+`needs_human_confirmation(slot, value, above=…)` lives in `decisions.py` and
+reads the slot's TYPE from the vocabulary; `use_control` still refuses a risky
+action nobody confirmed. One place can act, as before.
 
-**And it is the more interesting half of human-in-the-loop.** Every
-`NeedsOperator` we produce today means *"I could not do this."* This one means
-**"I could, and I should not without you."**
+**Per tenant, which makes it §3.7 as well** — `INTERFACEAI_CONFIRM_MONEY_ABOVE=
+baseline=1000,feature=250`. One institution's routine transfer is another's
+exception, so it is configuration rather than a constant. An unlisted tenant
+has no threshold and falls back to control-level risk.
 
-**Cost:** the policy rule alone is ~1h and testable without a live run — a step
-binding `amount=1500` is refused, `amount=500` is not. Demonstrating it live
-needs **capability 2 (transfer funds)**: a multi-field form, a confirmation
-screen, and ParaBank's own minimum-balance validation error. ~3h more.
+Three decisions worth knowing, each with a test:
+
+- **An account number is not an amount.** `13344` parses as a number; the rule
+  reads the slot's *type*, and `account_id` is a STRING in the vocabulary
+  exactly so identifiers are never arithmetic.
+- **A large withdrawal counts.** Magnitude decides, not sign.
+- **A money value the system cannot read needs a person**, rather than passing.
+  A field we cannot read is not a field we may call small.
+
+20 tests, all offline.
+
+> **Decision:** DONE
+
+---
+
+### A7b · The live demo: capability 2, transfer funds — **LATER**
+
+The policy rule above is tested but has never stopped a real transfer, because
+there is no transfer capability. Building one needs a multi-field form, two
+dropdowns (our `SELECT` is `click + type`, which is crude for a `<select>`), a
+confirmation screen, and ParaBank's own minimum-balance validation error.
+
+**~3h with real unknowns**, and it is the most impressive thing left in the
+backlog: a $1,500 transfer stopping mid-flow and handing the session to a
+person is the assignment's story in one command.
 
 > **Decision:** later (Boris, 2026-09-28)
 

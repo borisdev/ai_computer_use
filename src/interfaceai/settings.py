@@ -8,6 +8,7 @@ bank's security review.
 from __future__ import annotations
 
 import os
+from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 
 from pydantic import Field, SecretStr
@@ -46,6 +47,14 @@ class Settings(BaseSettings):
     # os.environ is a silent AuthenticationError at the worst moment.
     anthropic_api_key: SecretStr | None = None
 
+    # --- Value-dependent risk (assignment 3.4, per tenant for 3.7) ---
+    #
+    # One institution's routine transfer is another's exception, so the
+    # threshold is tenant config rather than a constant. Read as
+    # "tenant=amount", comma separated; a tenant not listed has no threshold
+    # and falls back to control-level risk only.
+    interfaceai_confirm_money_above: str = "baseline=1000,feature=250"
+
     # --- Demo fixtures ---
     parabank_demo_username: str = "john"
     parabank_demo_password: SecretStr = Field(default=SecretStr("demo"))
@@ -63,6 +72,17 @@ class Settings(BaseSettings):
         if self.anthropic_api_key is not None:
             return self.anthropic_api_key.get_secret_value() or None
         return os.environ.get("ANTHROPIC_API_KEY") or None
+
+    def confirm_money_above(self, tenant: str) -> Decimal | None:
+        """The amount at or above which this tenant wants a person to look."""
+        for pair in self.interfaceai_confirm_money_above.split(","):
+            name, _, amount = pair.partition("=")
+            if name.strip() == tenant and amount.strip():
+                try:
+                    return Decimal(amount.strip())
+                except InvalidOperation:
+                    return None
+        return None
 
     @property
     def allowed_origins(self) -> tuple[str, ...]:

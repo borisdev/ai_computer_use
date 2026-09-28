@@ -18,6 +18,7 @@ import logging
 from collections.abc import Coroutine
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Literal, Protocol, Self, runtime_checkable
 
 from playwright.sync_api import Browser, Page, Playwright, sync_playwright
@@ -266,6 +267,18 @@ class ActionPolicy:
     # Text that must never be typed into a page unredacted, matched case-
     # insensitively against the value. Empty means no restriction.
     forbidden_values: frozenset[str] = frozenset()
+    # A money amount at or above this needs a person, whatever control it is
+    # typed into. None disables the rule.
+    #
+    # ⚠️ Risk that depends on a VALUE, not only on a control. `irreversible`
+    # already says "clicking Transfer moves money"; this says "moving $1,500
+    # moves money somebody should look at". Two different axes, and a bank
+    # needs both -- the handoff bundle named context-dependent risk as
+    # integration work left open.
+    #
+    # The threshold is PER TENANT: one institution's routine transfer is
+    # another's exception.
+    confirm_money_above: Decimal | None = None
 
     def check(self, action: ManualActionKind, value: str | None) -> None:
         if action not in self.allowed_actions:

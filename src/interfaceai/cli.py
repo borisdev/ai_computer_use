@@ -437,6 +437,7 @@ def replay_cmd(
         },
         vision=vision_llm.call_vision_llm,
         allowed_origins=settings.allowed_origins,
+        confirm_money_above=settings.confirm_money_above(loaded.target.tenant),
         confirm_risky=confirm_risky,
         headless=headless,
         operator=handoff.TerminalOperator() if operator else None,

@@ -15,11 +15,13 @@ Grounded click points from screenshot2controls replace them.
 
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from interfaceai.screenshot2controls import ControlRole, LocatedControl, ScreenOutput
+from interfaceai.vocabulary import VOCABULARY, SlotType
 
 
 class ManualActionKind(StrEnum):
@@ -108,3 +110,42 @@ def validate_decision(
         raise ValueError(f"{control.id} is irreversible and this action was not confirmed")
 
     return control
+
+
+def needs_human_confirmation(
+    slot: str | None, value: str | None, *, above: Decimal | None
+) -> str | None:
+    """Why this step needs a person, or None if it does not.
+
+    Risk that depends on the VALUE rather than on the control. `ControlPolicy.
+    irreversible` covers "this control moves money"; this covers "this amount
+    is one a person should see". Both end at the same enforcement point --
+    `use_control` refuses a risky action that nobody confirmed -- so there is
+    still exactly one place that can act.
+
+    Only MONEY slots are considered, read from the controlled vocabulary. An
+    account number that happens to parse as a number is not an amount, and
+    `account_id` is deliberately a STRING there for the same reason.
+
+    An unparseable money value returns a reason rather than passing. A field
+    the system cannot read is not a field it may decide is small.
+    """
+    if above is None or slot is None or value is None:
+        return None
+    if not VOCABULARY.has(slot) or VOCABULARY.qualifier(slot).type is not SlotType.MONEY:
+        return None
+
+    cleaned = value.strip().replace("$", "").replace(",", "").replace(" ", "")
+    try:
+        amount = Decimal(cleaned)
+    except InvalidOperation:
+        return (
+            f"{slot}={value!r} is a money field this system cannot read, so it "
+            "cannot be judged against the confirmation threshold"
+        )
+    if abs(amount) >= above:
+        return (
+            f"{slot} is {amount}, at or above the {above} threshold for this tenant; "
+            "a person has to confirm it"
+        )
+    return None

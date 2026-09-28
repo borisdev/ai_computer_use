@@ -39,6 +39,7 @@ from __future__ import annotations
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
+from decimal import Decimal
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -56,7 +57,12 @@ from interfaceai.capability import (
     validate_invocations,
 )
 from interfaceai.control_map_store import ControlMapMiss, ControlMapStore, MapKey, check_capability
-from interfaceai.decisions import AgentDecision, ManualActionKind, validate_decision
+from interfaceai.decisions import (
+    AgentDecision,
+    ManualActionKind,
+    needs_human_confirmation,
+    validate_decision,
+)
 from interfaceai.evidence import EvidenceWriter
 from interfaceai.handoff import (
     InterventionRequest,
@@ -140,6 +146,7 @@ def replay(
     vision: VisionCall | None = None,
     allowed_origins: tuple[str, ...] = (),
     forbidden_values: frozenset[str] = frozenset(),
+    confirm_money_above: Decimal | None = None,
     confirm_risky: bool = False,
     headless: bool = True,
     operator: Operator | None = None,
@@ -199,7 +206,10 @@ def replay(
             evidence=evidence,
             off=off,
             vision=vision,
-            policy=ActionPolicy(forbidden_values=forbidden_values),
+            policy=ActionPolicy(
+                forbidden_values=forbidden_values,
+                confirm_money_above=confirm_money_above,
+            ),
             confirm_risky=confirm_risky,
             outputs={},
             done=[],
@@ -448,6 +458,20 @@ def _step(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
             why=str(exc), step_index=n, screen=step.control.screen, evidence_dir=ctx.evidence.dir
         )
 
+    # Risk that depends on the VALUE, not only on the control. Classified here
+    # because the slot is known here; enforced at `use_control` like any other
+    # risky step, so there is still one place that can act.
+    value_risk = needs_human_confirmation(step.slot, typed, above=ctx.policy.confirm_money_above)
+    risky = step.risky or value_risk is not None
+    if risky and not ctx.confirm_risky:
+        return NeedsOperator(
+            why=value_risk or f"step {n} is marked irreversible and was not confirmed: {step.note}",
+            step_index=n,
+            screen=step.control.screen,
+            evidence_dir=ctx.evidence.dir,
+            completed_steps=tuple(ctx.done),
+        )
+
     try:
         validate_decision(
             AgentDecision(
@@ -476,15 +500,6 @@ def _step(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
             completed_steps=tuple(ctx.done),
         )
 
-    if step.risky and not ctx.confirm_risky:
-        return NeedsOperator(
-            why=f"step {n} is marked irreversible and was not confirmed: {step.note}",
-            step_index=n,
-            screen=step.control.screen,
-            evidence_dir=ctx.evidence.dir,
-            completed_steps=tuple(ctx.done),
-        )
-
     found = _find(ctx, control)
     if found.status != "matched" or found.point is None:
         return NeedsOperator(
@@ -504,7 +519,7 @@ def _step(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
             _VERB_ACTION[step.verb],
             typed,
             policy=ctx.policy,
-            risky=step.risky,
+            risky=risky,
             confirmed=ctx.confirm_risky,
         )
     except NotAllowedError as exc:
