@@ -71,6 +71,10 @@ ACCOUNTS = LocatedControl(
         key_dy=28,
         key_width=40,
         key_click_dx=18,
+        # Measured by autocorrelation on the seeded table: 28px at 0.899,
+        # next candidate 0.385. Used ONLY when a shrunken table has too few
+        # rows for a live measurement to find a period.
+        row_pitch=28,
     ),
 )
 ACCOUNTS_ANCHOR = (CropBox(x=486, y=316, width=90, height=28), ClickPoint(x=490, y=320))
@@ -102,6 +106,8 @@ DETAILS = LocatedControl(
         key_dx=-10,
         key_dy=-16,
         key_width=110,
+        # Measured from the DOM oracle: rows at y 316, 339, 362, 385.
+        row_pitch=23,
     ),
 )
 DETAILS_ANCHOR = (CropBox(x=488, y=314, width=106, height=25), ClickPoint(x=495, y=326))

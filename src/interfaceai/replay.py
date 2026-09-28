@@ -73,6 +73,7 @@ from interfaceai.outcomes import (
     Success,
 )
 from interfaceai.screenshot2controls import (
+    ClickPoint,
     CropBox,
     LocatedControl,
     ResolveInput,
@@ -689,16 +690,25 @@ def _drill_into_row(
         return found
     read, wanted = found
 
-    if read.rhythm is None:
+    pitch = read.rhythm.pitch if read.rhythm is not None else spec.row_pitch
+    if pitch is None:
         return NeedsOperator(
             why=(
-                f"{control.id} has no measurable row rhythm, so a row position cannot "
-                "be computed; the panel can be read but not opened"
+                f"{control.id} has no measurable row rhythm and declares no recorded "
+                "row_pitch, so a row position cannot be computed"
             ),
             step_index=n,
             screen=step.control.screen if step.control else "?",
             evidence_dir=ctx.evidence.dir,
             completed_steps=tuple(ctx.done),
+        )
+    if read.rhythm is None:
+        # A table that has shrunk to one row has no period to find. The
+        # recorded pitch is a measurement, not a guess, and here it only
+        # supplies the half-row centring -- index 0 sits at first_row_y
+        # regardless.
+        ctx.evidence.event(
+            "pitch_from_record", step=n, control=control.id, pitch=pitch, rows=len(read.data.rows)
         )
 
     keys = [_normalise(getattr(r, spec.key_column)) for r in read.data.rows]
@@ -728,14 +738,15 @@ def _drill_into_row(
             evidence_dir=ctx.evidence.dir,
             completed_steps=tuple(ctx.done),
         )
-    point = read.point_for_row(index, x=anchor.point.x + spec.key_click_dx)
+    y = read.first_row_y + index * pitch + pitch // 2
+    point = ClickPoint(x=anchor.point.x + spec.key_click_dx, y=y)
     ctx.evidence.event(
         "row_resolved",
         step=n,
         control=control.id,
         key=wanted,
         index=index,
-        pitch=read.rhythm.pitch,
+        pitch=pitch,
         x=point.x,
         y=point.y,
     )

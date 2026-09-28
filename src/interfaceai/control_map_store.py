@@ -223,6 +223,52 @@ def check_capability(capability: Capability, store: ControlMapStore) -> list[str
                     f"{where}: {ref.control_id} is a {control.role}, which does not accept {action}"
                 )
 
+    def check_not_inside_a_panel(ref: ControlRef, where: str) -> None:
+        """Refuse a direct click on a control that lives inside a panel's region.
+
+        ⚠️ This is what makes `docs/issues/0009` unreachable rather than merely
+        unused. Grounding a table row lands on the WRONG row 10 times in 11 --
+        re-measured 2026-09-28 against the DOM oracle, and A4's read/locate
+        split did not help because the defect is in placement, not reading.
+
+        Those controls are still in the map, still `ready`, and still wrong:
+        `13344_link` is grounded at (500,523), which is inside 13011's row. A
+        capability naming it would open another customer's account and report
+        success.
+
+        The test is geometric, not a guess about names: if the control's click
+        point falls inside a TABLE_CONTROL_PANEL's region on the same screen,
+        it is a row and must be reached with a `row_key` instead.
+        """
+        try:
+            key = MapKey(app=target.app, tenant=target.tenant, screen=ref.screen)
+            control_map = store.get(key)
+            control = store.control(key, ref.control_id)
+        except (ValueError, ControlMapMiss):
+            return  # already reported by check_ref
+        if control.click_point is None or control.role is ControlRole.TABLE_CONTROL_PANEL:
+            return
+        for panel in control_map.controls:
+            if panel.role is not ControlRole.TABLE_CONTROL_PANEL or panel.panel is None:
+                continue
+            if panel.click_point is None:
+                continue
+            spec, origin = panel.panel, panel.click_point
+            x0, y0 = origin.x + spec.dx, origin.y + spec.dy
+            inside_x = x0 <= control.click_point.x <= x0 + spec.width
+            inside_y = y0 <= control.click_point.y <= y0 + spec.height
+            if inside_x and inside_y:
+                faults.append(
+                    f"{where}: {ref.control_id} sits inside {panel.id}'s region, so it is a "
+                    f"ROW. Grounded rows land on the wrong record 10 times in 11 "
+                    f"(docs/issues/0009) -- reach it with a row_key on {panel.id} instead"
+                )
+                return
+
+    for n, step in enumerate(capability.steps):
+        if step.verb is StepVerb.CLICK and step.control is not None and step.row_key is None:
+            check_not_inside_a_panel(step.control, f"step {n} (click)")
+
     for precondition in capability.requires:
         check_ref(precondition.control, f"precondition {precondition.name!r}", None)
 

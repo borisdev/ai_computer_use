@@ -1,14 +1,27 @@
 # 0009 — A grounded account link points at the **wrong row**, and reports `ready`
 
-> ⚠️ **Still unfixed, and now unreachable.** Grounding a row visually still
-> lands on the wrong one 3 times in 4. As of 2026-09-28 nothing does it:
-> `read_savings_balance` v3 drills into a row by INDEX from a panel read plus
-> the measured 28px rhythm, never by grounding. The defect has no caller.
+> ⚠️ **Still unfixed. Re-measured 2026-09-28 and it is WORSE, then made
+> unreachable by a guard.**
 >
-> A `check_capability` rule enforces that — a panel may be drilled with a
-> `row_key`, never clicked at its anchor — so a future capability cannot
-> quietly reintroduce the path. Repairing the grounding itself is still open,
-> and still has no user.
+> ```
+> before A4   1/4  of the grounded account links sat on their own row
+> after  A4   1/11 -- because now all ELEVEN ground, and ten are wrong
+> ```
+>
+> A4's read/locate split fixed the *reading* (11/11 account ids correct) and
+> did nothing for the *placement*, which is where this defect lives.
+> `13344_link` is `ready`, in the map, and grounded at (500,523) — inside
+> **13011's** row.
+>
+> ⛔ **An earlier version of this note claimed the defect was "unreachable"
+> because no capability used it. That was wrong**: nothing prevented a new
+> capability from naming `13344_link`, and it would have opened another
+> customer's account and reported success.
+>
+> It is unreachable *now*, by a geometric check rather than by convention:
+> `check_capability` refuses a direct click on any control whose click point
+> falls inside a `TABLE_CONTROL_PANEL`'s region, and names the `row_key` route
+> instead. Repairing the grounding itself remains open and still has no user.
 
 > **Severity: highest open.** Every other issue in this repo fails loudly. This
 > one produces a confident click on a different customer's record and reports

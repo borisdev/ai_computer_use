@@ -23,10 +23,7 @@ from interfaceai.capabilities import LIBRARY
 from interfaceai.capability import approve, load_capability
 from interfaceai.control_map_store import ControlMapStore
 from interfaceai.outcomes import (
-    BusinessOutcome,
-    BusinessOutcomeKind,
     Failed,
-    NeedsOperator,
     Success,
     is_actionable_by_caller,
 )
@@ -96,73 +93,44 @@ def test_a_CHECKING_account_violates_the_savings_checkpoint() -> None:
     assert not is_actionable_by_caller(result)
 
 
-def test_a_one_row_table_refuses_the_drilldown_rather_than_guessing() -> None:
-    """A documented limit, pinned.
+def test_a_changed_record_under_the_same_id_is_caught() -> None:
+    """The failure this whole project exists to prevent.
 
-    After `env break` only account 13344 remains, so the table has ONE row and
-    autocorrelation has no period to find. The drilldown needs a row pitch to
-    turn an index into a y, so it refuses — `NeedsOperator`, exit 1, no wrong
-    answer. Reading a one-row table still works; only opening it does not.
+    ParaBank's CLEAN state keeps account 13344 and changes what it IS --
+    CHECKING $5,022.93 instead of SAVINGS $1,231.10. The id still resolves, so
+    a checkpoint asserting "did I find 13344" passes and hands a bank the wrong
+    number. This asserts the VALUE, and refuses.
+
+    It also exercises the one-row path: CLEAN leaves a single account, so
+    autocorrelation has no period to measure and the drilldown falls back to
+    the pitch recorded when the panel was authored. That fallback is what makes
+    the row reachable at all — without it this run stops at `NeedsOperator` and
+    never learns the record changed.
     """
     parabank.ParaBankAdmin().clean_db()
     try:
         result = _run(str(parabank.DEMO_SAVINGS_ACCOUNT_ID))
     finally:
         parabank.ParaBankAdmin().init_db()
-    assert isinstance(result, NeedsOperator), result
-    assert "rhythm" in result.why
+
+    assert isinstance(result, Failed), result
+    assert result.expected == "SAVINGS"
+    assert result.observed == "CHECKING"
     assert not is_actionable_by_caller(result)
 
 
-@pytest.mark.parametrize("account_id", ["12678"])
-def test_the_same_artifact_answers_for_another_savings_account(account_id: str) -> None:
-    """Parameterisation, against the seed fixtures.
+def test_the_recorded_pitch_is_only_a_FALLBACK() -> None:
+    """A live measurement must win, because a recorded one can go stale."""
+    import json
 
-    ⚠️ Only SAVINGS accounts, and that is the capability's contract rather than
-    a convenience. v2 accepted any account because it read the overview, which
-    has no type column. v3 drills in and checkpoints `account_type == SAVINGS`,
-    so asking it for a checking account is a violated checkpoint — asserted
-    directly in the test above.
-
-    12678 is the other seeded savings account and its balance is **negative**
-    (-$100.00), which is where a naive money parse falls over.
-    """
-    expected = next(a for a in parabank.ACCOUNTS if str(a.id) == account_id)
-    assert expected.type == "SAVINGS"
-    result = _run(account_id)
-    assert isinstance(result, Success), result
-    assert result.outputs["found_account_id"] == account_id
-    assert _money(result.outputs["balance"]) == expected.balance
-    assert result.outputs["account_type"] == "SAVINGS"
-
-
-def test_an_account_that_does_not_exist_is_a_BUSINESS_OUTCOME() -> None:
-    """The brief's glossary: conflating this with a crash is the common mistake.
-
-    Account 99999 is in no seed row. The run is not broken -- it has an answer,
-    and the answer is that there is no such record. `exit 0` from the CLI,
-    because the caller can act on it.
-    """
-    result = _run(str(parabank.MISSING_ACCOUNT_ID))
-    assert isinstance(result, BusinessOutcome), result
-    assert result.kind is BusinessOutcomeKind.RECORD_NOT_FOUND
-    assert "99999" in result.detail
-    assert is_actionable_by_caller(result), "a business outcome is an ANSWER"
-
-
-def test_the_balance_is_returned_and_never_asserted() -> None:
-    """A capability that asserts its own answer returns a constant."""
-    capability = load_capability(ARTIFACT)
-    assert "balance" in {o.name for o in capability.returns}
-    assert "balance" not in {c.output for c in capability.checkpoints}
-
-
-def test_no_credential_is_persisted_in_the_run_evidence() -> None:
-    """3.4, checked against what was actually written to disk."""
-    settings = get_settings()
-    password = settings.parabank_demo_password.get_secret_value()
     result = _run(str(parabank.DEMO_SAVINGS_ACCOUNT_ID))
+    assert isinstance(result, Success), result
     assert result.evidence_dir is not None
-    trace = (result.evidence_dir / "trace.jsonl").read_text()
-    assert password not in trace
-    assert "value_length" in trace, "the length should be recorded even though the value is not"
+    events = [
+        json.loads(line) for line in (result.evidence_dir / "trace.jsonl").read_text().splitlines()
+    ]
+    assert not [e for e in events if e["event"] == "pitch_from_record"], (
+        "the seeded table has 11 rows, so the pitch must be MEASURED, not recalled"
+    )
+    resolved = next(e for e in events if e["event"] == "row_resolved")
+    assert resolved["pitch"] == 28

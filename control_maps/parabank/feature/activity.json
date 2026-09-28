@@ -54,7 +54,8 @@
         "key_dx": -10,
         "key_dy": -16,
         "key_width": 110,
-        "key_click_dx": null
+        "key_click_dx": null,
+        "row_pitch": 23
       }
     }
   ]

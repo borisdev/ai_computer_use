@@ -351,6 +351,12 @@ class PanelSpec(Contract):
     # matched anchor. None means the panel is read-only: rows can be extracted
     # but not opened, which is true of any table whose cells are not links.
     key_click_dx: int | None = None
+    # The row pitch MEASURED when the panel was recorded. Autocorrelation needs
+    # several periods, so a table that has shrunk to one row has none to find --
+    # and refusing to open the only row left is a poor answer when we already
+    # know how tall a row is. Used ONLY when measurement fails; a live
+    # measurement always wins, because the recorded value can go stale.
+    row_pitch: int | None = None
 
     @model_validator(mode="after")
     def _key_is_a_column(self) -> PanelSpec:

@@ -37,6 +37,7 @@ from interfaceai.screenshot2controls import (
     CropBox,
     ImageSize,
     LocatedControl,
+    PanelSpec,
     ScreenInput,
     ScreenOutput,
     _make_locator,
@@ -272,3 +273,51 @@ def test_capability_one_does_not_check_out_against_an_empty_store(
     faults = check_capability(capabilities.READ_SAVINGS_BALANCE, store)
     assert faults, "an empty store must not read as a clean bill of health"
     assert all("nothing recorded" in f for f in faults)
+
+
+def test_clicking_a_control_INSIDE_a_panel_is_refused(store: ControlMapStore) -> None:
+    """Makes `docs/issues/0009` unreachable rather than merely unused.
+
+    Grounding a table row lands on the wrong record 10 times in 11 -- measured
+    against the DOM oracle. Those controls are still in the map and still
+    `ready`, so nothing stopped a new capability from naming one. This does:
+    the test is geometric, not a guess about names.
+    """
+    panel = LocatedControl(
+        id="rows_panel",
+        label="Account",
+        role=ControlRole.TABLE_CONTROL_PANEL,
+        description="a table",
+        status="ready",
+        click_point=ClickPoint(x=100, y=100),
+        locator=_control("anchor", ControlRole.LINK, (1280, 900)).locator,
+        panel=PanelSpec(
+            columns=("account_id", "balance"),
+            key_column="account_id",
+            dx=0,
+            dy=0,
+            width=200,
+            height=300,
+            key_dx=0,
+            key_dy=0,
+            key_width=40,
+            key_click_dx=10,
+        ),
+    )
+    row = _control("13344_link", ControlRole.LINK, (1280, 900))
+    row = row.model_copy(update={"click_point": ClickPoint(x=150, y=250)})  # inside the panel
+    key = MapKey(app="parabank", tenant="baseline", screen="overview")
+    store.put(key, _map(panel, row))
+
+    naive = _probe(
+        steps=(
+            Step(
+                verb=StepVerb.CLICK,
+                control=ControlRef(screen="overview", control_id="13344_link"),
+                note="the naive way",
+            ),
+            _probe().steps[0],
+        )
+    )
+    faults = check_capability(naive, store)
+    assert any("it is a ROW" in f for f in faults), faults

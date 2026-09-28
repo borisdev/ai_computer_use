@@ -251,7 +251,8 @@ asserted — not yet measured.
 | ParaBank screens | 29 (9 public, 10 authenticated, 10 POST-only) |
 | Account numbers read, **gridded** screenshot | 6/11 live, 8-9/11 replicated (issue 0008) |
 | Account numbers read, **clean** screenshot | **11/11**, three runs (issue 0008) |
-| Account links grounded on their OWN row | **1/4** of those marked `ready` (issue 0009) |
+| Account links grounded on their OWN row | 1/4 before A4; **1/11 after** — A4 fixed reading, not placement (issue 0009) |
+| Row reached by INDEX instead of grounding | **11/11** — panel read + measured pitch (capability 1 v3) |
 | Discovery run, cold (maps unbuilt) | 2 screens mapped, ~100 calls |
 | Discovery run, warm (maps cached) | 3 actions, **4 calls, 15s** |
 | Landmark score as a form fills | 0.99999 -> 0.9839 -> **0.8365** (below threshold) |

@@ -1122,7 +1122,8 @@
         "key_dx": 0,
         "key_dy": 28,
         "key_width": 40,
-        "key_click_dx": 18
+        "key_click_dx": 18,
+        "row_pitch": 28
       }
     }
   ]
