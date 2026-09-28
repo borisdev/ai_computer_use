@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Drill into ALL 11 accounts and check each opens ITS OWN detail page.
 
 The claim this exists to back: capability 1 reaches a table row by INDEX and
