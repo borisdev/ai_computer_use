@@ -35,6 +35,7 @@ from interfaceai.capability import (
     dump_capability,
     load_capability,
     validate_capability,
+    validate_invocations,
 )
 from interfaceai.vocabulary import VOCABULARY, VOCABULARY_VERSION
 
@@ -409,3 +410,119 @@ def test_no_committed_artifact_carries_a_sensitive_value() -> None:
                 seen += 1
                 assert step["value"]["kind"] == "secret", f"{path.name}: {step['slot']}"
     assert seen, "no sensitive slot appears in any artifact, so this asserted nothing"
+
+
+# --- composition: a capability that calls another --------------------------
+
+
+def _library(**extra: Capability) -> dict[str, Capability]:
+    base = {c.name: approve(c, "test") for c in capabilities.REGISTRY}
+    base.update({k: v for k, v in extra.items()})
+    return base
+
+
+def test_capability_one_invokes_log_in_rather_than_copying_it() -> None:
+    """The point of a vocabulary: a small canonical set composes."""
+    invokes = [s for s in capabilities.READ_SAVINGS_BALANCE.steps if s.verb is StepVerb.INVOKE]
+    assert len(invokes) == 1
+    assert invokes[0].invokes == "log_in"
+    assert invokes[0].invokes_version == capabilities.LOG_IN.version
+
+
+def test_every_authored_invocation_resolves() -> None:
+    library = _library()
+    for c in capabilities.REGISTRY:
+        validate_invocations(approve(c, "test"), library)
+
+
+def test_an_invoke_pins_the_version_and_refuses_a_drifted_library() -> None:
+    """A capability that silently picked up a new dependency is not deterministic."""
+    newer = capabilities.LOG_IN.model_copy(update={"version": 99})
+    with pytest.raises(CapabilityError, match="pinned to v"):
+        validate_invocations(
+            approve(capabilities.READ_SAVINGS_BALANCE, "test"), _library(log_in=approve(newer, "t"))
+        )
+
+
+def test_an_unapproved_capability_cannot_be_smuggled_in_by_an_approved_one() -> None:
+    library = _library()
+    library["log_in"] = capabilities.LOG_IN  # draft
+    with pytest.raises(CapabilityError, match="is draft"):
+        validate_invocations(approve(capabilities.READ_SAVINGS_BALANCE, "test"), library)
+
+
+def test_a_missing_capability_is_named_along_with_what_is_available() -> None:
+    with pytest.raises(CapabilityError, match="no such capability"):
+        validate_invocations(approve(capabilities.READ_SAVINGS_BALANCE, "test"), {})
+
+
+def test_self_invocation_is_refused_at_authoring_time() -> None:
+    broken = _capability(
+        steps=(
+            Step(verb=StepVerb.INVOKE, invokes="probe", invokes_version=1, note="itself"),
+            _capability().steps[0],
+        )
+    )
+    with pytest.raises(CapabilityError, match="cannot invoke itself"):
+        validate_capability(broken)
+
+
+def test_a_cycle_between_two_capabilities_is_refused() -> None:
+    """Detected on the recursion, not by inspecting one artifact in isolation.
+
+    Parameter-free on purpose: with a required param the bind check fires one
+    level earlier and the test would pass for the wrong reason.
+    """
+
+    def shell(name: str, calls: str) -> Capability:
+        return approve(
+            _capability(
+                name=name,
+                params=(),
+                returns=(),
+                checkpoints=(),
+                steps=(
+                    Step(
+                        verb=StepVerb.INVOKE,
+                        invokes=calls,
+                        invokes_version=1,
+                        note=f"{name} -> {calls}",
+                    ),
+                    Step(verb=StepVerb.OBSERVE, note="evidence"),
+                ),
+            ),
+            "test",
+        )
+
+    alpha, beta = shell("alpha", "beta"), shell("beta", "alpha")
+    with pytest.raises(CapabilityError, match="cycle"):
+        validate_invocations(alpha, {"alpha": alpha, "beta": beta})
+
+
+def test_an_invoke_must_bind_the_required_parameters() -> None:
+    child = approve(_capability(name="child"), "test")
+    parent = approve(
+        _capability(
+            name="parent",
+            returns=(),
+            checkpoints=(),
+            steps=(Step(verb=StepVerb.INVOKE, invokes="child", invokes_version=1, note="no bind"),),
+            params=(),
+        ),
+        "test",
+    )
+    with pytest.raises(CapabilityError, match="does not bind"):
+        validate_invocations(parent, {"parent": parent, "child": child})
+
+
+def test_a_capability_that_returns_nothing_needs_no_checkpoint() -> None:
+    """`log_in` is exactly this: reaching the authenticated nav is the condition,
+    and its final wait_for already asserts it."""
+    assert capabilities.LOG_IN.returns == ()
+    assert capabilities.LOG_IN.checkpoints == ()
+    validate_capability(capabilities.LOG_IN)
+
+
+def test_a_capability_that_RETURNS_something_must_check_it() -> None:
+    with pytest.raises(ValueError, match="checkpoints nothing"):
+        _capability(checkpoints=())

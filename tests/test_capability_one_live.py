@@ -19,7 +19,8 @@ from pathlib import Path
 import pytest
 
 from interfaceai import parabank
-from interfaceai.capability import load_capability
+from interfaceai.capabilities import LIBRARY
+from interfaceai.capability import approve, load_capability
 from interfaceai.control_map_store import ControlMapStore
 from interfaceai.outcomes import (
     BusinessOutcome,
@@ -50,6 +51,8 @@ def _run(account_id: str):
         },
         vision=call_vision_llm,
         allowed_origins=settings.allowed_origins,
+        # Capability 1 invokes `log_in`, so the library must hold it approved.
+        library={n: approve(c, "test") for n, c in LIBRARY.items()},
     )
 
 

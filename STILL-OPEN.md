@@ -45,92 +45,45 @@ A3. Recorded in `capabilities.py`.
 
 ---
 
-### A6 · Capabilities do not compose
-Surfaced by A1. `StepVerb` has no `invoke`, so capability 1 carries its own
-login steps rather than calling `log_in`. The brief's goal is *"log in as john
-**and** read the balance"*, so self-contained matches the ask — but a bank with
-twenty capabilities wants one `log_in` they all call.
+### A6 · ~~Capabilities do not compose~~ — **DONE 2026-09-28**
 
-**Cost:** ~2h — an `INVOKE` verb, and a rule for what a nested failure does to
-the parent's outcome.
-
-> **Decision:**
-
----
-
-### A2 · Extraction cannot point at data
-[issue 0010](docs/issues/0010-extraction-cannot-point-at-data.md)
+Boris: *"they should be composable. that is the point of the language. a small
+canonical subset can express lots, efficiently."* Correct — a capability that
+cannot call another is a macro, not a language.
 
 ```
-capability.py      EXTRACT requires a ControlRef
-control refs come from the inventory
-the coarse prompt  "Ignore static text, images and layout."
+read_savings_balance
+  step 0  invoke log_in v2      <-- written once, called by anything needing a session
+  step 1  wait_for accounts_table_panel
+  ...
+SUCCESS read_savings_balance in 9 steps   (its 5 + log_in's 4)
 ```
 
-A balance *is* static text, so it has no id, so nothing can extract it. This is
-why the model named `13344_link` (a link) as an extraction source — it was the
-only nearby thing with an id.
+`StepVerb.INVOKE` + `Step.bind`. The invoked capability runs **in the same
+browser session** — not a subprocess, a section of the same run, in the same
+evidence file. Its preconditions are checked, because that is what they are for.
 
-**Fix:** a region locator. A landmark + offset gives a *point* you click; a
-landmark + offset + **size** gives a *region* you read. Same matcher, same
-refusals. `locate_control` already returns `matched_crop`.
+Five refusals, each with a test: a missing capability, a **version drift**
+(the step pins the version, so a newer library entry is an error rather than a
+silent substitution), an **unapproved child** (an approved capability cannot
+smuggle one in), self-invocation, and a cycle.
 
-**Cost:** ~2h, plus an ADR amendment (it changes the artifact schema).
+Nested results map deliberately: `Success` merges its outputs and continues;
+`BusinessOutcome` **propagates unchanged**, because "no such member" is the
+caller's answer however deep it was found; `Failed` and `NeedsOperator`
+propagate, the latter because a human resolves in the same live session.
 
-> **Decision:**
+**Two things it forced, both improvements:**
 
----
-
-### A3 · Grid cell assignment is broken, 3 times in 4
-[issue 0009](docs/issues/0009-wrong-row-grounding-is-silent.md) — **highest
-severity open**, because it is *silent*.
-
-```
-12345_link   grounded (500,361)   INSIDE its own link      ok
-12456_link   grounded (500,359)   that is 12345's row      WRONG
-13122_link   grounded (511,466)   that is 12789's row      WRONG
-13001_link   grounded (500,386)   no such account          WRONG
-```
-
-`status: ready`, unique landmark, ~1.0 match at replay — and it clicks another
-customer's account. Relabelling the grid does **not** fix it: three schemes
-measured, best **3/15**.
-
-**Fix:** stop asking a model where things are. Panel + row rhythm + arithmetic
-(A1's approach) removes cell assignment from the positioning path entirely.
-
-> **Decision:**
-
----
-
-### A4 · The read/locate split is diagnosed but not applied
-[issue 0008](docs/issues/0008-dense-numeric-text-is-misread.md)
-
-Our own 192-cell overlay corrupts reading:
-
-```
-full screenshot, NO grid     11/11  11/11  11/11
-full screenshot, WITH grid    8/11   8/11   9/11    invented 13000, 54221, 5678
-```
-
-The gridded run reproduced `54221` — one of the exact wrong ids from the live
-discovery run. **The instrument corrupts the measurement.**
-
-**Fix:** one coarse call becomes two — read labels from a *clean* screenshot,
-assign cells from the *gridded* one. One extra call per screen.
-
-**Cost:** ~1h. **Not done.** Discovery still reads through the overlay.
-
-> **Decision:**
-
----
-
-### A5 · The controlled vocabulary is not in the prompt
-34 terms exist and type every artifact. `VOCABULARY.as_prompt_block()` is
-written and **nothing calls it**, so the 15/24/22 inventory variance it was
-built to fix has never been re-measured.
-
-**Cost:** ~1h to wire, plus a measurement run.
+- **The checkpoint rule got narrower and more correct.** It was "every
+  capability needs one". `log_in` returns nothing, so it has nothing to compare
+  — its success condition is reaching the authenticated nav, which its final
+  `wait_for` already asserts. Now: *a capability that RETURNS something must
+  check it.* That is the danger ADR 0005 actually names.
+- **One panel read now serves every field from it.** Capability 1 takes two
+  fields from one row and was reading the table twice — two model calls, and
+  two readings of one screen that could disagree. Cached per control, cleared
+  by any step with side effects.
 
 > **Decision:**
 
@@ -218,8 +171,9 @@ do anything the surface cannot express.
 ## My ranking, if you want one
 
 1. ~~**A1**~~ — **done**, and it closed the `BusinessOutcome` gap too
-2. **A4** — one hour, fixes a defect in our own instrument
-3. **C · session timeout** — one hour, converts a guessed category into a measured one
-4. Everything else is defensible as-is and argued in REPORT §7
+2. ~~**A6**~~ — **done**, and it made the checkpoint rule more correct
+3. **A4** — one hour, fixes a defect in our own instrument
+4. **C · session timeout** — one hour, converts a guessed category into a measured one
+5. Everything else is defensible as-is and argued in REPORT §7
 
 > **Your ranking:**

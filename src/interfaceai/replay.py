@@ -37,7 +37,8 @@ that reads the wrong value becomes `Failed`, because nobody can.
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from pydantic import BaseModel, create_model
@@ -52,6 +53,7 @@ from interfaceai.capability import (
     StepVerb,
     Value,
     assert_replayable,
+    validate_invocations,
 )
 from interfaceai.control_map_store import ControlMapMiss, ControlMapStore, MapKey, check_capability
 from interfaceai.decisions import AgentDecision, ManualActionKind, validate_decision
@@ -114,6 +116,11 @@ class _Ctx:
     done: list[str]
     operator: Operator | None = None
     owner: Owner = Owner.WORKER
+    library: dict[str, Capability] = field(default_factory=dict)
+    stack: tuple[str, ...] = ()
+    # One panel read serves every field taken from it. Cleared by any step
+    # with side effects, because a click can change the table underneath.
+    panel_cache: dict[str, object] = field(default_factory=dict)
 
 
 def replay(
@@ -129,9 +136,14 @@ def replay(
     confirm_risky: bool = False,
     headless: bool = True,
     operator: Operator | None = None,
+    library: Mapping[str, Capability] | None = None,
 ) -> CapabilityResult:
     """Run an APPROVED capability. The production path an agent would trigger."""
     assert_replayable(capability)
+    if library:
+        # An invoke naming something absent, unapproved, version-drifted or
+        # cyclic is an authoring fault -- catch it before a browser opens.
+        validate_invocations(capability, library)
 
     evidence = EvidenceWriter(evidence_root, goal=capability.goal, model="replay/none")
     evidence.event(
@@ -185,6 +197,8 @@ def replay(
             outputs={},
             done=[],
             operator=operator,
+            library=dict(library or {}),
+            stack=(capability.name,),
         )
         return _run(ctx)
 
@@ -384,6 +398,9 @@ def _hand_over(ctx: _Ctx, n: int, step: Step, blocked: NeedsOperator) -> str | N
 def _step(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
     label = f"{step.verb} {step.control.control_id if step.control else ''}".strip()
 
+    if step.verb is StepVerb.INVOKE:
+        return _invoke(ctx, n, step)
+
     if step.verb is StepVerb.OBSERVE:
         frame = ctx.evidence.frame(ctx.surface.screenshot(), f"{n:02d}-observe")
         ctx.evidence.event("observed", step=n, frame=str(frame))
@@ -501,6 +518,7 @@ def _step(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
         url=acted.url,
     )
     ctx.done.append(label)
+    ctx.panel_cache.clear()
     ctx.surface.wait(1.0)
     return None
 
@@ -558,6 +576,82 @@ def _extract(
     return None
 
 
+def _invoke(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
+    """Run another capability in the SAME session, then carry its outputs up.
+
+    Same surface, same browser, same evidence file — an invoked capability is
+    not a subprocess, it is a section of this run. Its preconditions are
+    checked, because that is what they are for.
+
+    How a nested result maps, and each one is a deliberate choice:
+
+        Success         its outputs merge into ours and we continue
+        BusinessOutcome PROPAGATES unchanged. "No such member" is the caller's
+                        answer whether it was discovered one level down or ten
+        Failed          propagates, with the child's step named so the trace
+                        does not dead-end at "invoke"
+        NeedsOperator   propagates. A human resolves in the same live session,
+                        so there is nothing to translate
+    """
+    assert step.invokes is not None
+    child = ctx.library.get(step.invokes)
+    if child is None:
+        return Failed(
+            step_index=n,
+            step=f"invoke {step.invokes}",
+            expected="a capability in the library",
+            observed=f"library has {sorted(ctx.library)}",
+            evidence_dir=ctx.evidence.dir,
+        )
+    if step.invokes in ctx.stack:
+        return Failed(
+            step_index=n,
+            step=f"invoke {step.invokes}",
+            expected="no cycle",
+            observed=" -> ".join((*ctx.stack, step.invokes)),
+            evidence_dir=ctx.evidence.dir,
+        )
+
+    try:
+        bound = {b.param: _value(ctx, b.value) for b in step.bind}
+    except KeyError as exc:
+        return NeedsOperator(
+            why=f"invoke {step.invokes}: {exc}",
+            step_index=n,
+            screen="-",
+            evidence_dir=ctx.evidence.dir,
+            completed_steps=tuple(ctx.done),
+        )
+
+    ctx.evidence.event(
+        "invoke_started",
+        step=n,
+        capability=child.name,
+        version=child.version,
+        bound=sorted(bound),
+    )
+    inner = replace(
+        ctx,
+        capability=child,
+        inputs={k: v for k, v in bound.items() if v is not None},
+        outputs={},
+        done=[],
+        stack=(*ctx.stack, child.name),
+    )
+    result = _run(inner)
+    ctx.evidence.event(
+        "invoke_finished", step=n, capability=child.name, result=type(result).__name__
+    )
+
+    if not isinstance(result, Success):
+        return result
+
+    ctx.outputs.update(result.outputs)
+    ctx.done.append(f"invoke {child.name} ({result.steps_run} steps)")
+    ctx.done.extend(inner.done)
+    return None
+
+
 def _extract_from_panel(
     ctx: _Ctx, n: int, step: Step, control: LocatedControl, label: str
 ) -> CapabilityResult | None:
@@ -596,36 +690,49 @@ def _extract_from_panel(
     row_model = create_model("PanelRow", **{c: (str, ...) for c in spec.columns})
     table_model = create_model("PanelRows", rows=(list[row_model], ...))
 
-    try:
-        read = ctx.off.run(
-            extract_panel(
-                ctx.surface.screenshot(),
-                control.locator,
-                panel=Offset(dx=spec.dx, dy=spec.dy, width=spec.width, height=spec.height),
-                key_column=Offset(
-                    dx=spec.key_dx, dy=spec.key_dy, width=spec.key_width, height=spec.height
-                ),
-                response_model=table_model,
-                vision=ctx.vision,
-                instruction=(
-                    "This is a crop of a table from a banking application. Return every "
-                    f"row with these fields, exactly as printed: {', '.join(spec.columns)}. "
-                    "Do not invent rows."
-                ),
+    cache_key = f"{control.id}:{_value(ctx, step.row_key)}"
+    cached = ctx.panel_cache.get(cache_key)
+    if cached is not None:
+        read = cached
+        ctx.evidence.event("panel_reused", step=n, control=control.id)
+    else:
+        try:
+            read = ctx.off.run(
+                extract_panel(
+                    ctx.surface.screenshot(),
+                    control.locator,
+                    panel=Offset(dx=spec.dx, dy=spec.dy, width=spec.width, height=spec.height),
+                    key_column=Offset(
+                        dx=spec.key_dx, dy=spec.key_dy, width=spec.key_width, height=spec.height
+                    ),
+                    response_model=table_model,
+                    vision=ctx.vision,
+                    instruction=(
+                        "This is a crop of a table from a banking application. Return every "
+                        f"row with these fields, exactly as printed: {', '.join(spec.columns)}. "
+                        "Do not invent rows."
+                    ),
+                )
             )
-        )
-    except PanelNotFound as exc:
-        return NeedsOperator(
-            why=f"panel {control.id}: {exc}",
-            step_index=n,
-            screen=step.control.screen if step.control else "?",
-            evidence_dir=ctx.evidence.dir,
-            completed_steps=tuple(ctx.done),
+        except PanelNotFound as exc:
+            return NeedsOperator(
+                why=f"panel {control.id}: {exc}",
+                step_index=n,
+                screen=step.control.screen if step.control else "?",
+                evidence_dir=ctx.evidence.dir,
+                completed_steps=tuple(ctx.done),
+            )
+        ctx.panel_cache[cache_key] = read
+        ctx.evidence.event(
+            "panel_read",
+            step=n,
+            control=control.id,
+            rows=len(read.data.rows),
+            wanted=_value(ctx, step.row_key),
         )
 
     wanted = _value(ctx, step.row_key)
     rows = read.data.rows
-    ctx.evidence.event("panel_read", step=n, control=control.id, rows=len(rows), wanted=wanted)
 
     matches = [
         r for r in rows if _normalise(getattr(r, spec.key_column)) == _normalise(str(wanted))

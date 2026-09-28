@@ -34,6 +34,10 @@ and the caller's `account_id` selects one IN CODE. No row is grounded, nothing
 is asked where account 13344 is, and `docs/issues/0009` (wrong-row grounding,
 3 in 4) is off its path entirely.
 
+⚠️ **Capability 1 INVOKES `log_in` rather than copying it.** That is the point
+of having a vocabulary: a small canonical set composes. The version is pinned,
+so a new `log_in` cannot silently change what replay does.
+
 ⚠️ **v1 drilled into `activity.htm` to read Account Type, and v2 does not.**
 The balance is already on the overview; the click bought exactly one extra
 field. The trade is real and worth knowing: after `env break`, 13344 comes back
@@ -50,7 +54,6 @@ from interfaceai.capability import (
     Capability,
     Checkpoint,
     ControlRef,
-    LiteralValue,
     OutputSpec,
     ParamSpec,
     ParamValue,
@@ -78,26 +81,26 @@ NAV = "global_nav"
 
 LOG_IN = Capability(
     name="log_in",
-    version=1,
+    version=2,
     goal="log in to the bank as the operator's seeded customer",
     vocabulary_version=VOCABULARY_VERSION,
     target=TARGET,
     viewport_width=_VIEWPORT.width,
     viewport_height=_VIEWPORT.height,
     # No params. Credentials are NOT caller arguments -- they are names the
-    # runtime resolves from a secret provider, so nothing about them can reach
-    # this file. A real deployment parameterises WHICH key is resolved; that is
-    # a runtime binding, not an artifact field, and it is not built.
+    # runtime resolves from a secret provider, so nothing about them reaches
+    # this file or the artifact on disk.
     params=(),
-    returns=(OutputSpec(name="customer_first_name", slot="first_name"),),
+    returns=(),
     requires=(
         Precondition(
-            name="not_already_authenticated",
-            control=ControlRef(screen=NAV, control_id="log_out_link"),
-            must="absent",
+            name="at_the_login_page",
+            control=ControlRef(screen="index", control_id="username_textbox"),
+            must="present",
             why=(
-                "Logging in on top of a live session lands on a different screen "
-                "than the one every step below was recorded against."
+                "Logging in on top of a live session lands on a different screen than "
+                "the one these steps were recorded against. Re-checked on resume, "
+                "since a human handed the browser back may have navigated anywhere."
             ),
         ),
     ),
@@ -114,41 +117,28 @@ LOG_IN = Capability(
             control=ControlRef(screen="index", control_id="password_textbox"),
             slot="password",
             value=SecretValue(input_ref="parabank_demo_password"),
-            note="Same. `use_control` logs value_length and never the value.",
+            note="Same. `use_control` records value_length and never the value.",
         ),
         Step(
             verb=StepVerb.CLICK,
             control=ControlRef(screen="index", control_id="log_in_button"),
-            note="Reversible: Log Out undoes it, so not risky.",
+            note="Reversible: logging out undoes it, so not risky.",
         ),
         Step(
             verb=StepVerb.WAIT_FOR,
-            control=ControlRef(screen=NAV, control_id="log_out_link"),
+            control=ControlRef(screen="overview", control_id="accounts_overview_link"),
             note=(
-                "Waiting for the nav rather than the heading: logged-out "
-                "overview.htm serves HTTP 200 with the SAME heading and an "
-                "empty table, so the heading proves nothing."
-            ),
-        ),
-        Step(
-            verb=StepVerb.EXTRACT,
-            control=ControlRef(screen="overview", control_id="welcome_name"),
-            slot="first_name",
-            output="customer_first_name",
-            note="The welcome line is the only per-customer text on the screen.",
-        ),
-    ),
-    checkpoints=(
-        Checkpoint(
-            output="customer_first_name",
-            expected=LiteralValue(value="John"),
-            why=(
-                "A value, not a lookup. The credentials are fixed keys, so the "
-                "customer behind them is fixed too -- a different name means the "
-                "secret provider handed us somebody else's session."
+                "Waiting for the account-services nav, not a heading: logged-out "
+                "overview.htm serves HTTP 200 with the SAME heading and an empty "
+                "table. Measured -- every nav control is absent at 0.0000 when "
+                "logged out, so its presence is what proves the session."
             ),
         ),
     ),
+    # No checkpoint of its own: reaching the authenticated nav IS the success
+    # condition, and it is already asserted by the wait above. A capability that
+    # returns nothing has nothing to compare.
+    checkpoints=(),
 )
 
 
@@ -171,36 +161,21 @@ READ_SAVINGS_BALANCE = Capability(
             control=ControlRef(screen="index", control_id="username_textbox"),
             must="present",
             why=(
-                "This capability establishes its own session, so it must start from "
-                "the login screen. Re-checked on resume, since a human handed the "
-                "browser back may have navigated anywhere."
+                "This capability establishes its session by invoking `log_in`, which "
+                "starts from the login screen. Re-checked on resume."
             ),
         ),
     ),
     steps=(
-        # ⚠️ The login steps are IN this capability because capabilities do not
-        # compose -- `StepVerb` has no `invoke`. The brief's own goal is "log in
-        # as john AND read the balance", so self-contained matches the ask; but
-        # a bank with twenty capabilities would want one `log_in` they all call,
-        # and that is recorded as a gap rather than worked around silently.
+        # The whole argument for a vocabulary rather than a macro: `log_in` is
+        # written once and every capability needing a session calls it. Copying
+        # its three steps in here would mean re-fixing twenty artifacts the day
+        # the login page moves.
         Step(
-            verb=StepVerb.ENTER,
-            control=ControlRef(screen="index", control_id="username_textbox"),
-            slot="username",
-            value=SecretValue(input_ref="parabank_username"),
-            note="Sensitive slot: the artifact carries the KEY, never the value.",
-        ),
-        Step(
-            verb=StepVerb.ENTER,
-            control=ControlRef(screen="index", control_id="password_textbox"),
-            slot="password",
-            value=SecretValue(input_ref="parabank_demo_password"),
-            note="Same. `use_control` records value_length and never the value.",
-        ),
-        Step(
-            verb=StepVerb.CLICK,
-            control=ControlRef(screen="index", control_id="log_in_button"),
-            note="Reversible: logging out undoes it, so not risky.",
+            verb=StepVerb.INVOKE,
+            invokes="log_in",
+            invokes_version=2,
+            note="Establish a session. Its own precondition checks we are at the login page.",
         ),
         Step(
             verb=StepVerb.WAIT_FOR,
@@ -248,6 +223,11 @@ READ_SAVINGS_BALANCE = Capability(
 
 
 REGISTRY: tuple[Capability, ...] = (LOG_IN, READ_SAVINGS_BALANCE)
+
+LIBRARY: dict[str, Capability] = {c.name: c for c in REGISTRY}
+"""What an `invoke` step resolves against. Keyed by name; the STEP pins the
+version, so a library holding a newer one is a validation error rather than a
+silent substitution."""
 
 
 def get(name: str) -> Capability:

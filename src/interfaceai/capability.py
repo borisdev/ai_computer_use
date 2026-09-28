@@ -48,6 +48,7 @@ absent from `StepVerb`, on purpose:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Literal
@@ -128,7 +129,19 @@ class ControlRef(Contract):
 # ---------------------------------------------------------------------------
 
 
+class ParamBinding(Contract):
+    """One argument passed into an invoked capability."""
+
+    param: str = Field(min_length=1)
+    value: Value
+
+
 class StepVerb(StrEnum):
+    # Call another capability. The reason the vocabulary is a language rather
+    # than a macro: `log_in` is written once and every capability that needs a
+    # session calls it, instead of copying three steps into twenty artifacts
+    # and re-fixing them all when the login page moves.
+    INVOKE = "invoke"
     ENTER = "enter"
     CLICK = "click"
     SELECT = "select"
@@ -158,6 +171,12 @@ class Step(Contract):
     # since asking lands on the wrong record 3 times in 4 (docs/issues/0009).
     row_key: Value | None = None
     field: str | None = None
+    # INVOKE only. The version is PINNED: a capability that silently picked up
+    # a new version of what it calls is not deterministic, and the whole point
+    # of replay is that the same artifact does the same thing.
+    invokes: str | None = None
+    invokes_version: int | None = None
+    bind: tuple[ParamBinding, ...] = ()
     # Irreversible. Flows to `use_control(risky=...)`, which refuses unless
     # something upstream confirmed. Risk is a property of the CONTROL -- "Log
     # In" and "Transfer" are both a CLICK -- so it is authored per step and
@@ -169,6 +188,14 @@ class Step(Contract):
 
     @model_validator(mode="after")
     def _shape_matches_verb(self) -> Step:
+        if self.verb is StepVerb.INVOKE:
+            if not self.invokes or self.invokes_version is None:
+                raise ValueError("invoke needs a capability name and a pinned version")
+            if self.control is not None or self.value is not None:
+                raise ValueError("invoke names a capability, not a control")
+            return self
+        if self.invokes is not None or self.bind:
+            raise ValueError(f"{self.verb} cannot invoke a capability")
         if self.verb in _NEEDS_CONTROL and self.control is None:
             raise ValueError(f"{self.verb} needs a control")
         if self.verb is StepVerb.OBSERVE and self.control is not None:
@@ -287,10 +314,33 @@ class Capability(Contract):
     returns: tuple[OutputSpec, ...] = ()
     requires: tuple[Precondition, ...] = ()
     steps: tuple[Step, ...] = Field(min_length=1)
-    checkpoints: tuple[Checkpoint, ...] = Field(min_length=1)
+    # May be empty ONLY when the capability returns nothing -- see
+    # `_answers_are_checked` below.
+    checkpoints: tuple[Checkpoint, ...] = ()
 
     approval: Approval = Approval.DRAFT
     approved_by: str | None = None
+
+    @model_validator(mode="after")
+    def _answers_are_checked(self) -> Capability:
+        """A capability that RETURNS something must assert something about it.
+
+        The danger `docs/adr/0005` names is a run that hands back a value
+        without proving it came from the right record. A capability returning
+        nothing cannot do that, so requiring a checkpoint of it buys nothing --
+        and `log_in` is exactly that case: its success condition is reaching the
+        authenticated nav, which its final `wait_for` already asserts. A
+        `wait_for` that never matches stops the run; it is not a silent pass.
+
+        Narrowed 2026-09-28, when composition made `log_in` a capability in its
+        own right rather than three copied steps.
+        """
+        if self.returns and not self.checkpoints:
+            raise ValueError(
+                f"{self.name} returns {[o.name for o in self.returns]} and checkpoints "
+                "nothing; a value handed back unproven is the failure ADR 0005 exists for"
+            )
+        return self
 
     @model_validator(mode="after")
     def _approval_is_attributed(self) -> Capability:
@@ -362,6 +412,18 @@ def validate_capability(
     used_params: set[str] = set()
     for n, step in enumerate(capability.steps):
         where = f"step {n} ({step.verb})"
+        if step.verb is StepVerb.INVOKE:
+            if step.invokes == capability.name:
+                raise CapabilityError(f"{where}: a capability cannot invoke itself")
+            seen_binds: set[str] = set()
+            for binding in step.bind:
+                if binding.param in seen_binds:
+                    raise CapabilityError(f"{where}: {binding.param!r} is bound twice")
+                seen_binds.add(binding.param)
+                check_value(binding.value, f"{where} bind {binding.param}", None)
+                if isinstance(binding.value, ParamValue):
+                    used_params.add(binding.value.param)
+            continue
         if step.slot is not None and not vocab.has(step.slot):
             raise CapabilityError(f"{where}: {step.slot!r} is not a vocabulary slot")
         if step.verb in _NEEDS_VALUE and step.slot is None:
@@ -384,8 +446,9 @@ def validate_capability(
                 raise CapabilityError(f"{where}: {step.output!r} is extracted twice")
             produced.add(step.output)
 
+    invoked = any(s.verb is StepVerb.INVOKE for s in capability.steps)
     missing = output_names - produced
-    if missing:
+    if missing and not invoked:
         raise CapabilityError(f"declared but never extracted: {sorted(missing)}")
 
     for precondition in capability.requires:
@@ -410,6 +473,67 @@ def validate_capability(
     unused = param_names - used_params
     if unused:
         raise CapabilityError(f"declared but never used: {sorted(unused)}")
+
+
+def validate_invocations(
+    capability: Capability,
+    library: Mapping[str, Capability],
+    *,
+    _stack: tuple[str, ...] = (),
+) -> None:
+    """Check every `invoke` against the capability it actually names.
+
+    Separate from `validate_capability` for the same reason the control-map
+    check is: an artifact can be valid in itself and still name something that
+    is not there. This needs the library in hand, so it is its own function and
+    its own failure.
+    """
+    stack = (*_stack, capability.name)
+    for n, step in enumerate(capability.steps):
+        if step.verb is not StepVerb.INVOKE:
+            continue
+        where = f"step {n} (invoke {step.invokes})"
+        assert step.invokes is not None
+        if step.invokes in stack:
+            raise CapabilityError(f"{where}: cycle -> {' -> '.join((*stack, step.invokes))}")
+        child = library.get(step.invokes)
+        if child is None:
+            raise CapabilityError(f"{where}: no such capability; the library has {sorted(library)}")
+        if child.version != step.invokes_version:
+            raise CapabilityError(
+                f"{where}: pinned to v{step.invokes_version}, library has v{child.version}"
+            )
+        if child.approval is not Approval.APPROVED:
+            raise CapabilityError(
+                f"{where}: {child.name} is {child.approval}. An unapproved capability "
+                "cannot be smuggled in by something that was approved."
+            )
+        if (child.target.app, child.target.tenant) != (
+            capability.target.app,
+            capability.target.tenant,
+        ):
+            raise CapabilityError(
+                f"{where}: {child.name} targets "
+                f"{child.target.app}/{child.target.tenant}, not "
+                f"{capability.target.app}/{capability.target.tenant}"
+            )
+
+        bound = {b.param for b in step.bind}
+        required = {p.name for p in child.params if p.required}
+        if missing := required - bound:
+            raise CapabilityError(f"{where}: does not bind {sorted(missing)}")
+        if unknown := bound - {p.name for p in child.params}:
+            raise CapabilityError(
+                f"{where}: binds parameters {child.name} does not take: {sorted(unknown)}"
+            )
+
+        mine = {o.name for o in capability.returns}
+        theirs = {o.name for o in child.returns}
+        if clash := mine & theirs:
+            raise CapabilityError(
+                f"{where}: output names collide with {child.name}: {sorted(clash)}"
+            )
+        validate_invocations(child, library, _stack=stack)
 
 
 def assert_replayable(

@@ -40,7 +40,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "password_textbox",
@@ -76,7 +77,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "log_in_button",
@@ -112,7 +114,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "forgot_login_info_link",
@@ -148,7 +151,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "register_link",
@@ -184,7 +188,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "home_link",
@@ -220,7 +225,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "about_us_link",
@@ -256,7 +262,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "services_link",
@@ -292,7 +299,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "products_link",
@@ -328,7 +336,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "locations_link",
@@ -364,7 +373,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "forum_link",
@@ -400,7 +410,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "site_map_link",
@@ -436,7 +447,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "contact_us_link",
@@ -450,7 +462,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "home_link_2",
@@ -464,7 +477,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "about_us_link_2",
@@ -478,7 +492,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "services_link_2",
@@ -514,7 +529,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "products_link_2",
@@ -550,7 +566,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "locations_link_2",
@@ -586,7 +603,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "admin_page_link",
@@ -600,7 +618,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "button",
@@ -636,7 +655,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "button_2",
@@ -650,7 +670,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "button_3",
@@ -686,7 +707,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "read_more_link",
@@ -722,7 +744,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     },
     {
       "id": "read_more_link_2",
@@ -758,7 +781,8 @@
       "policy": {
         "irreversible": false,
         "sensitive": false
-      }
+      },
+      "panel": null
     }
   ]
 }

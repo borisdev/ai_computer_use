@@ -141,6 +141,6 @@
       "why": "The row we read must be the row that was asked for. An account that is absent entirely is a business outcome, not this."
     }
   ],
-  "approval": "draft",
-  "approved_by": null
+  "approval": "approved",
+  "approved_by": "Boris Dev"
 }

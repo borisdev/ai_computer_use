@@ -415,6 +415,17 @@ def replay_cmd(
         )
         console.print(f"[cyan]cross-tenant[/] replaying on {tenant} ({base})")
 
+    # Everything approved in artifacts/ is callable by an `invoke` step. The
+    # STEP pins the version, so a library holding a newer one is a validation
+    # error rather than a silent substitution.
+    library: dict[str, capability.Capability] = {}
+    for path in sorted(ARTIFACTS.glob("*.approved.json")):
+        try:
+            found = capability.load_capability(path)
+        except (OSError, ValueError):
+            continue
+        library[found.name] = found
+
     result = replay_mod.replay(
         loaded,
         inputs,
@@ -429,6 +440,7 @@ def replay_cmd(
         confirm_risky=confirm_risky,
         headless=headless,
         operator=handoff.TerminalOperator() if operator else None,
+        library=library,
     )
 
     if isinstance(result, outcomes.Success):

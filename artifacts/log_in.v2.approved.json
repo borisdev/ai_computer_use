@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "name": "log_in",
+  "version": 2,
+  "goal": "log in to the bank as the operator's seeded customer",
+  "vocabulary_version": 1,
+  "target": {
+    "app": "parabank",
+    "tenant": "baseline",
+    "base_url": "http://localhost:8080/parabank"
+  },
+  "viewport_width": 1280,
+  "viewport_height": 900,
+  "params": [],
+  "returns": [],
+  "requires": [
+    {
+      "name": "at_the_login_page",
+      "control": {
+        "screen": "index",
+        "control_id": "username_textbox",
+        "discriminator": null
+      },
+      "must": "present",
+      "why": "Logging in on top of a live session lands on a different screen than the one these steps were recorded against. Re-checked on resume, since a human handed the browser back may have navigated anywhere."
+    }
+  ],
+  "steps": [
+    {
+      "verb": "enter",
+      "control": {
+        "screen": "index",
+        "control_id": "username_textbox",
+        "discriminator": null
+      },
+      "value": {
+        "kind": "secret",
+        "input_ref": "parabank_username"
+      },
+      "slot": "username",
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "Sensitive slot: the artifact carries the KEY, never the value."
+    },
+    {
+      "verb": "enter",
+      "control": {
+        "screen": "index",
+        "control_id": "password_textbox",
+        "discriminator": null
+      },
+      "value": {
+        "kind": "secret",
+        "input_ref": "parabank_demo_password"
+      },
+      "slot": "password",
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "Same. `use_control` records value_length and never the value."
+    },
+    {
+      "verb": "click",
+      "control": {
+        "screen": "index",
+        "control_id": "log_in_button",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "Reversible: logging out undoes it, so not risky."
+    },
+    {
+      "verb": "wait_for",
+      "control": {
+        "screen": "overview",
+        "control_id": "accounts_overview_link",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "Waiting for the account-services nav, not a heading: logged-out overview.htm serves HTTP 200 with the SAME heading and an empty table. Measured -- every nav control is absent at 0.0000 when logged out, so its presence is what proves the session."
+    }
+  ],
+  "checkpoints": [],
+  "approval": "approved",
+  "approved_by": "Boris Dev"
+}
