@@ -18,8 +18,13 @@ deterministically with no model in the decision loop.
 
 ## Status
 
-The end-to-end thread runs: discovery, a typed artifact, and deterministic
-replay with a typed outcome. Human handoff is the main gap.
+Everything the brief asks for runs: a real LLM discovery run, a typed
+artifact, deterministic replay with typed outcomes, human handoff of the live
+session, and one artifact serving two tenants.
+
+```
+181 tests — 161 offline, 20 live · ruff clean
+```
 
 | Piece | State |
 |---|---|
@@ -29,10 +34,12 @@ replay with a typed outcome. Human handoff is the main gap.
 | Perception — `extract_control_locators`, `locate_control`, `use_control` | done; grounding 3/3, replay drift (0,0) |
 | **Capability artifact (§3.2)** — schema, validator, `draft → approved` gate | done; [ADR 0005](docs/adr/0005-capability-artifact-shape.md) |
 | **Discovery (§3.1)** — goal-driven LLM loop against the live app | done; real run, evidence committed |
-| **Deterministic replay (§3.3)** — typed outcome, no model deciding | done; success and escalation both demonstrated |
+| **Deterministic replay (§3.3)** — typed outcome, no model deciding | done; success, business outcome and escalation all demonstrated |
+| **Composition** — a capability invokes another, version pinned | done |
+| **Escalation & handoff (§3.6)** — live session, ownership, verified resume | done |
+| **Cross-tenant reuse (§3.7)** — one artifact, two tenants | done; adoption verifies and refuses on drift |
 | Controlled vocabulary, 34 terms | done in code; **not yet in the inventory prompt** |
-| Escalation handoff (§3.6) — `page.pause()`, ownership, resume | detection works; **handoff not built** |
-| Persistence of runs / interventions | not started |
+| Persistence of runs / interventions | cut — see REPORT §7 |
 
 The two artifacts in `artifacts/` are **hand-authored**: discovery does not
 exist yet, so they are the shape it has to emit rather than evidence that it
@@ -174,42 +181,93 @@ Detail: [parabank.md §5](docs/parabank.md#5-the-two-database-states).
 
 ## Demo path
 
-The full thread — goal, a real LLM run, a typed artifact, deterministic replay,
-and a typed outcome:
-
 ```bash
 docker compose up -d --wait && uv run interfaceai env reset
+```
 
-# 1. DISCOVERY -- an LLM drives the live UI and records what worked
+### The headline: the assignment's own worked example
+
+> *"look up member 12345 and read their current savings balance"*
+
+```bash
+uv run interfaceai replay artifacts/read_savings_balance.v2.approved.json \
+  --param account_id=13344
+```
+```
+SUCCESS read_savings_balance in 9 steps
+  found_account_id = 13344
+  balance = $1231.10
+```
+
+Four things are happening in that one command:
+
+| | |
+|---|---|
+| **Composition** | step 0 is `invoke log_in v2` — written once, called by anything needing a session. The version is pinned, so a newer `log_in` cannot silently change what replays |
+| **A typed parameter** | `--param account_id=…` — try `13122` ($1100.00) or `12345` (**-$2300.00**, negative on purpose) |
+| **No model decides** | step order, controls, values and checkpoints all come from the artifact. One call reads the accounts table; the row is then selected **in code** |
+| **Panel extraction** | the table is a `TABLE_CONTROL_PANEL`: anchor its header, crop it, one model call against a response schema, get typed rows |
+
+### A business outcome is an answer, not a crash
+
+```bash
+uv run interfaceai replay artifacts/read_savings_balance.v2.approved.json \
+  --param account_id=99999        # in no seed row
+```
+```
+record_not_found  no row where account_id is '99999'; the table holds 11
+```
+
+**Exit 0.** The caller asked a fair question and got a real answer. Conflating
+this with a failure is the mistake the brief's glossary names by name.
+
+### The error path, produced by the application itself
+
+```bash
+uv run interfaceai env break     # posts action=CLEAN to ParaBank's own admin page
+uv run interfaceai replay artifacts/log_in_discovered.v1.approved.json
+```
+```
+NEEDS A HUMAN at step 4: cannot read 12345_link: not_found (0.8582)
+  completed: enter username_textbox, enter password_textbox,
+             click log_in_button, observe
+```
+
+**Exit 1.** It refuses to click something scoring 0.86, and carries what it
+finished so a human can resume rather than restart. Add `--operator` to take
+the live session at that point. Then `uv run interfaceai env reset`.
+
+### Where the artifacts come from — a real LLM run
+
+```bash
 uv run interfaceai discover \
   --goal "Log in to the bank as the seeded customer and reach the accounts overview." \
   --name log_in_discovered \
   --secret parabank_username=username --secret parabank_demo_password=password
 
-# 2. REVIEW -- a human promotes the draft. Replay refuses anything unapproved.
-uv run interfaceai capability check
+uv run interfaceai capability check      # does every control it names exist?
 uv run interfaceai capability approve log_in_discovered --by "your name"
-
-# 3. REPLAY -- no model decides anything
-uv run interfaceai replay artifacts/log_in_discovered.v1.approved.json
-#    SUCCESS log_in_discovered in 5 steps
-#      account_id = 12345
-
-# 4. THE ERROR PATH -- same artifact, same command, different app state
-uv run interfaceai env break
-uv run interfaceai replay artifacts/log_in_discovered.v1.approved.json
-#    NEEDS A HUMAN at step 4: cannot read 12345_link: not_found (0.8582)
-#      completed: enter username_textbox, enter password_textbox, click log_in_button, observe
-uv run interfaceai env reset
 ```
 
-Step 4 is the one worth watching. Nothing was mocked — `env break` posts
-`action=CLEAN` to ParaBank's own admin page, account 12345 stops existing, and
-replay refuses to click something scoring 0.86 rather than guessing. It exits 1
-and carries what it had already completed, so a human can resume.
+Replay refuses anything unapproved. Evidence for both phases lands in
+`evidence/runs/`.
+
+### One artifact, two institutions
+
+```bash
+docker compose --profile tenant-b up -d --wait && uv run interfaceai env reset --tenant-b
+uv run interfaceai maps adopt index    --from baseline --to feature
+uv run interfaceai maps adopt overview --from baseline --to feature --login
+uv run interfaceai replay artifacts/log_in_discovered.v1.approved.json --tenant feature
+```
+
+`maps adopt` re-runs every locator against the target tenant's live screen and
+**writes nothing if any drifted** — that check is the drift detector, not a
+copy.
 
 Every failure mode we have observed, with the fixture or lever that reproduces
-it: [`docs/failure-modes.md`](docs/failure-modes.md).
+it: [`docs/failure-modes.md`](docs/failure-modes.md). What is still open:
+[`STILL-OPEN.md`](STILL-OPEN.md).
 
 ## Layout
 

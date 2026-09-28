@@ -3,19 +3,35 @@
 Read this first. It says where the project is, what is proven, what is not, and
 what to do next. Everything it claims is measured unless it says otherwise.
 
-**Repo:** `github.com/borisdev/ai_computer_use` · 92 tests green · ruff clean
+**Repo:** `github.com/borisdev/ai_computer_use` · 181 tests (161 offline, 20 live) · ruff clean
+
+> ⚠️ **Superseded in places by the code.** The fastest accurate picture is
+> [`README.md`](README.md) for what to run, [`REPORT.md`](REPORT.md) for the
+> design write-up, [`STILL-OPEN.md`](STILL-OPEN.md) for what is left, and
+> [`docs/failure-modes.md`](docs/failure-modes.md) for what can go wrong. This
+> file keeps the scope argument and the early findings, which are still the
+> reasoning behind the shape of things.
 
 ---
 
-## 1. What this project is, in one paragraph
+## 0. What runs today
 
-An LLM drives a legacy bank UI **once** to learn how a task is done; that run is
-recorded as a typed capability artifact; the artifact is then replayed
-**deterministically, with no model in the decision loop**. The target is
-ParaBank, running locally in Docker. The brief is
-[`Assignment-A-Computer-Use-Automation.md`](Assignment-A-Computer-Use-Automation.md).
+```
+goal ──► discovery (real LLM) ──► typed artifact ──► human approval
+     ──► deterministic replay ──► typed outcome
+     ──► human handoff of the live session when blocked
+     ──► the same artifact on a second tenant
+```
 
----
+| § | | |
+|---|---|---|
+| 3.1 | goal-driven agent loop | ✅ real run, evidence committed |
+| 3.2 | typed capability artifact, + **composition** | ✅ |
+| 3.3 | deterministic replay, typed outcomes | ✅ success · business outcome · failure · escalation |
+| 3.4 | allowlist, risky actions, redaction | ✅ |
+| 3.5 | evidence | ✅ trace + frames, both phases |
+| 3.6 | escalation & live-session handoff | ✅ terminal operator, verified resume |
+| 3.7 | heterogeneity & multi-tenant | ✅ one artifact, two tenants |
 
 ## 2. Scope — settled, and quoted
 
@@ -138,6 +154,11 @@ only points**:
 
 ## 4. What is built, and what is proven
 
+> ⚠️ The table below is from an earlier pass and understates things — replay,
+> composition, handoff and cross-tenant reuse all landed after it was written.
+> §0 above is current; `STILL-OPEN.md` is the live list of gaps.
+
+
 | Module | Does | Proven by |
 |---|---|---|
 | `screenshot2controls.py` | `extract_control_locators`, `locate_control` | 17 tests + live 3/3 |
@@ -180,30 +201,13 @@ correctness guard.
 
 ---
 
-## 5. What is NOT built
+## 6. The inventory problem (was "the blocker")
 
-| § | | |
-|---|---|---|
-| 3.1 | goal-driven agent loop | nothing decides yet |
-| 3.3 | step executor / `CapabilityResult` | the artifact and `locate_control` both exist; **nothing runs a sequence** |
-| 3.3 | control-map store keyed `(app, tenant, screen)` | a step names a control; nothing resolves the name to a locator |
-| 3.6 | escalation | triggers exist (`unresolved`, `ambiguous`); no `Operator` |
-| — | `REPORT.md` | skeleton |
-| — | `/evidence/` | screenshots only |
-
-§3.2 is now coded — see §4 and [ADR 0005](docs/adr/0005-capability-artifact-shape.md).
-Two caveats that matter more than the tick:
-
-- **The two committed artifacts are HAND-AUTHORED**, because discovery does not
-  exist. They are the shape discovery must emit, not evidence that it can.
-- **One step of capability 1 has no mechanism behind it.** Selecting one of
-  eleven near-identical account rows by a parameter is expressed
-  (`ControlRef.discriminator`) and not implemented —
-  [issue 0007](docs/issues/0007-parameterised-row-selection.md).
-
----
-
-## 6. The blocker
+⚠️ **No longer blocking.** Capability 1 replays without touching the coarse
+inventory's weak spots, and the measurements below were later explained: the
+naming churn is real, and [issue 0008](docs/issues/0008-dense-numeric-text-is-misread.md)
+found that our own 192-cell overlay is what corrupts the reading. Kept because
+the analysis stands and the fix is still open (`STILL-OPEN.md` A4/A5).
 
 **[Issue 0001](docs/issues/0001-incomplete-inventory.md) — the inventory is
 incomplete and different every run.** Same screenshot bytes, same config,
@@ -228,33 +232,6 @@ That separates two failure modes that looked identical:
 - a control **with** a label going missing → an **omission**, which tiling addresses
 - a control **without** one churning between names → a **naming** problem, which
   only a controlled vocabulary addresses
-
----
-
-## 7. Where to go next, in order
-
-1. ~~**The capability artifact (§3.2).**~~ **Done** — `capability.py`,
-   `vocabulary.py`, `capabilities.py`, [ADR 0005](docs/adr/0005-capability-artifact-shape.md).
-   Four constraints are in the type system, each one a measured failure:
-   no locators in the artifact, a checkpoint may only compare an extracted
-   value, a sensitive slot cannot hold a literal, and `draft → approved` is one
-   gate. Capability 1 is self-checking — account 13344 is SAVINGS **$1,231.10**
-   after a seed and CHECKING **$5,022.93** after CLEAN, and a test asserts the
-   checkpoint is on the field that differs.
-2. **The step executor (§3.3).** `screenshot → locate → validate → use →
-   screenshot → assert checkpoint → CapabilityResult`. It needs a **control-map
-   store** first: a step names `(screen, control_id)`, and something has to turn
-   that into a `VisualLocator` for the tenant in hand. That store is the missing
-   piece, not the loop.
-3. **Fix the inventory ([0001](docs/issues/0001-incomplete-inventory.md)).** Three
-   reinforcing parts: the controlled vocabulary, the goal passed down to the
-   coarse prompt, and a required-controls list that retries rather than
-   proceeding with a hole. ⚠️ The vocabulary now EXISTS but is **not in the
-   prompt** — `VOCABULARY.as_prompt_block()` is written and uncalled, so the
-   15/24/22 number has not moved.
-4. **`Operator` seam (§3.6).** `page.pause()` gives pause, same session, resume
-   and codegen capture in one line — see §8 below.
-5. **`REPORT.md`.** Sections 2 and 3 of this document are most of it already.
 
 ---
 

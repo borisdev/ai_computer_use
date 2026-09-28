@@ -93,6 +93,37 @@ outputs, both checked against a 34-term controlled vocabulary carrying a
 `sensitive` flag. `requires` holds preconditions — re-checked on resume, because
 after a handoff the operator may be anywhere.
 
+### 5 · Capabilities compose
+
+`StepVerb.INVOKE` calls another capability **in the same browser session** — not
+a subprocess, a section of the same run, in the same evidence file. That is what
+makes this a vocabulary rather than a macro: `log_in` is written once and
+everything needing a session calls it, instead of three steps copied into twenty
+artifacts and re-fixed the day the login page moves.
+
+**The version is pinned.** A library holding a newer `log_in` is a validation
+error, not a silent substitution — a capability that quietly picked up a new
+dependency would not be deterministic, which is the whole point of replay.
+
+Five refusals, each tested: a missing capability, a version drift, an
+**unapproved child** (an approved capability must not smuggle one in),
+self-invocation, and a cycle.
+
+Nested results map deliberately. `Success` merges its outputs and continues.
+`BusinessOutcome` **propagates unchanged** — "no such member" is the caller's
+answer however deep it was found. `Failed` and `NeedsOperator` propagate too,
+the latter because a human resolves in the same live session.
+
+### 6 · A capability that RETURNS something must check it
+
+Not "every capability needs a checkpoint", which is what this said first.
+`log_in` returns nothing; its success condition is reaching the authenticated
+nav, which its final `wait_for` already asserts — and a `wait_for` that never
+matches stops the run rather than passing silently. The danger ADR 0005 names is
+a run handing back a *value* it never proved came from the right record, and a
+capability returning nothing cannot do that. The narrower rule is the correct
+one; composition is what exposed the difference.
+
 ⚠️ **Hand-authored artifacts name controls that do not exist.** Measured against
 real control maps: the two written by hand carry 3 and 8 faults; the one
 produced by discovery carries **0**. A hand-written artifact can name anything;
@@ -110,7 +141,11 @@ CapabilityResult = Success | BusinessOutcome | Failed | NeedsOperator
 ```
 
 ⚠️ **One model call survives, and only for reading.** An `extract` step must
-turn pixels into a value and a DOM-less surface offers no other way. That is
+turn pixels into a value and a DOM-less surface offers no other way. For a
+table it is **one call for the whole panel** — the caller's parameter then picks
+the row *in code*, so nothing is ever asked where a row is. That matters: asking
+lands on the wrong record **3 times in 4**, silently
+([issue 0009](docs/issues/0009-wrong-row-grounding-is-silent.md)). That is
 perception, not decision, and it is the half models are measured *good* at —
 **11/11** on a clean crop against **6/11** when our own grid overlay defaced the
 image. The reader gets a crop and a schema; never the goal, never the step list,
@@ -125,31 +160,45 @@ row in it has a test.
 
 | | instances | example |
 |---|---|---|
-| `Success` | many | `account_id = 12345`, read off the live screen |
-| `BusinessOutcome` | 1 | `Could not find account #54321` — HTTP **200** and plain text, so status codes cannot detect it |
+| `Success` | many | `balance = $1231.10` for account 13344, read off the live screen |
+| `BusinessOutcome` | 2 | **account 99999 through the whole replay path** — and `Could not find account #54321`, HTTP **200** with plain text, so status codes cannot detect it |
 | `Failed` | 6 | checkpoint read `5022.93` where the artifact said `1231.10` |
 | `NeedsOperator` | 1 live + 6 forceable | a locator at 0.8582, below threshold |
 | ~~`Recoverable`~~ | **0** | **no type exists.** A test asserts its absence, so adding it is a conscious act |
 
 ### Demonstrated, not argued
 
-Same artifact, same command; only ParaBank's own admin page differs.
+The assignment's own worked example, with a typed parameter:
 
 ```
-$ interfaceai replay artifacts/log_in_discovered.v1.approved.json
-SUCCESS log_in_discovered in 5 steps
-  account_id = 12345                                              exit 0
+$ interfaceai replay read_savings_balance.v2.approved.json --param account_id=13344
+SUCCESS read_savings_balance in 9 steps
+  found_account_id = 13344
+  balance = $1231.10                                              exit 0
 
+  13122 -> $1100.00      12345 -> -$2300.00      both match the seed fixtures
+```
+
+A fair question with a negative answer — **exit 0**, because the caller can act
+on it:
+
+```
+$ interfaceai replay read_savings_balance.v2.approved.json --param account_id=99999
+record_not_found  no row where account_id is '99999'; the table holds 11
+```
+
+And the failure branch, produced by the application rather than a stub:
+
+```
 $ interfaceai env break        # action=CLEAN — account 12345 stops existing
-$ interfaceai replay artifacts/log_in_discovered.v1.approved.json
+$ interfaceai replay log_in_discovered.v1.approved.json
 NEEDS A HUMAN at step 4: cannot read 12345_link: not_found (0.8582)
   completed: enter username_textbox, enter password_textbox,
              click log_in_button, observe                          exit 1
 ```
 
-The second is the one worth reading. It **refuses to click something scoring
+That last one is the one worth reading. It **refuses to click something scoring
 0.86** and carries what it finished so a human can resume rather than restart.
-Nothing is mocked — the failure is produced by the application.
 
 ### What determinism rests on
 
@@ -307,14 +356,21 @@ not a log. Enforced by a test that reads the committed artifacts off disk.
 
 What was left out on purpose, and what I would do next.
 
-**Capability 1 — "read a member's savings balance" — does not replay.** The
-brief's own worked example. The *mechanism* works and is proven by a live test:
-anchor the accounts table's header, crop it, one model call against a response
-schema, and select the row **in code** by the caller's parameter — `$1,231.10`
-for account 13344, and `5022.93` correctly caught as a violated checkpoint after
-`env break`. What is missing is plumbing: nothing yet emits a
-`TABLE_CONTROL_PANEL` into a control map, and `EXTRACT` targets one control
-rather than a row set. **Next thing I would build.**
+**Grid cell assignment is still broken, and is being removed rather than
+fixed.** A grounded account link lands on the wrong row **3 times in 4**
+([issue 0009](docs/issues/0009-wrong-row-grounding-is-silent.md)), silently,
+because a wrong cell in a uniform table looks exactly like a right one.
+Relabelling the grid does not help — three schemes measured, best 3/15.
+Capability 1 no longer touches it (the panel path grounds no rows), but any
+capability that must *click* one of N identical rows still would.
+
+**Discovery reads labels through an overlay that corrupts them.** The coarse
+pass makes one call do two jobs on one image: name the controls *and* assign
+cell numbers. Measured, those want opposite images — **11/11** reading a clean
+screenshot against **8/11** through our 192-cell grid, with the gridded run
+reproducing one of the exact wrong ids from the live run. The split (read
+clean, locate gridded) is one extra call per screen and is **not done**; every
+control map written until it lands inherits the defect.
 
 **Extraction cannot point at data** ([issue 0010](docs/issues/0010-extraction-cannot-point-at-data.md)).
 `EXTRACT` names a control; the inventory prompt is told to ignore static text;
@@ -352,15 +408,19 @@ timeout and slow-load are *reachable* and untried — those are the honest TODOs
 types every artifact, but the 15/24/22 inventory variance it was meant to fix
 has not been re-measured.
 
-**Not attempted at all:** capabilities 2–5, desktop surface, an approval
-workflow, code generation, multi-run stability scoring.
+**Not attempted at all:** capabilities 2–5 (5, *find transactions by amount*,
+would reuse the panel read directly — its whole output is a result set),
+desktop surface, code generation, multi-run stability scoring.
 
 ---
 
 ### If I had another day
 
-1. A `TABLE_CONTROL_PANEL` producer, which lands capability 1 and closes 0009
-   and 0010 together.
-2. The vocabulary into the inventory prompt, then re-measure the variance.
-3. A session-timeout capability, giving the recoverable class its first real
-   instance instead of a guess.
+1. **Split the coarse pass** — read labels from a clean screenshot, assign cells
+   from the gridded one. One hour, and it fixes a defect in our own instrument
+   rather than in the application.
+2. **A `TABLE_CONTROL_PANEL` producer in discovery.** The panel is hand-added by
+   a committed script today; discovery has no notion of a region with structure.
+3. **A session-timeout capability** — log out mid-flow. That would give the
+   `recoverable` class its first real instance instead of a guess, and it is the
+   honest way to earn the type.
