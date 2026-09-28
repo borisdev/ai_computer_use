@@ -45,6 +45,93 @@ A3. Recorded in `capabilities.py`.
 
 ---
 
+### A2 · Extraction of a single value still needs a control
+[issue 0010](docs/issues/0010-extraction-cannot-point-at-data.md)
+
+**Half solved.** A value inside a TABLE is now reachable — that is what
+`TABLE_CONTROL_PANEL` does, and capability 1 uses it. A value that is *not* in a
+table still is not: `EXTRACT` names a control, the inventory is told to ignore
+static text, so a lone `Balance: $1,231.10` on a detail page has no id.
+
+**Fix:** a region locator — landmark + offset **+ size**, reusing the matcher
+that already exists. `locate_control` already returns `matched_crop`.
+
+**Cost:** ~2h, plus an ADR amendment (it changes the artifact schema).
+
+> **Decision:**
+
+---
+
+### A3 · Grid cell assignment is still wrong 3 times in 4
+[issue 0009](docs/issues/0009-wrong-row-grounding-is-silent.md) — **highest
+severity open**, because it is *silent*.
+
+```
+12345_link   grounded (500,361)   INSIDE its own link      ok
+12456_link   grounded (500,359)   that is 12345's row      WRONG
+13122_link   grounded (511,466)   that is 12789's row      WRONG
+```
+
+`status: ready`, unique landmark, ~1.0 at replay — and it clicks another
+customer's account. Relabelling the grid does not help: three schemes measured,
+best 3/15.
+
+⚠️ **Capability 1 no longer touches this** — the panel path grounds no rows. But
+any capability that must *click* one of N identical rows still would, and
+capability 2 (transfer funds) is exactly that shape.
+
+**Fix:** the same move as capability 1 — extract the panel, select in code,
+then use the row rhythm to turn an index into a click point. `PanelRead.point_for_row`
+already exists and is tested; nothing calls it yet.
+
+> **Decision:**
+
+---
+
+### A4 · ~~The read/locate split~~ — **DONE 2026-09-28**
+
+The coarse pass made one call do two jobs on one image: name the controls AND
+assign cell numbers. Those want opposite images. Now it is two calls — read from
+the clean screenshot, place using the grid.
+
+Verified by a fresh discovery run against the live app:
+
+```
+                        account ids    invented    13344         map grounded
+before (one call)       6/11           4           unresolved    22/34
+after  (read + locate)  11/11          0           ready         27/34
+```
+
+`log_out_link`, which the single pass never found at all, now appears.
+
+⚠️ **The grid did not go away and did not change.** It is still what the locate
+pass and the refinement dots use — it simply stopped sitting on top of the text
+while we read it. (The A/B/C margin-label idea was tested separately and
+rejected: 0/15 against the current grid's 3/15, recorded in issue 0009.)
+
+Three tests had to change because they were pinned to the old broken data,
+including one asserting `13344_link` was ungrounded. A mechanism test should not
+depend on a defect persisting, so it builds its own unresolved control now — and
+a new test pins the improvement so a regression is loud.
+
+> **Decision:**
+
+---
+
+### A5 · The controlled vocabulary is not in the prompt
+34 terms exist and type every artifact. `VOCABULARY.as_prompt_block()` is
+written and **nothing calls it**, so the 15/24/22 inventory variance it was built
+to fix has never been re-measured.
+
+⚠️ Worth re-measuring *after* A4 regardless: the two-pass split may have moved
+that number on its own, since the read pass is no longer fighting the overlay.
+
+**Cost:** ~1h to wire, plus a measurement run.
+
+> **Decision:**
+
+---
+
 ### A6 · ~~Capabilities do not compose~~ — **DONE 2026-09-28**
 
 Boris: *"they should be composable. that is the point of the language. a small
@@ -170,10 +257,14 @@ do anything the surface cannot express.
 
 ## My ranking, if you want one
 
-1. ~~**A1**~~ — **done**, and it closed the `BusinessOutcome` gap too
-2. ~~**A6**~~ — **done**, and it made the checkpoint rule more correct
-3. **A4** — one hour, fixes a defect in our own instrument
-4. **C · session timeout** — one hour, converts a guessed category into a measured one
+1. ~~**A1**~~ · ~~**A6**~~ · ~~**A4**~~ — **all done.** A1 closed the
+   `BusinessOutcome` gap, A6 made the checkpoint rule more correct, A4 took
+   reading from 6/11 to 11/11
+2. **A3** — highest severity still open, and capability 2 would hit it
+   immediately. The fix is the move capability 1 already proves works
+3. **C · session timeout** — one hour, and it earns the `recoverable` type
+   instead of guessing it
+4. **A5** — worth re-measuring after A4 before deciding it is still needed
 5. Everything else is defensible as-is and argued in REPORT §7
 
 > **Your ranking:**
