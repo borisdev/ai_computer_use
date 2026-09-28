@@ -15,10 +15,12 @@ The tally, from real runs (`tests/test_failure_modes.py` reproduces each):
                          control `unresolved`
     NeedsOperator     1  the first discovery run escalated mid-login
 
-⛔ **There is deliberately no `Recoverable`.** The brief lists it, and we have
-never observed one -- no transient load, no interstitial, nothing retried and
-succeeded. `surface.wait()` is a blind sleep, not a handled condition. It gets a
-type when something actually flakes, and the failing case will be its test.
+⛔ **There is deliberately no `Recoverable` VARIANT**, and the reason sharpened
+once one was actually built. A recovered condition is not a terminal state: if
+recovery works the run ends `Success`, and if it does not it ends
+`NeedsOperator`. Modelling it as a third result would make every successful run
+ambiguous -- "did this succeed, or recover?" is answered by `Success.recovered`,
+which names what was survived without pretending the run ended there.
 
 Two conditions the brief names that ParaBank cannot produce at all -- a
 permission denial from the application, and an unexpected dialog -- are cut and
@@ -51,11 +53,21 @@ class BusinessOutcomeKind(StrEnum):
 
 @dataclass(frozen=True)
 class Success:
-    """The capability ran and its checkpoints held."""
+    """The capability ran and its checkpoints held.
+
+    `recovered` names conditions the run hit and handled -- a lost session
+    re-established, say. **A recovered condition is not a terminal outcome**,
+    which is why there is no `Recoverable` variant: if recovery works the run
+    SUCCEEDS, and if it does not the run escalates. The brief asks that the
+    three classes be distinguished, and they are -- but one of them is a thing a
+    run survives rather than a thing it ends as, and modelling it as a result
+    would have made every successful run ambiguous.
+    """
 
     outputs: dict[str, str]
     steps_run: int
     evidence_dir: Path | None = None
+    recovered: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -417,40 +417,47 @@ do anything the surface cannot express.
 
 `docs/failure-modes.md` has the full table.
 
-### C1 · Session timeout → earns the `recoverable` type — **ON THE PLAN**
-
-**The gap:** `Recoverable` is one of the brief's three result classes and we
-have **zero** instances. Every run ends one of four ways — succeeds, business
-outcome, fails, escalates. **Nothing ever recovers and continues.**
-
-**What it looks like here:** the session dies mid-capability. `overview.htm`
-starts serving the logged-out page — HTTP 200, right heading, empty table — and
-the next step's control is not there. Today that is a `NeedsOperator`: a human
-summoned to fix something the system could fix itself.
-
-**Composition already handed us the mechanism.** Capability 1 declares:
+### C1 · ~~Session timeout~~ — **DONE 2026-09-28**
 
 ```
-requires:  at_the_login_page      a precondition
-step 0:    invoke log_in v2       a capability that ESTABLISHES a session
+$ replay session_loss_probe.v1 --param account_id=13344
+SUCCESS session_loss_probe in 8 steps
+  found_account_id = 13344
+  recovered accounts_overview_link gone -- log_in no longer holds
 ```
 
-So the rule falls out:
+The run threw its session away mid-capability, noticed, re-established it, and
+finished. **Deterministic, and no LLM is involved** — which the handoff bundle
+required of deterministic replay.
 
-> If a step fails **and** a precondition that was satisfied is now unsatisfied,
-> **and** the capability invoked something that establishes it — re-invoke that
-> **once**, re-check, retry the step. Fail again and escalate.
+**Driven by a declared postcondition, not a guess.** `Capability.establishes`
+says what a capability leaves behind; `log_in` declares the authenticated nav.
+When a step fails, any established condition that no longer holds is
+re-established by re-invoking the capability that set it. A test strips
+`establishes` and shows the same failure becomes unrecoverable — the honest
+behaviour, since nothing then says what that capability leaves behind.
 
-Deterministic, bounded to one attempt, and **no LLM involved** — which the
-handoff bundle was explicit about (*"No hidden LLM recovery in deterministic
-replay"*).
+**Four refusals, each deliberate:** once per condition (a second failure is not
+a flake) · never for an irreversible step (a submission that silently succeeded
+and one that failed look identical) · only when the postcondition is genuinely
+unmet · only if the child is still permitted.
 
-**Forcing it for a test:** navigate to `logout.htm` mid-run, or clear the
-session cookie. ParaBank hands us the lever.
+### ⛔ And it settled the `Recoverable` question properly
 
-**~1.5h**, and it earns the type honestly instead of declaring one and hoping.
+There is still **no `Recoverable` result variant**, and building one made the
+reason sharper than "we have no instance":
 
-> **Decision:** DO IT (Boris, 2026-09-28)
+> **A recovered condition is not a terminal state.** If recovery works the run
+> ends `Success`; if it does not, it ends `NeedsOperator`. A third result would
+> make every successful run ambiguous — *"did this succeed, or recover?"*
+
+`Success.recovered` answers that without pretending the run ended there. And the
+CLI prints it, because a run that survived something must not look like one that
+had a clear path.
+
+> **Decision:** DONE
+
+---
 
 ### C2 · The rest, with no instance and no plan
 
@@ -482,8 +489,8 @@ session cookie. ParaBank hands us the lever.
    reading from 6/11 to 11/11
 2. ~~**A3**~~ · ~~**A8**~~ — **done.** The savings capability refuses a checking
    account, and a disputed row position refuses to click at all
-3. **C1 · session timeout** — **agreed, on the plan.** Earns the `recoverable`
-   type instead of guessing it, and composition already supplies the mechanism
+3. ~~**C1**~~ · ~~**A7a**~~ · ~~**A7b**~~ — **done.** A lost session recovers; a
+   loan over the threshold stops; a forbidden capability never starts
 4. **A5** — reframed: constrain the SCHEMA, not the prompt. Measure the
    naming churn first (20 min) before building the rest
 5. Everything else is defensible as-is and argued in REPORT §7

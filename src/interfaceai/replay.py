@@ -132,6 +132,11 @@ class _Ctx:
     owner: Owner = Owner.WORKER
     # What this tenant permits. None means no restriction.
     permitted: frozenset[str] | None = None
+    # Capabilities this run invoked that declared an `establishes`
+    # postcondition, so a lost one can be re-established.
+    established: dict[str, Capability] = field(default_factory=dict)
+    # Conditions already recovered from, so recovery is bounded to once each.
+    recovered: list[str] = field(default_factory=list)
     library: dict[str, Capability] = field(default_factory=dict)
     stack: tuple[str, ...] = ()
     # One panel read serves every field taken from it. Cleared by any step
@@ -309,6 +314,12 @@ def _run(ctx: _Ctx) -> CapabilityResult:
         if result is None:
             n += 1
             continue
+        if isinstance(result, NeedsOperator):
+            recovered = _try_recover(ctx, n, step)
+            if recovered is not None:
+                ctx.recovered.append(recovered)
+                continue  # run the SAME step again, once
+
         if not isinstance(result, NeedsOperator) or ctx.operator is None:
             return result
 
@@ -636,6 +647,73 @@ def _extract(
     return None
 
 
+def _try_recover(ctx: _Ctx, n: int, step: Step) -> str | None:
+    """Re-establish a lost postcondition, once, and only when it is safe.
+
+    The brief asks that **recoverable conditions** be distinguished from
+    business outcomes and hard failures. This is the one we can actually
+    produce: a session dies mid-capability, and everything after it fails for a
+    reason that has nothing to do with the step.
+
+    Deterministic, and **no LLM is involved** -- the handoff bundle was explicit
+    that deterministic replay must have no hidden model recovery. What decides
+    is a declared postcondition and a locator:
+
+        a capability was invoked and declared `establishes`
+        that control is no longer on screen  -> what it established is gone
+        re-invoke it ONCE, then retry the step
+
+    Four refusals, each deliberate:
+
+    - **Once per condition.** A second failure is not a flake.
+    - **Never for an irreversible step.** A submission that silently succeeded
+      and one that failed look identical; repeating one moves money twice.
+    - **Only if the postcondition is genuinely unmet.** A step can fail for its
+      own reasons, and re-logging-in would not help.
+    - **Only if the child is still permitted** -- recovery must not reach a
+      capability the tenant forbids. ⚠️ Defensive: with a STATIC allowlist
+      this cannot fire, because a forbidden capability is refused at the
+      first invoke and the run never reaches recovery. Kept because every
+      other invoke applies the same check, and per-operator or time-boxed
+      permissions would reach it.
+    """
+    if step.risky:
+        return None
+    for name, child in ctx.established.items():
+        if name in ctx.recovered or child.establishes is None:
+            continue
+        if ctx.permitted is not None and name not in ctx.permitted:
+            continue
+        try:
+            witness = _resolve(ctx, child.establishes)
+        except ControlMapMiss:
+            continue
+        if _find(ctx, witness).status == "matched":
+            continue  # still established; this failure is about something else
+
+        condition = f"{child.establishes.control_id} gone -- {name} no longer holds"
+        ctx.evidence.event("recovering", step=n, condition=condition, by=name)
+        inner = replace(
+            ctx,
+            capability=child,
+            inputs={},
+            outputs={},
+            done=[],
+            stack=(*ctx.stack, child.name),
+        )
+        result = _run(inner)
+        if not isinstance(result, Success):
+            ctx.evidence.event("recovery_failed", step=n, by=name, result=type(result).__name__)
+            return None
+        if _find(ctx, witness).status != "matched":
+            ctx.evidence.event("recovery_did_not_take", step=n, by=name)
+            return None
+        ctx.evidence.event("recovered", step=n, condition=condition, by=name)
+        ctx.done.append(f"recover by re-invoking {name}")
+        return condition
+    return None
+
+
 def _invoke(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
     """Run another capability in the SAME session, then carry its outputs up.
 
@@ -719,6 +797,8 @@ def _invoke(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
         return result
 
     ctx.outputs.update(result.outputs)
+    if child.establishes is not None:
+        ctx.established[child.name] = child
     ctx.done.append(f"invoke {child.name} ({result.steps_run} steps)")
     ctx.done.extend(inner.done)
     return None
@@ -1022,7 +1102,10 @@ def _checkpoints(ctx: _Ctx) -> CapabilityResult:
 
     ctx.evidence.event("replay_succeeded", outputs=ctx.outputs)
     return Success(
-        outputs=dict(ctx.outputs), steps_run=len(ctx.done), evidence_dir=ctx.evidence.dir
+        outputs=dict(ctx.outputs),
+        steps_run=len(ctx.done),
+        evidence_dir=ctx.evidence.dir,
+        recovered=tuple(ctx.recovered),
     )
 
 

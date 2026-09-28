@@ -26,6 +26,7 @@ control maps it wrote, and one fixture captured from the CLEAN database.
 | an irreversible step over the tenant's money threshold | `amount=1500` vs a 1000 threshold | `request_loan`, live | `NeedsOperator` |
 | a capability this tenant does not permit | `request_loan` on tenant `feature` | the allowlist | `Failed` at pre-flight |
 | a permitted capability **invoking** a forbidden one | permit `request_loan`, forbid `log_in` | the allowlist, at every invoke | `Failed` |
+| a session lost mid-capability | `session_loss_probe` | re-invoke what declared it, once | **`Success` with `recovered`** |
 
 ## Needs the live app
 
@@ -40,10 +41,10 @@ Listed so the gap is visible instead of quietly filled with a mock.
 
 | condition | why we have none |
 |---|---|
-| **recoverable** (transient load, interstitial) | nothing has ever flaked and then succeeded. `surface.wait()` is a blind sleep, not a handled condition. **No type exists** — a test asserts `outcomes.Recoverable` is absent, so adding one is a conscious act |
+| ~~**recoverable**~~ | **Produced 2026-09-28.** A session lost mid-capability is re-established by re-invoking whatever declared it, once, and the run completes. ⚠️ Still **no `Recoverable` result variant**, and the reason sharpened by building one: a recovered condition is not a terminal state — if recovery works the run ends `Success`, if not it ends `NeedsOperator`. `Success.recovered` names what was survived |
 | **permission denial** | ParaBank has no roles, so we still have **no instance**. ⚠️ We now DO have a per-tenant capability allowlist — and it produces exactly what was predicted here: more of the §3.4 guardrail and none of the §3.3 denial. It is labelled make-believe in `.env`, in `settings.py` and in its tests, because a fiction that forgets it is one is worse than no fiction |
 | **unexpected dialog** | ParaBank raises none. The seam is `page.on("dialog")` on the surface; cut rather than mocked |
-| **session timeout** | reachable — log out mid-flow — **not tried** |
+| ~~**session timeout**~~ | **done** — `session_loss_probe` logs out mid-capability. Logged-out `overview.htm` serves HTTP 200 with the same heading and an empty table, so neither a status code nor a checkpoint catches it |
 | **slow / failed load** | plausibly reachable via `jms.htm` queue shutdown — **unverified**, nothing has ever POSTed to it |
 
 ## ⚠️ `ambiguous` is ours, and it has never fired

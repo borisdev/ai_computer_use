@@ -322,6 +322,16 @@ class Capability(Contract):
     # `_answers_are_checked` below.
     checkpoints: tuple[Checkpoint, ...] = ()
 
+    # What is true AFTER this capability runs -- its postcondition. `requires`
+    # is about the start state; this is about the state it leaves behind, and
+    # it is what makes bounded recovery possible: if a caller invoked this and
+    # the condition later stops holding, the thing it established is gone and
+    # can be re-established by running it again.
+    #
+    # `log_in` establishes "the authenticated nav is present". Measured: every
+    # account-services control is absent at 0.0000 when logged out.
+    establishes: ControlRef | None = None
+
     approval: Approval = Approval.DRAFT
     approved_by: str | None = None
 

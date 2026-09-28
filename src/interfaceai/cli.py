@@ -419,15 +419,23 @@ def replay_cmd(
         console.print(f"[cyan]cross-tenant[/] replaying on {tenant} ({base})")
 
     # Everything approved in artifacts/ is callable by an `invoke` step. The
-    # STEP pins the version, so a library holding a newer one is a validation
-    # error rather than a silent substitution.
+    # STEP pins the version, so a library holding a different one is a
+    # validation error rather than a silent substitution.
+    #
+    # ⚠️ Keyed by NAME, so two approved versions of one capability would shadow
+    # each other. Keeping the HIGHEST is deliberate rather than whatever the
+    # directory listing happened to end on: a step pinned to an older version
+    # then fails loudly in `validate_invocations` instead of quietly running
+    # whichever file sorted last.
     library: dict[str, capability.Capability] = {}
     for path in sorted(ARTIFACTS.glob("*.approved.json")):
         try:
             found = capability.load_capability(path)
         except (OSError, ValueError):
             continue
-        library[found.name] = found
+        current = library.get(found.name)
+        if current is None or found.version > current.version:
+            library[found.name] = found
 
     if tenant and tenant != capability.load_capability(artifact).target.tenant:
         # ⚠️ Retarget the WHOLE call tree, not just the entry capability. An
@@ -462,6 +470,11 @@ def replay_cmd(
         console.print(f"[green]SUCCESS[/] {loaded.name} in {result.steps_run} steps")
         for name, value in result.outputs.items():
             console.print(f"  {name} = {value}")
+        # A run that survived something must not look like one that had a clear
+        # path. Saying so is the difference between a handled condition and a
+        # hidden one.
+        for condition in result.recovered:
+            console.print(f"  [yellow]recovered[/] {condition}")
     elif isinstance(result, outcomes.BusinessOutcome):
         console.print(f"[yellow]{result.kind}[/] {result.detail}")
     elif isinstance(result, outcomes.NeedsOperator):

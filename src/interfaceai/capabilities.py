@@ -140,6 +140,10 @@ LOG_IN = Capability(
     # condition, and it is already asserted by the wait above. A capability that
     # returns nothing has nothing to compare.
     checkpoints=(),
+    # ...and it is also what this capability ESTABLISHES, which is what lets a
+    # caller recover from losing it. Same control, two roles: asserted on the
+    # way out, checked on the way back.
+    establishes=ControlRef(screen="overview", control_id="accounts_overview_link"),
 )
 
 
@@ -345,7 +349,74 @@ REQUEST_LOAN = Capability(
 )
 
 
-REGISTRY: tuple[Capability, ...] = (LOG_IN, READ_SAVINGS_BALANCE, REQUEST_LOAN)
+# ⚠️ A FAULT INJECTOR, not a product capability. It exists to produce a lost
+# session on demand, the same way `interfaceai env break` produces a changed
+# record: ParaBank's real session timeout is far too long to wait for, so the
+# equivalent is injected by logging out mid-flow.
+#
+# The brief names "session timeout" among the runtime conditions a replay must
+# handle (§3.3). This is how we get one to handle.
+SESSION_LOSS_PROBE = Capability(
+    name="session_loss_probe",
+    version=1,
+    goal="lose the session mid-capability, then try to continue",
+    vocabulary_version=VOCABULARY_VERSION,
+    target=TARGET,
+    viewport_width=_VIEWPORT.width,
+    viewport_height=_VIEWPORT.height,
+    params=(ParamSpec(name="account_id", slot="account_id"),),
+    returns=(OutputSpec(name="found_account_id", slot="account_id"),),
+    requires=(
+        Precondition(
+            name="at_the_login_page",
+            control=ControlRef(screen="index", control_id="username_textbox"),
+            must="present",
+            why="Establishes its own session by invoking `log_in`.",
+        ),
+    ),
+    steps=(
+        Step(
+            verb=StepVerb.INVOKE,
+            invokes="log_in",
+            invokes_version=2,
+            note="Establish a session.",
+        ),
+        Step(
+            verb=StepVerb.CLICK,
+            control=ControlRef(screen="overview", control_id="account_services_nav"),
+            row_key=LiteralValue(value="Log Out"),
+            note="THE INJECTED FAULT: throw the session away mid-capability.",
+        ),
+        Step(
+            verb=StepVerb.EXTRACT,
+            control=ControlRef(screen="overview", control_id="accounts_table_panel"),
+            slot="account_id",
+            output="found_account_id",
+            row_key=ParamValue(param="account_id"),
+            field="account_id",
+            note=(
+                "Carry on as if nothing happened. Logged-out overview.htm serves "
+                "HTTP 200 with the same heading and an EMPTY table, so nothing about "
+                "the response says the session is gone."
+            ),
+        ),
+    ),
+    checkpoints=(
+        Checkpoint(
+            output="found_account_id",
+            expected=ParamValue(param="account_id"),
+            why="The record the caller asked for.",
+        ),
+    ),
+)
+
+
+REGISTRY: tuple[Capability, ...] = (
+    LOG_IN,
+    READ_SAVINGS_BALANCE,
+    REQUEST_LOAN,
+    SESSION_LOSS_PROBE,
+)
 
 LIBRARY: dict[str, Capability] = {c.name: c for c in REGISTRY}
 """What an `invoke` step resolves against. Keyed by name; the STEP pins the
