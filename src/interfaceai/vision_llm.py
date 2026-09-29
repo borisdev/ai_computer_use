@@ -46,6 +46,15 @@ PROFILES: dict[str, dict[str, str]] = {
         "api_version": "2025-04-01-preview",
         "key_field": "vision_api_key_eastus2",
     },
+    # Same eastus2 deployment as gpt-5.2-chat, same key. Added as a GRADER for
+    # evals/grade.py -- a second opinion from a model tuned on code is worth
+    # more on "is the artifact schema sensible" than a third chat model.
+    "gpt-5.2-codex": {
+        "model": "azure/gpt-5.2-codex",
+        "api_base": "https://boris-m3ndov9n-eastus2.cognitiveservices.azure.com/",
+        "api_version": "2025-04-01-preview",
+        "key_field": "vision_api_key_eastus2",
+    },
     "claude-opus": {
         "model": "anthropic/claude-opus-4-6",
         "key_field": "anthropic_api_key_for_vision",
