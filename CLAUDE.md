@@ -147,6 +147,18 @@ POSTs `action=INIT` after the healthcheck and blocks on `is_seeded()`. Do not
 Still unverified: `jms.htm` (loan-processor queue toggle). Nothing has POSTed
 to it yet.
 
+## Before pushing
+
+```bash
+uv run python3 scripts/check_doc_links.py      # every markdown link resolves
+uv run python3 scripts/check_mermaid.py        # every diagram actually renders
+uv run python3 scripts/sync_test_counts.py     # the stated counts are the real ones
+```
+
+⚠️ The third exists because three documents stated 247, 249 and 257
+simultaneously — in the same commit where one of them warned about stale
+counts. A number a human retypes in three places will disagree with itself.
+
 ## Grading and self-audit
 
 ```bash
