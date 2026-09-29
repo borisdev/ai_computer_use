@@ -27,7 +27,15 @@ def slug(heading: str) -> str:
 
 def main() -> int:
     faults: list[str] = []
-    docs = sorted((ROOT / "docs").rglob("*.md")) + sorted(ROOT.glob("*.md"))
+    # ⚠️ `docs/_parts/` holds FRAGMENTS that are inlined into a generated file
+    # at the repo root, so their relative links resolve from THERE, not from
+    # where the fragment sits. Checking them in place reports false breaks --
+    # and the links themselves are checked in the assembled document.
+    docs = [
+        p
+        for p in sorted((ROOT / "docs").rglob("*.md")) + sorted(ROOT.glob("*.md"))
+        if "_parts" not in p.parts
+    ]
     for doc in docs:
         for match in LINK.finditer(doc.read_text()):
             target = match.group(1)

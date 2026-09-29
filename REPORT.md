@@ -8,7 +8,7 @@
 > threshold stops and asks a person. Every number here came from a run.
 >
 > ```
-> 260 tests — 229 offline, 31 live · ruff clean
+> 264 tests — 233 offline, 31 live · ruff clean
 > ```
 
 Detail lives elsewhere so this stays short: **[evidence/](evidence/README.md)**
@@ -105,10 +105,11 @@ proved to come from the right record. **`establishes`** is the mirror: a
 postcondition naming what is true afterwards, which is how recovery knows which
 capability puts a lost session back.
 
-⚠️ **Hand-authored artifacts name controls that do not exist** — measured, **3
-and 8** faults against a real control map, versus **0** for the discovered one.
-A hand-written artifact can name anything; a discovered one can only name what
-it recorded.
+⚠️ **A hand-authored artifact can name a control that does not exist.** The
+first two drafts carried **3 and 8** faults against real control maps — they
+referenced a screen called `global_nav` that I invented and never mapped. The
+discovered artifact carried **0 on first emission**. Both are at 0 now; the
+point is which needed correcting. `interfaceai capability check` is the check.
 
 ## 3. Determinism & error handling
 

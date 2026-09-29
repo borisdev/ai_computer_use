@@ -650,6 +650,40 @@ def dump_capability(capability: Capability) -> str:
     return capability.model_dump_json(indent=2) + "\n"
 
 
+def resolve_artifact(
+    root: Path, name: str, *, version: int | None = None, approved_only: bool = True
+) -> Path:
+    """Find the artifact for a capability NAME. The registry's `load`.
+
+    ⚠️ A NAME IS THE ADDRESS, NOT A FILE PATH. `replay
+    artifacts/read_savings_balance.v3.approved.json` leaks three things a caller
+    should not have to know: where artifacts live, which version is current, and
+    the approval suffix. An agent invoking a capability knows its NAME; making
+    it know the filename couples every caller to the storage layout.
+
+    Defaults to the highest APPROVED version, because that is what replay is
+    allowed to run. `version=` pins one explicitly, which is what composition
+    already does through `Step.invokes_version`.
+    """
+
+    def _version(path: Path) -> int:
+        return int(path.name.split(".v")[1].split(".")[0])
+
+    pattern = f"{name}.v{version}.*.json" if version is not None else f"{name}.v*.json"
+    found = sorted(root.glob(pattern))
+    if not found:
+        known = sorted({p.name.split(".v")[0] for p in root.glob("*.v*.json")})
+        raise KeyError(f"no artifact named {name!r} in {root}; known: {known}")
+
+    approved = [p for p in found if p.name.endswith(".approved.json")]
+    if approved_only and not approved:
+        raise KeyError(
+            f"{name} has no APPROVED artifact (drafts: {[p.name for p in found]}). "
+            f"Replay refuses a draft -- `interfaceai capability approve {name} --by <you>`"
+        )
+    return max(approved or found, key=_version)
+
+
 def load_capability(
     path: Path,
     vocabulary: ControlledVocabulary | None = None,

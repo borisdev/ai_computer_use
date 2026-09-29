@@ -153,7 +153,12 @@ to it yet.
 uv run python3 scripts/check_doc_links.py      # every markdown link resolves
 uv run python3 scripts/check_mermaid.py        # every diagram actually renders
 uv run python3 scripts/sync_test_counts.py     # the stated counts are the real ones
+uv run python3 scripts/build_capabilities.py   # CAPABILITIES.md is GENERATED
 ```
+
+⛔ **`CAPABILITIES.md` is generated — do not hand-edit it.** Prose belongs in
+`docs/_parts/capabilities-tail.md`, which the generator appends. Appending to
+the output directly loses it on the next rebuild, which happened once, silently.
 
 ⚠️ The third exists because three documents stated 247, 249 and 257
 simultaneously — in the same commit where one of them warned about stale

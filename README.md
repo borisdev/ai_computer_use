@@ -25,7 +25,7 @@ artifact, deterministic replay with typed outcomes, human handoff of the live
 session, and one artifact serving two tenants.
 
 ```
-260 tests — 229 offline, 31 live · ruff clean
+264 tests — 233 offline, 31 live · ruff clean
 ```
 
 | Piece | State |
@@ -59,6 +59,12 @@ capability check` is that check, and `interfaceai status` prints the counts.
 Setting up a fresh machine: [`docs/vm-setup.md`](docs/vm-setup.md)
 
 ## ▶ Start here — [CAPABILITIES.md](CAPABILITIES.md)
+
+```bash
+uv run interfaceai replay -c read_savings_balance --param account_id=13344
+uv run interfaceai replay -c log_in_discovered --tenant feature
+uv run interfaceai status  --tenant feature        # what this tenant may run
+```
 
 Five capabilities, each with the approved artifact, a committed trace per
 tenant, a generated workflow diagram, and **the command to run it yourself**.

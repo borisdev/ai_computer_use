@@ -392,7 +392,12 @@ def as_mermaid(capability: Capability) -> str:
     will never find. The shape-per-kind idea is workflow-workbench's.
     """
     palette = {
-        "invoke": "fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#312e81",
+        # ⭐ COMPOSITION SHOULD LOOK LIKE COMPOSITION. An invoked capability is drawn
+        # in the same green as the Success terminus, because it IS a capability --
+        # a whole flow of its own, with its own checkpoint, running in this session.
+        # Boris: "show off composition by using a green node capability within a
+        # capability."
+        "invoke": "fill:#bbf7d0,stroke:#15803d,stroke-width:3px,color:#14532d",
         "write": "fill:#fef3c7,stroke:#d97706,color:#92400e",
         "act": "fill:#fde68a,stroke:#d97706,stroke-width:2px,color:#92400e",
         "risky": "fill:#fee2e2,stroke:#dc2626,stroke-width:4px,color:#991b1b",

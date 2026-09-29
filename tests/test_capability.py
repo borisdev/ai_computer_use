@@ -35,6 +35,7 @@ from interfaceai.capability import (
     assert_replayable,
     dump_capability,
     load_capability,
+    resolve_artifact,
     validate_capability,
     validate_invocations,
 )
@@ -660,3 +661,41 @@ def test_every_approved_artifact_the_docs_and_tests_LOAD_is_committed() -> None:
     assert referenced, "nothing references an approved artifact; this asserted nothing"
     missing = sorted(referenced - tracked)
     assert not missing, "referenced but NOT committed (git add -f each): " + ", ".join(missing)
+
+
+def test_a_capability_is_addressed_by_NAME_not_by_filename() -> None:
+    """`--capability read_savings_balance`, not a path into `artifacts/`.
+
+    A filename leaks three things a caller should not know: where artifacts
+    live, which version is current, and the approval suffix. An agent invoking
+    a capability knows its NAME.
+    """
+    assert resolve_artifact(ARTIFACTS, "read_savings_balance").name.endswith(".v3.approved.json")
+    assert resolve_artifact(ARTIFACTS, "request_loan", version=1).name.endswith(".v1.approved.json")
+
+
+def test_resolving_a_name_with_only_DRAFTS_refuses_and_says_how() -> None:
+    """Replay must not reach a draft by accident, and the error must be useful."""
+    with pytest.raises(KeyError, match="approve"):
+        resolve_artifact(ARTIFACTS, "evidence_discovery")
+    # ...unless the caller explicitly asks for one, which tests and `check` do.
+    assert resolve_artifact(ARTIFACTS, "evidence_discovery", approved_only=False).name.endswith(
+        ".draft.json"
+    )
+
+
+def test_an_unknown_name_lists_what_IS_there() -> None:
+    """A registry that says "not found" and stops is a registry you cannot browse."""
+    with pytest.raises(KeyError, match="read_savings_balance"):
+        resolve_artifact(ARTIFACTS, "no_such_capability")
+
+
+def test_version_10_does_not_sort_below_version_9() -> None:
+    """Lexical sort on filenames is the classic way to pick the wrong artifact."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        for v in (9, 10):
+            (root / f"c.v{v}.approved.json").write_text("{}")
+        assert resolve_artifact(root, "c").name == "c.v10.approved.json"

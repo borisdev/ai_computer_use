@@ -369,13 +369,24 @@ def discover_cmd(
 # replay -- the production path (assignment 3.3)
 # ---------------------------------------------------------------------------
 
+_ARTIFACT_ARG_OPTIONAL = typer.Argument(
+    None, help="An artifact path. Prefer --capability; this is the low-level form."
+)
+_CAPABILITY_OPTION = typer.Option(
+    None, "--capability", "-c", help="Capability NAME. Resolves its approved artifact."
+)
+_VERSION_OPTION = typer.Option(
+    None, "--version", help="Pin a version. Defaults to the highest approved."
+)
 _ARTIFACT_ARG = typer.Argument(..., help="Path to an APPROVED capability artifact.")
 _INPUT_OPTION = typer.Option(None, "--param", help="Bind a typed input: name=value. Repeatable.")
 
 
 @app.command("replay")
 def replay_cmd(
-    artifact: Path = _ARTIFACT_ARG,
+    artifact: Path = _ARTIFACT_ARG_OPTIONAL,
+    capability_name: str = _CAPABILITY_OPTION,
+    version: int = _VERSION_OPTION,
     param: list[str] = _INPUT_OPTION,
     maps: Path = _MAPS_OPTION,
     headless: bool = typer.Option(True, "--headless/--headed"),
@@ -394,6 +405,23 @@ def replay_cmd(
     ),
 ) -> None:
     """Replay a capability deterministically. No model decides anything."""
+
+    # NAME > PATH. `--capability read_savings_balance` is the address an agent
+    # knows; the filename is storage layout. The positional path stays for the
+    # low-level case (replaying an arbitrary file, including a draft in a test).
+    if capability_name:
+        if artifact is not None:
+            console.print("[red]give either an artifact path or --capability, not both[/]")
+            raise typer.Exit(2)
+        try:
+            artifact = capability_mod.resolve_artifact(ARTIFACTS, capability_name, version=version)
+        except KeyError as exc:
+            console.print(f"[red]{exc}[/]")
+            raise typer.Exit(1) from exc
+    elif artifact is None:
+        console.print("[red]need --capability NAME (or an artifact path)[/]")
+        raise typer.Exit(2)
+
     settings = get_settings()
     inputs: dict[str, str] = {}
     for item in param or []:
