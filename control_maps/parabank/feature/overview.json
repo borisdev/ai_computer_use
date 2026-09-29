@@ -1176,6 +1176,59 @@
         "key_click_dx": 20,
         "row_pitch": 24
       }
+    },
+    {
+      "id": "accounts_overview_table_control_panel",
+      "label": "Accounts Overview",
+      "role": "table_control_panel",
+      "description": "A table listing multiple bank accounts with their balances and available amounts. The first column contains account numbers as clickable links. (11 rows, pitch 28px, autocorrelation 0.899)",
+      "status": "ready",
+      "click_point": {
+        "x": 599,
+        "y": 289
+      },
+      "locator": {
+        "schema_version": 1,
+        "template_png": "iVBORw0KGgoAAAANSUhEUgAAAK4AAAARCAIAAADL8gAZAAALiUlEQVR4nO1Zf3AU5Rl-2PvJ3V6yySWXvfzgLjE50BwhHGIYhUAhFAelUGlBR6h2hKk4VopjnbF1cLR1bGNLyxTFWpyBgc5oZ-gkRjJEg2hATESCwIXBBO5yXJLb3OXuNuxesnu7t_SPu4T8DrVqbYdn7o_bffd79n3f7_ne793dGdevX8ct3AJA_LcduIXvCtQTnuXaP3tkv48BAMO6R1c-69B-q079pxDcZ9qbBPMP78qzar4ihRhl6j_pbPKHOwIDEehmWSlnQd7qe-yuDNXX6upNQ7r2zr6G3X5oC-Yd2OKwfdW4psCEUoi3nQ8xqf8DzecjnIM2ff23_sYQZQ4e-fKE3rbI9dWkkPCdOb3jsJ-5cUa86u-96u-tP3Vp9folv1yQpvvafP0OYSIpcJEmz8DwEeO52sHRrv8dLYSvdrcJgP4rDuc8F3YmdaBO37C2fKPDnIlY28VLu4_4OuSB-tpmW_ayzbO-9TKpSdu47ccbv8k7TCCFsL-ziQWgq6q0tDf5r7JMfUBwmUamNhH2dOxuuNIcGOBlIjPLXLWi_LF5lOmmrOB6OvceudQU4CICoNbNKqA3ryq7b5YeADimeu-JGhaZZXcfeDDPjGRh_GC3X0kVRrAH3_hgbwCZZRW77pJqPu5o8nIRtalqqWv7UotZSlkBgPU9-RsfWeI6sOk2K2LNn7W908K09Yk8NLQ1s-ru0s0LzBPIW7rWeOxKBwCYNjxa-YuiZNRproq7dpmw9ZCPkfsPNnRWPmxpPnBst19BVsmb28qdMwEAg-HX9314KABtwdw3t8xxaBLh9qE8ACSVWbm0fHuF2QRAGo5i4fOFzN4Gvy_LsRGXD3ZNTvhI7tkDYzaISfi57p1_OdXIExVrV_6uIk2HRPvRY4829QMoXbVyz1JKh0Sg5cRDtaE4WbDr54sWDWVhfNsotJ0PRgBQ9OoFdhcFQGxuDYdH6CBw7vTWfRca_QO8TJBqJdIX-sc7x55-j-GmtyLcfmbrntM1Xi4igCQ1kMWrXt_LbxyrvihMpNTxILRqAOB7Onbub633C7wMCFxjw6nqczGAoK2ZdEreBJ2VXppt1GqE5iMfPX3E19In8nodrU8wgd5Dhz98sibl0kiIbKjRrwDIvH3O5qJRhcVc4thYQADg_T1u0bCojNIC6GOaQvHU2FB3SwAAUVpG2zSJwLnTW_dfaAwMwJqzpNAUZyP1tZ-8ei6WvDhZVfir7dW1_g4BmKGb55yacIynk_PrqQorASg-PxcHIMXa_KlAfZ5wRAIg-fzX4gBppW0jVsM4KXDBRo8IgC6aVUplVjkMACKezrbhtA2GDjb4GQBZtl3PrX__pTV77k4HlLZT52t6EtNZgwff81wFQOb-escD7_9q3fEdC6tIAAM1R9vcg5PO_3jE-zjrquV1O9fVPT53vhqA1PIZE0Dayh_d82yZDgCogue3ff9P99NmLlx_cQAg5t-38vjOH_xz5_q6LbOrSnJK1EJEGkfLsQEZAKyzKHKMTWMoLTACgBzriIIuLChRA-DOejkRABI-L9MBQE1VOUw6LpUHsnDe3x6v_P3W5W-uSgfExoZLrYMAiGQ5jrP9WtfC_c898NG2OQuKpyQcO02T88v6kiITACbARSRAYM8GFOjTS0nwgZBPACShIyACsDmozBGUY6UQ9vhbeQA6Vxll0mhL7simAfChRk9syAemlQWAkjtum28CoHetumf_liV7tpRXmqa19jT3AUCJa05VtgqALjt3Q7IN6QsNr4abAkVvLDObAJO1YHUhkZzFsDzxtVoAUM5-cv6tM4yPS5iLyl76aeXz99sn6MNlKQ4ABKknxvWGKpMpma5EXIYu21JlJQB0XAwxEiBxZy9yALQFBS5KxUWTeSBKymhaA0BrK5lVqgZYZlSY-tzHVtgdpmQqpiIc48qU_AlrgZkGEA228wkuFHILIAvoymwN-HBzKC7yrDsKwDS_wDAyxjG9Qqz1fCi5O1RZ9QBMBbMWUb4aVmo9Hw7PM5qBOC_wAEDQ2foUkcboKDIm_4b9N2XNHLZCZc42kOB4CBFeQca4uZkMMylrsn5rVKaZGkCEnJhYSiZ6w4qc5treCNt76HDvIUBLZVbecdumpXbH-GZBrUnqhhcUERijBo5TAABaUg9oTIvKqL3-SDzQ3cqW0Ag2BRSAmF9G2zQIp7KknK1t-F7tSA4pEJJgHTrKMNmGi8-UhBhdwOJT8psc2U7Sw_BcW1SwtYcZoLSILh1k4O1v8w_wcrBDAEjKlTGq-b0hhZAogO2p90gAwPqefsU38rqIx_Nxr2UJhaiUSOaDl8WQOFatN2mN37AmwrJyHQCuC5IQiscHrwOAkoiHRUEBIIu8ogC4rsiRuGCAyCsAoCGUSFwwKACEwRkAgOsJNi6ECKE_MfIQADLKF-yifIc_Z77s6m_vl-NspPFU5GMfV72pZHQ_gLhuZpYKTAKdl5mOO_U5I1eKPODuHQQAnZ7WKSFRUdutDlXELbONnj673OWWAZ25wq4KicJwpBZbbgU9svhoZmcpofhwFOpYXAgpQ5MxOSHk1JBkHsSp-YmZJWaikRcu-oMmHweQRfkzM2TK0tTfebnnlBwNA8YciiSEkHhj5Kiq0NvZ7RYxMcToic6BJeUGI2XIAFgobJ8Yh0ELQIge-7zby6sKnYVLprGmWdAzygqF7RuMAYChkNJATSSFKglyaonLYpCfxKV_A6oMe9EWexGAON_fcvL83hY21u07ytifsI_aJLRU9pJ8wu1TYle8dZ30luIbSuG7PHVXZABGe56TGnWx1x1skaNS0kSqAGhInRFgAWpO8U8WpY999JQn7pGnIByDafhBOPJJ-K51Xe7RMAqMaS5KQ8LsMPpOMsEWeUACCoszMkZvCSN6BXnA7Y7GAOjoZ7avqX1h6LfdVaEDILvd4V4ZWip7vhkAvJc63TwA4cuT7r3HvHUt3V5ZNY01K2tRDgB43Zdb-hIA4n3d737BA9DkWJxZKqh1FhIAYkzQywOQPF9c_rB_wrxNhqHECSIrAECc6Xx9__FH_nzqXUYCoCXTK8rpvMlGq02Ll9kKAYCve_vT17_o6-WlKBM4-l7zjgNeLwBV2vrFdGofUxuczgwNwHZ63_UpgNrpNCcLCUlZZqcDQHuzp5VNAOA7O1491PxqTccFPjGp75MTjsF0_CqLPc0CsFeYsyKMtKWQBPRpriwCsdAJnwyQznzDGAHduE-cDZ7olAFQxflJ1adAmZcX61raxFiX383n5lAZ9y7LPXm4JxjuevGPPUaVEksAQN680vX5GqinsS6vsh37u6-7n_nDa_V7jepYTAYAFXlvVWGRGoDB5TS_3R2OxXpe2RO1qMWgYHCaCXdYkTB5BkeBsNAzNedESQzt3nf8aHHxU8s0sT6ejfFv_bWxzqw3IhEMD8YATU7eCnqCl5Gk_fZn1g6-WMsEE3xD7acNI20qctU615r84VEqiz13tirsTogsAGPWcrthiMX84DK6tZZh-7te2d1jSddE-0UJMNosD-mneHU9OeFYL6fhJ2lLoa4rKCoAUVicZgSgNhQWk_BdkwAY0-ZSY2MfrgqJYGePOwFAV1GeMbp7088uz7YAEKMnLg8AqhxnefXDcyrMBKDEEuq8PPqBtYur11kz1JjOiozisuqfzV2VpwMQi8kAYbHZntmyeKgUq_LvdD23gi7UAaJkpHOf2uRak5wwWb65BwxVvrN4uZkAIMX4Lj4hkXnbNpWvsekAORjmveHBmDGtomLuy5scsyd-I6nKL1_42vaKbfMoy1CWKDO1uKL0hccXP-E0jVxMWsq8JD-VQ8qeP_vGA6gqp9xV_XDx_HQCUIL9ogS1Y17pbx8syp_4s8-0hGOdnIY_WQMAwOBIFQCVJT8jGZGRNueNi33G8EfqkHiTL3lu4f8Ttz5S30IK_wLEHleASBsFawAAAABJRU5ErkJggg==",
+        "reference_size": {
+          "width": 1280,
+          "height": 900
+        },
+        "reference_crop": {
+          "x": 485,
+          "y": 279,
+          "width": 174,
+          "height": 17
+        },
+        "click_offset": {
+          "x": 114,
+          "y": 10
+        },
+        "match_threshold": 0.95,
+        "ambiguity_margin": 0.05
+      },
+      "reason": null,
+      "policy": {
+        "irreversible": false,
+        "sensitive": false
+      },
+      "panel": {
+        "columns": [
+          "account_id",
+          "balance",
+          "available_amount"
+        ],
+        "key_column": "account_id",
+        "dx": -131,
+        "dy": 55,
+        "width": 327,
+        "height": 308,
+        "key_dx": -107,
+        "key_dy": 55,
+        "key_width": 47,
+        "key_click_dx": -91,
+        "row_pitch": 28
+      }
     }
   ]
 }

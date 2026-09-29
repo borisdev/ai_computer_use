@@ -1,11 +1,23 @@
 #!/usr/bin/env python3
-"""Add ParaBank's TABLE_CONTROL_PANELs to their control maps.
+"""Add ParaBank's TABLE_CONTROL_PANELs to their control maps, BY HAND.
 
-⚠️ **This stands in for a discovery step that does not exist yet.** Discovery
-inventories interactive controls; it has no notion of a region with structure,
-so a `TABLE_CONTROL_PANEL` has to be put in by hand. Doing it as a committed,
-re-runnable script rather than a scratch edit means the geometry below is
-reviewable and the map can be rebuilt.
+⛔ **Discovery can do this now -- `scripts/discover_panels.py`, issue #6.** The
+paragraph that used to sit here said a discovery step for panels "does not exist
+yet"; `screenshot2panels` proposes them off the same screenshots this script
+reads, and measures the same pitch and row count on all four regions: 28/24/23/23
+and 11/8/4/3.
+
+This script stays for two reasons, neither of them inertia. The four capabilities
+in `capabilities.py` NAME these ids -- `accounts_table_panel`,
+`account_details_panel`, `account_services_nav`, `loan_result_panel` -- so
+deleting it would break four artifacts to make a point. And the hand-measured
+numbers are what the derived ones are compared AGAINST, in
+`tests/test_screenshot2panels.py`.
+
+⚠️ Read the two scripts together: they write DIFFERENT ids into the same store,
+which is deliberate. `accounts_table_panel` was measured by a person and
+`accounts_overview_table_control_panel` by the code, and having both means the
+comparison can be re-run rather than remembered.
 
 Every number here was measured, not guessed:
 

@@ -71,8 +71,12 @@ container is down is not — it would be asserting nothing.
 
 ⛔ **This used to say the agent loop, the control-map store, the replay engine,
 the escalation path and DISCOVERY were "not written yet". All of them exist and
-are central — discovery emits artifacts, and the one real limitation is that it
-cannot yet emit a panel-backed capability ([#6](https://github.com/borisdev/ai_computer_use/issues/6)).
+are central — discovery emits artifacts, and since
+[#6](https://github.com/borisdev/ai_computer_use/issues/6) closed it emits
+PANEL-BACKED ones (`artifacts/discovered_balance.v1.approved.json`). The
+remaining limitation is narrower: on two screens the read pass names a different
+repeated structure than the one a capability wants, so `account_details_panel` is
+still measured by hand — `docs/_parts/capabilities-tail.md` has the table.
 The sentence outlived the work by many commits** — the exact failure this repo
 keeps hitting, now four times over (`findings.md`, the issues index, ADR 0005,
 here). Found by Copilot on PR #5.

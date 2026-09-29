@@ -130,6 +130,29 @@ _MAPS_OPTION = typer.Option(
 )
 
 
+def _capability_named(name: str) -> capability.Capability:
+    """A capability by NAME -- authored OR discovered.
+
+    ⛔ **Not every capability is authored, and looking only in the registry broke
+    the one command discovery's output has to pass.** `log_in_discovered` and
+    every draft a discovery run has just emitted live only as artifacts, so
+    `capability approve <a discovered name>` answered *"no capability named ...;
+    known: log_in, read_savings_balance, ..."* -- a draft that could never be
+    promoted, which makes the draft -> approved gate unreachable for exactly the
+    artifacts it exists for.
+
+    `resolve_artifact` is the registry's `load` and already knows the rule
+    (highest version, approved first), so the fallback is one call rather than a
+    second copy of the filename convention.
+    """
+    try:
+        return capabilities.get(name)
+    except KeyError:
+        return capability_mod.load_capability(
+            capability_mod.resolve_artifact(ARTIFACTS, name, approved_only=False)
+        )
+
+
 @cap.command("list")
 def cap_list() -> None:
     """Every authored capability, with its signature and approval state."""
@@ -197,7 +220,7 @@ def cap_approve(
     artifact that approved itself would make the gate decoration.
     """
     try:
-        source = capabilities.get(name)
+        source = _capability_named(name)
     except KeyError as exc:
         console.print(f"[red]{exc}[/]")
         raise typer.Exit(1) from exc
@@ -707,20 +730,15 @@ def diagram_cmd(
     moment the artifact changes, and nothing tells you. This one cannot drift.
     """
     try:
-        capability = capabilities.get(name)
-    except KeyError:
-        # ⚠️ NOT EVERY CAPABILITY IS AUTHORED. `log_in_discovered` came out of
-        # a real discovery run and lives only as an artifact, so the registry
-        # has never heard of it -- and it is the most interesting one to draw.
-        # A generated-docs story that can only describe hand-written
-        # capabilities describes the wrong half of the system.
-        found = sorted(ARTIFACTS.glob(f"{name}.v*.json"))
-        if not found:
-            console.print(f"[red]no capability or artifact named {name!r}[/]")
-            raise typer.Exit(1) from None
-        # Prefer the approved one, then the highest version.
-        approved = [p for p in found if p.name.endswith(".approved.json")]
-        capability = capability_mod.load_capability(max(approved or found))
+        # ⚠️ NOT EVERY CAPABILITY IS AUTHORED. `log_in_discovered` came out of a
+        # real discovery run and lives only as an artifact, so the registry has
+        # never heard of it -- and it is the most interesting one to draw. A
+        # generated-docs story that can only describe hand-written capabilities
+        # describes the wrong half of the system.
+        capability = _capability_named(name)
+    except KeyError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(1) from exc
     # ⛔ NOT console.print. Rich treats [square brackets] as markup, and mermaid
     # is made of them -- `[[invoke]]`, `[/extract/]`, `>wait_for]`. It also wraps
     # at terminal width, which splits a long `classDef` line in half. Either one

@@ -1,10 +1,16 @@
 """The authored capabilities, and the registry that serves them.
 
-⚠️ **These are hand-authored, not discovered.** The discovery loop (S3.1) does
-not exist yet, so these are the TARGET SHAPE it must emit rather than evidence
-that it can. They are here because the step executor (S3.3) needs something
-real to execute, and because an artifact schema with no instance is a schema
-nobody has tried to write anything in.
+⚠️ **These are hand-authored, not discovered** -- and the sentence that used to
+follow ("the discovery loop does not exist yet") had been false for many commits,
+which CLAUDE.md records as this repo's recurring failure. Discovery exists, and
+since issue #6 it emits PANEL-BACKED artifacts:
+`artifacts/discovered_balance.v1.approved.json` reads a row of the eleven-row
+accounts table by `row_key`, and replays on both tenants.
+
+So these four are hand-written because they were written BEFORE that, not because
+they could not be discovered. They remain useful as the TARGET SHAPE, and because
+an artifact schema with no instance is a schema nobody has tried to write
+anything in.
 
 Both are `draft`. That is not a placeholder -- nothing has reviewed a real run
 of either, and `draft` is exactly what that state is called. `interfaceai

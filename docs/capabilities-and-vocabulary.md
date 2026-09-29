@@ -194,6 +194,13 @@ are four — `log_in`, `log_in_discovered`, `read_savings_balance`,
 `request_loan`, `session_loss_probe` — several approved, and one of them came
 from a real discovery run rather than a hand.
 
+⚠️ **And the panel is no longer a hand-measured prerequisite.** Capability 1's
+`TABLE_CONTROL_PANEL` can be proposed by discovery and measured by geometry
+(`screenshot2panels`, issue #6); `discovered_balance` is the discovered
+capability that reads the accounts table by `row_key`. The
+`account_details_panel` this page's capability 1 also uses is still measured by
+hand, because on that screen the read pass names the transactions table instead.
+
 **Do not re-state the count here.** `uv run interfaceai status` reads the
 artifacts, so it cannot drift; [docs/status.md](status.md) is that view
 committed. Capability 3, 4 and 5 are not authored —

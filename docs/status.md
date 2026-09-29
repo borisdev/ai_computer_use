@@ -1,9 +1,9 @@
 # System status
 
 > **Generated** by `interfaceai status --markdown docs/status.md`.
-> Do not edit by hand. Last run 2026-09-29 17:27 UTC.
+> Do not edit by hand. Last run 2026-09-29 23:49 UTC.
 
-10 capabilities (6 approved) · 613 recorded runs.
+11 capabilities (7 approved) · 47 recorded runs.
 
 ## Capabilities
 
@@ -11,6 +11,7 @@
 
 | capability | v | approval | signature | invokes | steps |
 |---|---|---|---|---|---|
+| `discovered_balance` | 1 | ✅ approved | `discovered_balance(account_id) -> account_id, balance` | — | 6 |
 | `evidence_discovery` | 1 | draft | `evidence_discovery() -> account_id` | — | 5 |
 | `log_in` | 1 | draft | `log_in() -> customer_first_name` | — | 5 |
 | `log_in` | 2 | ✅ approved | `log_in() -> nothing` | — | 4 |
@@ -30,23 +31,23 @@ hit a condition and handled it — it succeeded, and it survived something.
 
 | when | kind | capability | outcome | steps | model calls | worst match | detail |
 |---|---|---|---|---|---|---|---|
-| 2026-09-29 17:26:28 | replay | `request_loan` | **FAILED** | 0 | 0 | — | request_loan not permitted |
-| 2026-09-29 17:26:27 | replay | `request_loan` | **FAILED** | 0 | 0 | — | log_in not permitted |
-| 2026-09-29 17:26:26 | replay | `request_loan` | **needs_human** | 0 | 0 | — |  |
-| 2026-09-29 17:26:25 | replay | `request_loan` | **FAILED** | 0 | 0 | — | request_loan not permitted |
-| 2026-09-29 17:25:56 | replay | `request_loan` | **FAILED** | 0 | 0 | — | request_loan not permitted |
-| 2026-09-29 17:25:55 | replay | `request_loan` | **FAILED** | 0 | 0 | — | log_in not permitted |
-| 2026-09-29 17:25:54 | replay | `request_loan` | **needs_human** | 0 | 0 | — |  |
-| 2026-09-29 17:25:53 | replay | `request_loan` | **FAILED** | 0 | 0 | — | request_loan not permitted |
-| 2026-09-29 17:00:26 | replay | `request_loan` | **FAILED** | 0 | 0 | — | request_loan not permitted |
-| 2026-09-29 17:00:25 | replay | `request_loan` | **FAILED** | 0 | 0 | — | log_in not permitted |
-| 2026-09-29 17:00:24 | replay | `request_loan` | **needs_human** | 0 | 0 | — |  |
-| 2026-09-29 17:00:23 | replay | `request_loan` | **FAILED** | 0 | 0 | — | request_loan not permitted |
-| 2026-09-29 16:59:54 | replay | `request_loan` | **FAILED** | 0 | 0 | — | request_loan not permitted |
-| 2026-09-29 16:59:53 | replay | `request_loan` | **FAILED** | 0 | 0 | — | log_in not permitted |
-| 2026-09-29 16:59:52 | replay | `request_loan` | **needs_human** | 0 | 0 | — |  |
-| 2026-09-29 16:59:51 | replay | `request_loan` | **FAILED** | 0 | 0 | — | request_loan not permitted |
-| 2026-09-29 16:58:59 | replay | `request_loan` | **needs_human** | 9 | 1 | 0.9998 |  |
-| 2026-09-29 16:58:48 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
-| 2026-09-29 16:58:36 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
-| 2026-09-29 16:58:25 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
+| 2026-09-29 23:47:48 | replay | `request_loan` | **needs_human** | 9 | 1 | 0.9998 |  |
+| 2026-09-29 23:47:37 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
+| 2026-09-29 23:47:26 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
+| 2026-09-29 23:47:15 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
+| 2026-09-29 23:47:04 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
+| 2026-09-29 23:46:53 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
+| 2026-09-29 23:46:43 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
+| 2026-09-29 23:46:30 | replay | `log_in_discovered` | **needs_human** | 3 | 0 | 0.9998 |  |
+| 2026-09-29 23:46:23 | replay | `log_in_discovered` | **SUCCESS** | 4 | 1 | 0.9998 |  |
+| 2026-09-29 23:46:15 | replay | `session_loss_probe` | **needs_human** | 5 | 1 | 0.9998 |  |
+| 2026-09-29 23:46:14 | replay | `session_loss_probe` | **FAILED** | 0 | 0 | — | log_in not permitted |
+| 2026-09-29 23:45:56 | replay | `session_loss_probe` | **SUCCESS** | 10 | 3 | 0.9998 | recovered: accounts_overview_link gone -- log_in no longer holds |
+| 2026-09-29 23:45:38 | replay | `session_loss_probe` | **SUCCESS** | 10 | 3 | 0.9998 | recovered: accounts_overview_link gone -- log_in no longer holds |
+| 2026-09-29 23:45:07 | replay | `log_in_discovered` | **needs_human** | 3 | 0 | 0.9998 | cannot read 12345_link: not_found (best score 0.8654 is below threshol |
+| 2026-09-29 23:45:02 | replay | `log_in_discovered` | **needs_human** | 3 | 0 | 0.9998 | cannot read 12345_link: not_found (best score 0.8654 is below threshol |
+| 2026-09-29 23:44:58 | replay | `log_in_discovered` | **needs_human** | 3 | 0 | 0.9998 | cannot read 12345_link: not_found (best score 0.8654 is below threshol |
+| 2026-09-29 23:44:46 | replay | `log_in_discovered` | **SUCCESS** | 4 | 1 | 0.9998 |  |
+| 2026-09-29 23:44:09 | replay | `read_savings_balance` | **SUCCESS** | 15 | 8 | 0.9998 |  |
+| 2026-09-29 23:43:58 | replay | `read_savings_balance` | **FAILED** | 10 | 5 | 0.9998 | account_type: wanted 'SAVINGS', saw 'CHECKING' |
+| 2026-09-29 23:43:50 | replay | `discovered_balance` | **FAILED** | 0 | 0 | — | discovered_balance not permitted |

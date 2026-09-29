@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "name": "discovered_balance",
+  "version": 1,
+  "goal": "read the balance of account 13344",
+  "vocabulary_version": 1,
+  "target": {
+    "app": "parabank",
+    "tenant": "baseline",
+    "base_url": "http://localhost:8080/parabank"
+  },
+  "viewport_width": 1280,
+  "viewport_height": 900,
+  "params": [
+    {
+      "name": "account_id",
+      "slot": "account_id",
+      "required": true
+    }
+  ],
+  "returns": [
+    {
+      "name": "account_id",
+      "slot": "account_id"
+    },
+    {
+      "name": "balance",
+      "slot": "balance"
+    }
+  ],
+  "requires": [
+    {
+      "name": "at_the_recorded_starting_point",
+      "control": {
+        "screen": "index",
+        "control_id": "username_textbox",
+        "discriminator": null
+      },
+      "must": "present",
+      "why": "The first control the run acted on. If it is not on screen we are not where this recording began -- re-checked on resume after a human handoff, since the operator may have navigated away."
+    }
+  ],
+  "steps": [
+    {
+      "verb": "enter",
+      "control": {
+        "screen": "index",
+        "control_id": "username_textbox",
+        "discriminator": null
+      },
+      "value": {
+        "kind": "secret",
+        "input_ref": "parabank_username"
+      },
+      "slot": "username",
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "To read the balance of account 13344, I need to log in first. I will enter the username."
+    },
+    {
+      "verb": "enter",
+      "control": {
+        "screen": "index",
+        "control_id": "password_textbox",
+        "discriminator": null
+      },
+      "value": {
+        "kind": "secret",
+        "input_ref": "parabank_demo_password"
+      },
+      "slot": "password",
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "To log in, I need to enter the password after entering the username. I will enter the password next."
+    },
+    {
+      "verb": "click",
+      "control": {
+        "screen": "index",
+        "control_id": "log_in_button",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "The username and password have been entered. The next step is to click the LOG IN button to proceed with authentication and access account information."
+    },
+    {
+      "verb": "observe",
+      "control": null,
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "evidence frame of the final screen"
+    },
+    {
+      "verb": "extract",
+      "control": {
+        "screen": "overview",
+        "control_id": "accounts_overview_table_control_panel",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": "account_id",
+      "output": "account_id",
+      "row_key": {
+        "kind": "param",
+        "param": "account_id"
+      },
+      "field": "account_id",
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "read account_id from the final screen (observed '13344')"
+    },
+    {
+      "verb": "extract",
+      "control": {
+        "screen": "overview",
+        "control_id": "accounts_overview_table_control_panel",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": "balance",
+      "output": "balance",
+      "row_key": {
+        "kind": "param",
+        "param": "account_id"
+      },
+      "field": "balance",
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "read balance from the final screen (observed '$1231.10')"
+    }
+  ],
+  "checkpoints": [
+    {
+      "output": "account_id",
+      "op": "equals",
+      "expected": {
+        "kind": "param",
+        "param": "account_id"
+      },
+      "why": "the record the caller asked for, re-read from the screen"
+    }
+  ],
+  "establishes": null,
+  "approval": "draft",
+  "approved_by": null
+}
