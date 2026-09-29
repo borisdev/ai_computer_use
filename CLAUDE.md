@@ -139,3 +139,15 @@ POSTs `action=INIT` after the healthcheck and blocks on `is_seeded()`. Do not
 
 Still unverified: `jms.htm` (loan-processor queue toggle). Nothing has POSTed
 to it yet.
+
+## Grading and self-audit
+
+```bash
+uv run python3 evals/grade.py                                  # score vs the client's rubric
+uv run python3 evals/grade.py --critique-rubric gpt-5.2-codex  # attack the rubric itself
+```
+
+`evals/rubric.yaml` is the client's §6/§7 quoted verbatim — do not paraphrase
+it, and do not move a threshold to make the submission pass. It found four
+defects a careful read had missed, including a second instance of a bypass
+fixed one commit earlier. Raw results in `evals/results/`.

@@ -330,6 +330,25 @@ Every failure mode we have observed, with the fixture or lever that reproduces
 it: [`docs/failure-modes.md`](docs/failure-modes.md). What is still open:
 [`STILL-OPEN.md`](STILL-OPEN.md).
 
+## Grading this submission against the client's own rubric
+
+```bash
+uv run python3 evals/grade.py                                  # 3 graders x 2 draws
+uv run python3 evals/grade.py --critique-rubric gpt-5.2-codex  # audit the RUBRIC
+```
+
+[`evals/rubric.yaml`](evals/rubric.yaml) quotes §6 and §7 verbatim; results
+land in [`evals/results/`](evals/results/). Mechanical checks (seven headings,
+demo commands resolve, evidence present) run in code — asking a model whether a
+heading exists is a worse grep. Judged criteria go to three graders, two draws
+each, and every score must cite a quote from the submission and name the
+strongest argument that it is too high.
+
+⚠️ **An LLM grading work an LLM wrote.** The bias is not removed, only made
+inspectable. It found four real defects the author missed — see
+[what-went-wrong.md](docs/what-went-wrong.md) — and `--critique-rubric` exists
+because a rubric written by the graded party is the weakest link in it.
+
 ## Layout
 
 ```
