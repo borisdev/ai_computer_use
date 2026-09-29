@@ -658,6 +658,17 @@ def status_cmd(
 
 
 @app.command("diagram")
+@app.command("language")
+def language_cmd() -> None:
+    """Draw the CONTROLLED LANGUAGE as mermaid, generated from the types.
+
+    Verbs, control roles and value slots, with the permitted pairings between
+    them -- read from `VOCABULARY`, `ControlRole` and `ACTIONS_BY_ROLE`, so it
+    cannot claim a pairing the guardrails would refuse.
+    """
+    console.print(status_mod.language_as_mermaid())
+
+
 def diagram_cmd(
     name: str = typer.Argument(..., help="Capability name, e.g. read_savings_balance."),
 ) -> None:

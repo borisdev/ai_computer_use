@@ -58,6 +58,193 @@ capability check` is that check, and `interfaceai status` prints the counts.
 
 Setting up a fresh machine: [`docs/vm-setup.md`](docs/vm-setup.md)
 
+## How it fits together
+
+⚠️ **Which of these can lie to you.** The capability flowcharts and the language
+map are **generated from the code** (`interfaceai diagram`, `interfaceai
+language`) and cannot claim something the system will not do. The four below
+are **hand-drawn** — they describe intent, and are the only pictures here a
+reader must check against the source.
+
+### 1. The world this sits in
+
+A calling agent talks to a person, decides it needs something done in a bank
+app that has no API, and hands us a **goal**. Everything inside the dashed box
+is this repo.
+
+```mermaid
+flowchart LR
+  User([person]) <--> Agent[calling agent<br/>talks to the user]
+  Agent -->|"a GOAL, or invoke a capability"| Sys
+  Sys -->|"typed outcome"| Agent
+  subgraph Sys[" this repo "]
+    direction TB
+    Disc[discover<br/>LLM drives the UI once]
+    Art[(capability<br/>artifact)]
+    Rep[replay<br/>NO model decides]
+    Disc -->|"drafts"| Art
+    Art -->|"approved, version pinned"| Rep
+    Maps[(control maps<br/>per tenant)]
+    Maps -.->|"pixels"| Disc
+    Maps -.->|"pixels"| Rep
+  end
+  Rep <-->|"screenshot / click"| Surface[[Surface protocol]]
+  Surface --> TA[tenant A<br/>ParaBank]
+  Surface --> TB[tenant B<br/>same product, own skin]
+  Rep -->|"stuck, or too risky"| Op([human operator])
+  Op -->|"same live session"| Surface
+  style Sys stroke-dasharray: 5 5
+```
+
+**The artifact is tenant-agnostic; the control maps are not.** That split is
+what lets one recording serve two institutions — and why a tenant miss refuses
+rather than falling back to another tenant's pixels.
+
+### 2. The two workflows, and they are different shapes
+
+Discovery is a **loop** — look, decide, act, look again, until the goal is met
+or it gives up. Replay is a **walk** — the steps are already known and nothing
+chooses.
+
+```mermaid
+flowchart TD
+  subgraph D["DISCOVERY — cyclic, a model decides each move"]
+    direction TB
+    D1[observe: screenshot] --> D2[inventory controls<br/>read clean, locate gridded]
+    D2 --> D3{next move?}
+    D3 -->|act| D4[validate -> use_control] --> D1
+    D3 -->|finish| D5[draft a capability]
+    D3 -->|stuck| D6[PassToOperator]
+  end
+  subgraph R["REPLAY — linear, nothing decides"]
+    direction TB
+    R1[check entry preconditions] --> R2[step 0 .. n]
+    R2 --> R3{verb}
+    R3 -->|invoke| R4[run a child capability<br/>same session, version pinned]
+    R3 -->|enter / click / select| R5[locate -> validate -> use_control]
+    R3 -->|extract| R6[panel read, row picked IN CODE]
+    R4 & R5 & R6 --> R7{checkpoint}
+    R7 -->|holds| R8([Success])
+    R7 -->|violated| R9([Failed])
+    R2 -.->|"not found / refused / too risky"| R10([NeedsOperator])
+    R2 -.->|"a fair negative answer"| R11([BusinessOutcome])
+  end
+```
+
+⚠️ **The loop is where the cost and the nondeterminism live**, which is the
+whole argument for the artifact: pay for the loop once, then walk it forever.
+
+### 3. The escalation, as a sequence
+
+```mermaid
+sequenceDiagram
+  participant A as calling agent
+  participant R as replay
+  participant G as use_control
+  participant P as page (live)
+  participant H as human operator
+  A->>R: replay(capability, inputs)
+  R->>G: click log_in_button
+  G->>P: action, allowlist checked
+  R->>G: enter amount = 25000
+  Note over R: money recorded, judged LATER
+  R->>R: step 5 is irreversible
+  R-->>R: 25000 >= tenant threshold 1000
+  R->>H: handoff_requested (why, step, URL, frame)
+  Note over R,H: owner: worker -> human<br/>a frame + URL recorded at this edge
+  H->>G: click / type / goto
+  G->>P: SAME gate as the agent
+  G-->>R: human_acted (value_length, never the value)
+  H->>R: resume
+  Note over R,H: owner: human -> worker<br/>frame + URL again, plus url_changed
+  R->>R: verify the stopped step's footing
+  alt target satisfied
+    R->>A: Success
+  else effect cannot be confirmed
+    R->>A: NeedsOperator (stay paused)
+  end
+```
+
+⚠️ **An irreversible step is never retried on a guess.** A submission that
+silently succeeded and one that failed look identical from the outside.
+
+### 4. The language, GENERATED from the types that enforce it
+
+```bash
+uv run interfaceai language
+```
+
+```mermaid
+flowchart LR
+  subgraph VERBS["what a STEP can do"]
+    direction TB
+    V_INVOKE["invoke"]
+    V_ENTER["enter"]
+    V_CLICK["click"]
+    V_SELECT["select"]
+    V_WAIT_FOR["wait_for"]
+    V_OBSERVE["observe"]
+    V_EXTRACT["extract"]
+  end
+  subgraph ROLES["what a CONTROL can be"]
+    direction TB
+    R_TEXTBOX["textbox"]
+    R_TABLE_CONTROL_PANEL["table_control_panel<br/><i>no action permitted</i>"]
+    R_BUTTON["button"]
+    R_LINK["link"]
+    R_SELECT["select"]
+    R_CHECKBOX["checkbox"]
+    R_RADIO["radio"]
+    R_UNKNOWN["unknown<br/><i>no action permitted</i>"]
+  end
+  subgraph SLOTS["what a VALUE can mean"]
+    direction TB
+    S_DATE["date &middot; 2"]
+    S_MONEY["money &middot; 3"]
+    S_STRING["string &middot; 16<br/><i>sensitive: username, password, ssn</i>"]
+  end
+  V_ENTER --> R_TEXTBOX
+  V_CLICK --> R_BUTTON
+  V_CLICK --> R_LINK
+  V_SELECT --> R_SELECT
+  V_EXTRACT --> R_TABLE_CONTROL_PANEL
+  V_ENTER --> S_STRING
+  V_EXTRACT --> S_MONEY
+  classDef dead stroke-dasharray: 4 3
+  class R_TABLE_CONTROL_PANEL,R_UNKNOWN dead
+```
+
+Three axes — what a **step** can do, what a **control** can be, what a **value**
+can mean — and the interesting part is where they *do not* connect. Dashed
+nodes have **no permitted action at all**: you cannot click a
+`table_control_panel` (a region with rows, reachable only by `extract`) and you
+cannot act on an `unknown`. That is the geometric guard and the grounding
+refusal, expressed as a gap in the diagram rather than as a paragraph.
+
+### 5. What an artifact is, and when it is trusted
+
+```mermaid
+stateDiagram-v2
+  [*] --> draft: discovery emits it
+  draft --> draft: capability check<br/>(names controls that exist?)
+  draft --> approved: assert_replayable<br/>ONE gate, a person's act
+  approved --> replaying: interfaceai replay
+  replaying --> approved: outcome returned
+  draft --> [*]: rejected, kept as evidence
+  note right of approved
+    version PINNED
+    a newer child is a validation
+    error, not a substitution
+  end note
+  note right of draft
+    replay refuses a draft
+  end note
+```
+
+*Each capability also draws itself, from its own artifact:*
+`uv run interfaceai diagram read_savings_balance`. The two ENGINE flows above
+are drawn by hand and live in [docs/flows.md](docs/flows.md).
+
 ## Requirements
 
 - A Docker runtime with `docker compose` — Docker Desktop, OrbStack or Colima

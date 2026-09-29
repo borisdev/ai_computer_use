@@ -305,6 +305,62 @@ def as_markdown(artifacts: list[ArtifactRow], runs: list[RunRow], limit: int = 2
     return "\n".join(out) + "\n"
 
 
+def language_as_mermaid() -> str:
+    """The controlled language, GENERATED from the types that enforce it.
+
+    Boris asked whether the language should be shown explicitly. It should, and
+    it should be drawn from `VOCABULARY`, `ControlRole`, `StepVerb` and
+    `ACTIONS_BY_ROLE` rather than transcribed — a hand-drawn picture of a
+    vocabulary is a claim that goes stale the first time someone adds a term.
+
+    Three axes, and the interesting part is where they DO NOT connect:
+    `table_control_panel` and `unknown` have no permitted action at all, which
+    is the geometric guard and the grounding refusal expressed as a gap in the
+    diagram rather than as a paragraph.
+    """
+    from interfaceai.capability import StepVerb
+    from interfaceai.decisions import ACTIONS_BY_ROLE
+    from interfaceai.screenshot2controls import ControlRole
+    from interfaceai.vocabulary import VOCABULARY
+
+    lines = [
+        "flowchart LR",
+        '  subgraph VERBS["what a STEP can do"]',
+        "    direction TB",
+    ]
+    for verb in StepVerb:
+        lines.append(f'    V_{verb.name}["{verb.value}"]')
+    lines += ["  end", '  subgraph ROLES["what a CONTROL can be"]', "    direction TB"]
+    for role in ControlRole:
+        acts = ACTIONS_BY_ROLE.get(role, [])
+        label = role.value if acts else f"{role.value}<br/><i>no action permitted</i>"
+        lines.append(f'    R_{role.name}["{label}"]')
+    lines += ["  end", '  subgraph SLOTS["what a VALUE can mean"]', "    direction TB"]
+    for kind in sorted({str(q.type) for q in VOCABULARY.qualifiers}):
+        names = [q.name for q in VOCABULARY.qualifiers if str(q.type) == kind]
+        sensitive = [n for n in names if VOCABULARY.qualifier(n).sensitive]
+        label = f"{kind} &middot; {len(names)}"
+        if sensitive:
+            label += f"<br/><i>sensitive: {', '.join(sensitive)}</i>"
+        lines.append(f'    S_{kind.upper()}["{label}"]')
+    lines.append("  end")
+
+    for role, acts in ACTIONS_BY_ROLE.items():
+        if not acts:
+            continue
+        for verb in StepVerb:
+            if verb.name.lower() in {a.value.replace("enter_text", "enter") for a in acts}:
+                lines.append(f"  V_{verb.name} --> R_{role.name}")
+    lines.append("  V_EXTRACT --> R_TABLE_CONTROL_PANEL")
+    lines.append("  V_ENTER --> S_STRING")
+    lines.append("  V_EXTRACT --> S_MONEY")
+    lines.append("  classDef dead stroke-dasharray: 4 3")
+    dead = [f"R_{r.name}" for r in ControlRole if not ACTIONS_BY_ROLE.get(r)]
+    if dead:
+        lines.append(f"  class {','.join(dead)} dead")
+    return "\n".join(lines)
+
+
 def as_mermaid(capability: Capability) -> str:
     """A capability's steps as a flowchart, READ FROM THE ARTIFACT.
 
