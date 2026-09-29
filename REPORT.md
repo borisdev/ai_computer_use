@@ -51,6 +51,16 @@ a step the system will not take ([status.md](docs/status.md)).
 
 ## 2. Artifact schema
 
+Five capabilities are authored and tested (`interfaceai status` lists them):
+
+| | exercises |
+|---|---|
+| `read_savings_balance` v3 | the brief's own worked example — panel read, row by index, a checkpoint on the account TYPE |
+| `log_in` v2 | composition: invoked by three others, version pinned |
+| `log_in_discovered` v1 | **produced by a real discovery run**; the cross-tenant and handoff subject |
+| `request_loan` v2 | an irreversible step, a tenant money threshold, and a post-submit observation |
+| `session_loss_probe` v1 | destroys its own session mid-flow, to earn recovery an instance |
+
 `capability.py`; reasoning in [ADR 0005](docs/adr/0005-capability-artifact-shape.md).
 Each constraint is in the type system rather than a style guide, because each
 was measured failing first:
@@ -284,8 +294,13 @@ Reasoning per item in [STILL-OPEN.md](STILL-OPEN.md).
   *because* we measured `asyncio.run` failing inside it. **A hand-authored YAML
   control catalogue**, in favour of the store discovery populates.
 - **Conditions with no instance:** unexpected dialog, a *real* permission
-  denial. No types were invented for them. **Not attempted:** capabilities 2–5,
-  desktop surface, code generation.
+  denial, and — the one worth naming — **a validation error raised by the
+  application**. §3.3 lists it, and nothing here produces one: ParaBank rejects
+  a transfer for insufficient funds, and no capability does transfers. That is
+  the gap a sixth capability would close, and it is a better use of a day than
+  any other flow.
+- **Not attempted:** a desktop `Surface`, code generation, and multi-run
+  stability scoring.
 
 ### If I had another day
 
