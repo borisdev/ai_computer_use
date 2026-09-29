@@ -50,3 +50,32 @@ def test_the_stated_total_is_its_own_parts() -> None:
     """A total that is not offline + live is wrong however fresh it is."""
     for name, (total, offline, live) in _stated_counts().items():
         assert total == offline + live, f"{name}: {offline} + {live} != {total}"
+
+
+def test_every_CLI_command_the_docs_show_actually_exists() -> None:
+    """⚠️ `interfaceai diagram <name>` was DEAD on main while two documents
+    told a reader to run it.
+
+    Adding a `language` command put its `@app.command` decorator between
+    `@app.command("diagram")` and `diagram_cmd`, so both names bound to the new
+    function and `diagram_cmd` had none. The CLI still started, `language`
+    still worked, and the offline suite stayed green -- nothing exercised the
+    command list. Found by trying to USE it.
+
+    This reads the command names off the Typer app rather than running the CLI,
+    so it is fast and still catches a decorator that moved.
+    """
+    import re
+
+    from interfaceai.cli import app
+
+    registered = {c.name or c.callback.__name__ for c in app.registered_commands}
+    registered |= {g.name for g in app.registered_groups}
+
+    documented: set[str] = set()
+    for name in ("README.md", "REPORT.md"):
+        for verb in re.findall(r"interfaceai ([a-z][a-z-]*)", (ROOT / name).read_text()):
+            documented.add(verb)
+
+    missing = sorted(documented - registered)
+    assert not missing, f"documented but not a command: {missing} (have: {sorted(registered)})"

@@ -1,0 +1,4 @@
+{"ts": "2026-09-29T19:23:46.841649+00:00", "event": "run_started", "goal": "apply for a loan of a given amount with a given down payment", "model": "replay/none"}
+{"ts": "2026-09-29T19:23:46.841761+00:00", "event": "replay_started", "capability": "request_loan", "version": 2, "inputs": ["amount", "down_payment"], "target": {"app": "parabank", "tenant": "feature", "base_url": "http://localhost:8081/parabank"}}
+{"ts": "2026-09-29T19:23:46.841800+00:00", "event": "not_permitted", "capability": "request_loan", "tenant": "feature"}
+{"ts": "2026-09-29T19:23:46.841832+00:00", "event": "replay_finished", "outcome": "Failed", "capability": "request_loan"}

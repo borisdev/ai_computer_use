@@ -1,0 +1,9 @@
+{"ts": "2026-09-29T19:23:01.535921+00:00", "event": "run_started", "goal": "log in to the bank as the operator's seeded customer", "model": "replay/none"}
+{"ts": "2026-09-29T19:23:01.536026+00:00", "event": "replay_started", "capability": "log_in", "version": 2, "inputs": [], "target": {"app": "parabank", "tenant": "feature", "base_url": "http://localhost:8081/parabank"}}
+{"ts": "2026-09-29T19:23:02.200835+00:00", "event": "precondition", "name": "at_the_login_page", "want": "present", "present": true, "when": "entry"}
+{"ts": "2026-09-29T19:23:02.396379+00:00", "event": "acted", "step": 0, "control": "username_textbox", "action": "enter_text", "value_length": 4, "score": 1.0, "url": "http://localhost:8081/parabank/index.htm"}
+{"ts": "2026-09-29T19:23:03.594828+00:00", "event": "acted", "step": 1, "control": "password_textbox", "action": "enter_text", "value_length": 4, "score": 1.0, "url": "http://localhost:8081/parabank/index.htm"}
+{"ts": "2026-09-29T19:23:04.712117+00:00", "event": "acted", "step": 2, "control": "log_in_button", "action": "click", "value_length": null, "score": 0.9997754693031311, "url": "http://localhost:8081/parabank/index.htm"}
+{"ts": "2026-09-29T19:23:05.807885+00:00", "event": "waited", "step": 3, "control": "accounts_overview_link"}
+{"ts": "2026-09-29T19:23:05.808056+00:00", "event": "replay_succeeded", "capability": "log_in", "outputs": {}}
+{"ts": "2026-09-29T19:23:05.808120+00:00", "event": "replay_finished", "outcome": "Success", "capability": "log_in", "recovered": [], "frame": null}

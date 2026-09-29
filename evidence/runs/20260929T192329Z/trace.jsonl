@@ -1,0 +1,4 @@
+{"ts": "2026-09-29T19:23:29.969378+00:00", "event": "run_started", "goal": "lose the session mid-capability, then try to continue", "model": "replay/none"}
+{"ts": "2026-09-29T19:23:29.969485+00:00", "event": "replay_started", "capability": "session_loss_probe", "version": 1, "inputs": ["account_id"], "target": {"app": "parabank", "tenant": "feature", "base_url": "http://localhost:8081/parabank"}}
+{"ts": "2026-09-29T19:23:29.969522+00:00", "event": "not_permitted", "capability": "session_loss_probe", "tenant": "feature"}
+{"ts": "2026-09-29T19:23:29.969552+00:00", "event": "replay_finished", "outcome": "Failed", "capability": "session_loss_probe"}

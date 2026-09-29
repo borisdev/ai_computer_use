@@ -24,6 +24,7 @@ from interfaceai import (
     vision_llm,
     vocabulary,
 )
+from interfaceai import capability as capability_mod
 from interfaceai import discover as discover_mod
 from interfaceai import replay as replay_mod
 from interfaceai import status as status_mod
@@ -657,7 +658,6 @@ def status_cmd(
     console.print(runs_table)
 
 
-@app.command("diagram")
 @app.command("language")
 def language_cmd() -> None:
     """Draw the CONTROLLED LANGUAGE as mermaid, generated from the types.
@@ -669,6 +669,7 @@ def language_cmd() -> None:
     console.print(status_mod.language_as_mermaid())
 
 
+@app.command("diagram")
 def diagram_cmd(
     name: str = typer.Argument(..., help="Capability name, e.g. read_savings_balance."),
 ) -> None:
@@ -678,10 +679,21 @@ def diagram_cmd(
     moment the artifact changes, and nothing tells you. This one cannot drift.
     """
     try:
-        console.print(status_mod.as_mermaid(capabilities.get(name)))
-    except KeyError as exc:
-        console.print(f"[red]{exc}[/]")
-        raise typer.Exit(1) from exc
+        capability = capabilities.get(name)
+    except KeyError:
+        # ⚠️ NOT EVERY CAPABILITY IS AUTHORED. `log_in_discovered` came out of
+        # a real discovery run and lives only as an artifact, so the registry
+        # has never heard of it -- and it is the most interesting one to draw.
+        # A generated-docs story that can only describe hand-written
+        # capabilities describes the wrong half of the system.
+        found = sorted(ARTIFACTS.glob(f"{name}.v*.json"))
+        if not found:
+            console.print(f"[red]no capability or artifact named {name!r}[/]")
+            raise typer.Exit(1) from None
+        # Prefer the approved one, then the highest version.
+        approved = [p for p in found if p.name.endswith(".approved.json")]
+        capability = capability_mod.load_capability(max(approved or found))
+    console.print(status_mod.as_mermaid(capability))
 
 
 def main() -> None:  # pragma: no cover

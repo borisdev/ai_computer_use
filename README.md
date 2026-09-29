@@ -25,7 +25,7 @@ artifact, deterministic replay with typed outcomes, human handoff of the live
 session, and one artifact serving two tenants.
 
 ```
-259 tests — 228 offline, 31 live · ruff clean
+260 tests — 229 offline, 31 live · ruff clean
 ```
 
 | Piece | State |
@@ -611,6 +611,13 @@ as two broken tests instead of as a result.
 
 *What the 8 survivors say about template matching is
 [REPORT §4](REPORT.md#4-heterogeneity--multi-tenant).*
+
+## Every capability, with its evidence
+
+**[CAPABILITIES.md](CAPABILITIES.md)** — the five authored capabilities, what
+each one demonstrates *beyond itself*, which tenants they run on, a link to the
+approved artifact, a committed trace per run, and the workflow diagram
+generated from the artifact.
 
 ## What's next — the open work, as issues
 
