@@ -58,6 +58,14 @@ capability check` is that check, and `interfaceai status` prints the counts.
 
 Setting up a fresh machine: [`docs/vm-setup.md`](docs/vm-setup.md)
 
+## ▶ Start here — [CAPABILITIES.md](CAPABILITIES.md)
+
+Five capabilities, each with the approved artifact, a committed trace per
+tenant, a generated workflow diagram, and **the command to run it yourself**.
+It is the shortest path into the design: composition, versioning, the outcome
+types, the guardrails and the control language all show up there in concrete
+form before any of them are argued.
+
 ## How it fits together
 
 ⚠️ **Which of these can lie to you.** The capability flowcharts and the language

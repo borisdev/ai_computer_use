@@ -44,7 +44,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from interfaceai.capability import Approval, Capability, load_capability
+from interfaceai.capability import Approval, Capability, StepVerb, load_capability
+from interfaceai.vocabulary import VOCABULARY
 
 
 @dataclass(frozen=True)
@@ -362,7 +363,7 @@ def language_as_mermaid() -> str:
 
 
 def as_mermaid(capability: Capability) -> str:
-    """A capability's steps as a flowchart, READ FROM THE ARTIFACT.
+    """A capability as a flowchart, READ FROM THE ARTIFACT.
 
     A hand-drawn diagram is a claim about the artifact that stops being true the
     moment the artifact changes, and nothing tells you. This one cannot drift.
@@ -371,35 +372,92 @@ def as_mermaid(capability: Capability) -> str:
     discovery's loop and replay's walk — are a different picture and live in
     `docs/flows.md`. Conflating them would produce a diagram that looks like a
     capability and is not one.
+
+    SHAPE AND COLOUR ARE THE LANGUAGE, not decoration. A reader should be able
+    to tell what a step does without reading its label:
+
+        [[ invoke ]]     subroutine   another capability, in the same session
+        [  enter   ]     rectangle    writes into the page
+        (  click   )     rounded      acts on a control
+        [/ extract /]    slanted      takes a value OUT
+        >  wait_for      flag         looks, changes nothing
+        {{ checkpoint }} hexagon      the only thing that turns Success into Failed
+
+    ⛔ A RISKY STEP IS DRAWN RED AND THICK. It is the one thing in an artifact a
+    reviewer must not miss, and "it says risky in the JSON" is not a reviewing
+    strategy.
+
+    Only the classes actually used are emitted — borrowed from nobsmed's causal
+    map, where an unused `classDef` is a legend entry for a shape the reader
+    will never find. The shape-per-kind idea is workflow-workbench's.
     """
+    palette = {
+        "invoke": "fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#312e81",
+        "write": "fill:#fef3c7,stroke:#d97706,color:#92400e",
+        "act": "fill:#fde68a,stroke:#d97706,stroke-width:2px,color:#92400e",
+        "risky": "fill:#fee2e2,stroke:#dc2626,stroke-width:4px,color:#991b1b",
+        "look": "fill:#f1f5f9,stroke:#94a3b8,color:#334155",
+        "read": "fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#065f46",
+        "check": "fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#4c1d95",
+        "good": "fill:#16a34a,stroke:#15803d,color:#ffffff",
+        "stop": "fill:#f1f5f9,stroke:#94a3b8,color:#334155",
+    }
+    used: set[str] = set()
+
+    def node(nid: str, shape: str, klass: str) -> str:
+        used.add(klass)
+        return f"    {nid}{shape}:::{klass}"
+
+    sensitive = {q.name for q in VOCABULARY.qualifiers if q.sensitive}
     lines = [
         "```mermaid",
         "flowchart TD",
-        f'    start(["{capability.name} v{capability.version}"])',
+        node("start", f'(["<b>{capability.name}</b> v{capability.version}"])', "good"),
     ]
     previous = "start"
     for n, step in enumerate(capability.steps):
-        node = f"n{n}"
+        nid = f"n{n}"
+        verb = str(step.verb)
+        target = step.control.control_id if step.control is not None else ""
+        note = ""
+        if step.slot in sensitive:
+            note = "<br/><i>secret, input_ref only</i>"
+        elif step.row_key is not None:
+            note = "<br/><i>row picked in code</i>"
+
         if step.invokes:
-            shape = f'{node}[["invoke {step.invokes} v{step.invokes_version}"]]'
-        elif step.control is not None:
-            label = f"{step.verb} {step.control.control_id}"
-            if step.row_key is not None:
-                label += " (by row)"
-            shape = f'{node}["{label}"]'
+            lines.append(
+                node(nid, f'[["<b>invoke</b> {step.invokes} v{step.invokes_version}"]]', "invoke")
+            )
+        elif step.verb is StepVerb.EXTRACT:
+            lines.append(
+                node(nid, f'[/"<b>extract</b> {step.output}<br/>{target}{note}"/]', "read")
+            )
+        elif step.verb in (StepVerb.WAIT_FOR, StepVerb.OBSERVE):
+            lines.append(node(nid, f'>"<b>{verb}</b> {target}"]', "look"))
+        elif step.risky:
+            lines.append(node(nid, f'("<b>{verb}</b> {target}<br/><i>irreversible</i>")', "risky"))
+        elif step.verb is StepVerb.CLICK:
+            lines.append(node(nid, f'("<b>click</b> {target}{note}")', "act"))
         else:
-            shape = f'{node}["{step.verb}"]'
-        lines.append(f"    {shape}")
-        lines.append(f"    {previous} --> {node}")
-        previous = node
+            lines.append(node(nid, f'["<b>{verb}</b> {target}{note}"]', "write"))
+        lines.append(f"    {previous} --> {nid}")
+        previous = nid
 
     for n, check in enumerate(capability.checkpoints):
-        node = f"chk{n}"
-        lines.append(f'    {node}{{{{"{check.output} == expected?"}}}}')
-        lines.append(f"    {previous} --> {node}")
-        previous = node
+        nid = f"chk{n}"
+        lines.append(node(nid, f'{{{{"<b>checkpoint</b><br/>{check.output}"}}}}', "check"))
+        lines.append(f"    {previous} --> {nid}")
+        previous = nid
 
-    lines.append('    done(["Success"])')
-    lines.append(f"    {previous} --> done")
+    lines.append(node("ok", '(["<b>Success</b>"])', "good"))
+    if capability.checkpoints:
+        lines.append(f"    {previous} -- holds --> ok")
+        lines.append(node("bad", '(["Failed"])', "stop"))
+        lines.append(f"    {previous} -- violated --> bad")
+    else:
+        lines.append(f"    {previous} --> ok")
+
+    lines += [f"    classDef {k} {v};" for k, v in palette.items() if k in used]
     lines.append("```")
     return "\n".join(lines)

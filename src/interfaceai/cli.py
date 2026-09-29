@@ -666,7 +666,7 @@ def language_cmd() -> None:
     them -- read from `VOCABULARY`, `ControlRole` and `ACTIONS_BY_ROLE`, so it
     cannot claim a pairing the guardrails would refuse.
     """
-    console.print(status_mod.language_as_mermaid())
+    sys.stdout.write(status_mod.language_as_mermaid() + "\n")  # raw: see diagram_cmd
 
 
 @app.command("diagram")
@@ -693,7 +693,12 @@ def diagram_cmd(
         # Prefer the approved one, then the highest version.
         approved = [p for p in found if p.name.endswith(".approved.json")]
         capability = capability_mod.load_capability(max(approved or found))
-    console.print(status_mod.as_mermaid(capability))
+    # ⛔ NOT console.print. Rich treats [square brackets] as markup, and mermaid
+    # is made of them -- `[[invoke]]`, `[/extract/]`, `>wait_for]`. It also wraps
+    # at terminal width, which splits a long `classDef` line in half. Either one
+    # produces a diagram that looks fine in a terminal and does not parse when
+    # pasted. Raw stdout is the only safe sink for generated source.
+    sys.stdout.write(status_mod.as_mermaid(capability) + "\n")
 
 
 def main() -> None:  # pragma: no cover

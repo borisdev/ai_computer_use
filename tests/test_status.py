@@ -153,14 +153,23 @@ def test_the_page_names_the_command_that_regenerates_it() -> None:
 
 
 def test_the_diagram_is_read_from_the_artifact_so_it_cannot_drift() -> None:
-    capability = capabilities.READ_SAVINGS_BALANCE
-    diagram = as_mermaid(capability)
-    assert "```mermaid" in diagram
-    # one node per step, plus one per checkpoint
+    """Every node comes from a step. Nothing is hand-drawn.
+
+    ⚠️ Assert on SUBSTANCE, not on formatting. This used to check the literal
+    string "invoke log_in", which broke the moment the label gained `<b>` tags
+    for styling -- a test that fails on a colour change is a test that will be
+    deleted rather than read.
+    """
+    capability = capabilities.get("read_savings_balance")
+    drawn = as_mermaid(capability)
+
+    # the invoked child, its pinned version, and one node per step
+    assert "log_in" in drawn and "v2" in drawn
     for step in capability.steps:
-        if step.invokes:
-            assert f"invoke {step.invokes}" in diagram
-        elif step.control is not None:
-            assert step.control.control_id in diagram
-    for check in capability.checkpoints:
-        assert check.output in diagram
+        if step.control is not None:
+            assert step.control.control_id in drawn
+    assert drawn.count("-->") >= len(capability.steps)
+
+    # shape and colour carry the language, so the classes must actually be used
+    assert ":::invoke" in drawn and ":::read" in drawn
+    assert "classDef invoke" in drawn
