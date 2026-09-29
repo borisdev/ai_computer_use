@@ -17,6 +17,7 @@ That is also how a bank behaves — you confirm at submit, not while typing.
 from __future__ import annotations
 
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -147,3 +148,31 @@ def test_enforcement_is_still_use_control() -> None:
             risky=True,
             confirmed=False,
         )
+
+
+def test_money_on_form_is_NEVER_cleared_during_a_run() -> None:
+    """The multi-page bypass, pinned at the only level that can catch it.
+
+    A two-step flow -- enter $25,000 on page 1, submit on page 2 -- used to
+    clear `money_on_form` on the URL change and judge the submit against an
+    empty form, gated by `--confirm-risky` alone. That is the bypass fixed one
+    commit earlier, one page further along. Found by `evals/grade.py` reading
+    the clearing rule against the claim it was supporting.
+
+    ⚠️ THIS IS A SOURCE-LEVEL CHECK AND IT IS THE HONEST ONE AVAILABLE.
+    A behavioural test needs a live multi-page money flow and ParaBank's loan
+    form is a single page -- which is exactly why the bug was latent and why
+    no existing test caught it. Asserting on `needs_human_confirmation` would
+    pass either way: that function was correct throughout, the CLEARING was
+    the defect. So this pins the decision where it lives, and goes red the
+    moment someone reintroduces the clear for the third time.
+    """
+    src = (Path(__file__).resolve().parents[1] / "src" / "interfaceai" / "replay.py").read_text()
+    offenders = [
+        line.strip() for line in src.splitlines() if "money_on_form" in line and ".clear()" in line
+    ]
+    assert not offenders, (
+        "money_on_form is cleared during a run: " + "; ".join(offenders) + ". "
+        "An amount entered on page 1 and submitted on page 2 would then be judged "
+        "against an empty form. Over-escalating is the safe direction here."
+    )

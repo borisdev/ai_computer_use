@@ -4,7 +4,7 @@ What §6.3 asks for: *"a saved example artifact plus logs from both a discovery
 run and a replay run. Ideally include one replay that hits an error or
 exceptional state."*
 
-Six runs, all against the live ParaBank container, all reproducible with the
+Seven runs, all against the live ParaBank container, all reproducible with the
 commands in the [README](../README.md#demo-path). Each directory holds
 `trace.jsonl` (one JSON object per event) and `frames/` (what the model was
 actually shown).
@@ -16,6 +16,7 @@ actually shown).
 | [`runs/20260929T042522Z`](runs/20260929T042522Z) | **Business outcome.** `record_not_found` for account 99999 — **exit 0**, because a fair question with a negative answer is not a crash |
 | [`runs/20260929T042536Z`](runs/20260929T042536Z) | **Escalation.** A $25,000 loan against a $1,000 tenant threshold stops and asks a person, *even with `--confirm-risky`* |
 | [`runs/20260929T042550Z`](runs/20260929T042550Z) | **Recovery.** The session is destroyed mid-flow; `recovering` → `log_in` re-invoked → `SUCCESS`. A recovered condition is not a terminal state |
+| [`runs/20260929T051949Z`](runs/20260929T051949Z) | **A full handoff.** The run blocks, a person takes the live session, navigates, and hands it back — `handoff_requested` → `human_acted` → `handoff_returned`, a frame and URL on each edge, `url_changed: true`. The operator aborts, having established the record genuinely does not exist |
 | [`runs/20260929T042311Z`](runs/20260929T042311Z) | **A safety refusal, at discovery time.** The model tried to `extract` into the sensitive slot `username`; the run stops rather than emitting an artifact that would leak a credential through `returns` |
 
 ## ⛔ Two older runs are also committed, and they are LOAD-BEARING
@@ -62,7 +63,7 @@ Two events worth knowing:
 those would need a masking pass before persistence. Everything here is against
 synthetic fixtures in a throwaway container.
 
-The last five of the six are the outcome types in
+Five of them are the outcome types in
 [REPORT §3](../REPORT.md#3-determinism--error-handling); the full catalogue of
 failure modes, each with the lever that reproduces it, is
 [docs/failure-modes.md](../docs/failure-modes.md).

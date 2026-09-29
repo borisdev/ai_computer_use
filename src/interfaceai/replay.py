@@ -91,7 +91,8 @@ from interfaceai.surface import (
     ActionPolicy,
     NotAllowedError,
     OffLoop,
-    PlaywrightSurface,
+    PlaywrightSurface,  # named ONLY at the composition root below
+    Surface,
     use_control,
 )
 from interfaceai.table import Offset, PanelNotFound, extract_panel
@@ -120,7 +121,11 @@ class _Ctx:
     inputs: dict[str, str]
     secrets: dict[str, str]
     store: ControlMapStore
-    surface: PlaywrightSurface
+    # The PROTOCOL, not the implementation. REPORT S4 claims "none of them
+    # names a browser"; this line named one, which made the claim false and
+    # the seam one annotation leakier than advertised. replay only ever calls
+    # screenshot / wait / navigate / current_url, all of which Surface has.
+    surface: Surface
     evidence: EvidenceWriter
     off: OffLoop | None
     vision: VisionCall | None
@@ -327,33 +332,58 @@ def _value(ctx: _Ctx, value: Value | None) -> str | None:
     raise TypeError(f"unhandled value kind {value!r}")  # pragma: no cover
 
 
-def _run(ctx: _Ctx) -> CapabilityResult:
+def _check_preconditions(ctx: _Ctx, *, when: str, step_index: int = -1) -> NeedsOperator | None:
+    """Walk `capability.requires`. Returns a `NeedsOperator` if any is unmet.
+
+    Run at entry AND again after a handoff. The second call is the one that
+    matters: a person has just had the live browser, and the artifact's
+    preconditions are the only written statement of what the run assumed.
+
+    ⚠️ Added 2026-09-29. Both REPORT.md and `Precondition`'s own docstring said
+    preconditions were "re-checked on resume" and they were not -- this sweep
+    ran once, at `_run` entry, and `_hand_over` re-checked only the stopped
+    step's own control. The claim was made in a graded document and shipped
+    beside code that did not do it. Found by `evals/grade.py`, not by a test.
+    """
     for precondition in ctx.capability.requires:
         try:
             control = _resolve(ctx, precondition.control)
         except ControlMapMiss as exc:
             return NeedsOperator(
-                why=f"precondition {precondition.name!r}: {exc}",
-                step_index=-1,
+                why=f"precondition {precondition.name!r} ({when}): {exc}",
+                step_index=step_index,
                 screen=precondition.control.screen,
                 evidence_dir=ctx.evidence.dir,
+                completed_steps=tuple(ctx.done),
             )
         present = _find(ctx, control).status == "matched"
         want = precondition.must == "present"
         ctx.evidence.event(
-            "precondition", name=precondition.name, want=precondition.must, present=present
+            "precondition",
+            name=precondition.name,
+            want=precondition.must,
+            present=present,
+            when=when,
         )
         if present is not want:
             return NeedsOperator(
                 why=(
-                    f"precondition {precondition.name!r} not met: "
+                    f"precondition {precondition.name!r} not met ({when}): "
                     f"{precondition.control.control_id} should be {precondition.must}. "
                     f"{precondition.why}"
                 ),
-                step_index=-1,
+                step_index=step_index,
                 screen=precondition.control.screen,
                 evidence_dir=ctx.evidence.dir,
+                completed_steps=tuple(ctx.done),
             )
+    return None
+
+
+def _run(ctx: _Ctx) -> CapabilityResult:
+    unmet = _check_preconditions(ctx, when="entry")
+    if unmet is not None:
+        return unmet
 
     n = 0
     while n < len(ctx.capability.steps):
@@ -484,6 +514,15 @@ def _hand_over(ctx: _Ctx, n: int, step: Step, blocked: NeedsOperator) -> str | N
             completed_steps=tuple(ctx.done),
         )
 
+    # THE WHOLE CAPABILITY'S preconditions first, before this step's own
+    # target. A person has just had the live browser and may be anywhere;
+    # `requires` is the only written statement of what the run assumed, and
+    # checking the stopped step's control alone would resume a run whose
+    # footing is gone. Unmet here means stay paused -- never advance.
+    unmet = _check_preconditions(ctx, when="resume", step_index=n)
+    if unmet is not None:
+        return unmet
+
     if step.control is None:
         return "advance"
 
@@ -579,8 +618,6 @@ def _step(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
         return NeedsOperator(
             why=str(exc), step_index=n, screen=step.control.screen, evidence_dir=ctx.evidence.dir
         )
-
-    before_url = ctx.surface.current_url()
 
     # Remember what this step puts on the form. Typing an amount is harmless --
     # ParaBank's Find Transactions page has an `amount` field too -- so the
@@ -683,12 +720,24 @@ def _step(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
     )
     ctx.done.append(label)
     ctx.panel_cache.clear()
-    # A NEW PAGE means a new form, so amounts typed on the old one are spent.
-    # ⚠️ Only on navigation. An earlier version cleared after every action,
-    # which emptied the form before the submit could be judged -- the value
-    # rule then never fired and the generic "irreversible" message hid it.
-    if acted.url != before_url:
-        ctx.money_on_form.clear()
+    # ⛔ MONEY IS NOT CLEARED HERE, and the two deleted attempts say why.
+    #
+    #   cleared after every action   the form was empty by the time the submit
+    #                                was judged, so the value rule never fired
+    #   cleared on URL change        a multi-page flow -- enter the amount on
+    #                                page 1, confirm on page 2 -- submits
+    #                                against an empty form. The SAME bypass as
+    #                                --confirm-risky, one page further along.
+    #
+    # Both were an attempt to avoid over-escalating: a Find Transactions
+    # search types an `amount` too, and nobody wants a search to need a human.
+    # But that was already solved by moving the check to the IRREVERSIBLE step
+    # -- a search has none, so it is never judged at all.
+    #
+    # So an amount entered anywhere in this run is treated as still in play at
+    # an irreversible step. The cost is over-escalation: search $5,000, then
+    # do something irreversible, and a person is asked. That is the direction
+    # to be wrong in. Under-escalating submitted $25,000 with nobody looking.
     ctx.surface.wait(1.0)
     return None
 

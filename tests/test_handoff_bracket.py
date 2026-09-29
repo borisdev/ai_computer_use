@@ -52,9 +52,20 @@ class _FakeSurface:
         self._url = url
 
 
-def _ctx(tmp_path: Path, surface: _FakeSurface, commands: list[str]) -> _Ctx:
+# Preconditions are re-checked on resume (see the test at the bottom), and
+# `session_loss_probe` requires a screen these tests give no control map for.
+# Stripping `requires` keeps each test about the one thing it names.
+_NO_PRECONDITIONS = SESSION_LOSS_PROBE.model_copy(update={"requires": ()})
+
+
+def _ctx(
+    tmp_path: Path,
+    surface: _FakeSurface,
+    commands: list[str],
+    capability=_NO_PRECONDITIONS,
+) -> _Ctx:
     return _Ctx(
-        capability=SESSION_LOSS_PROBE,
+        capability=capability,
         inputs={},
         secrets={},
         store=ControlMapStore(tmp_path / "maps"),
@@ -153,3 +164,36 @@ def test_ownership_is_recorded_on_both_edges(tmp_path: Path) -> None:
     assert _one(ctx, "handoff_requested")["owner"] == str(Owner.HUMAN)
     assert _one(ctx, "handoff_returned")["owner"] == str(Owner.WORKER)
     assert ctx.owner is Owner.WORKER
+
+
+def test_resume_re_checks_the_WHOLE_capability_preconditions(tmp_path: Path) -> None:
+    """Not just the stopped step's own control. 3.6, and it was not true.
+
+    REPORT.md and `Precondition`'s docstring both said preconditions were
+    "re-checked on resume". They were not: the sweep ran once at `_run` entry
+    and `_hand_over` re-checked only the control the stopped step names. A
+    person who navigated somewhere else during the handoff would be resumed
+    onto footing nobody verified.
+
+    Found by `evals/grade.py` reading the write-up against the code -- not by
+    a test, which is the uncomfortable part: the claim was in a graded
+    document for as long as it was false.
+
+    Here the capability requires a screen with no control map, so the resume
+    check cannot pass. Unmet means STAY PAUSED, never advance.
+    """
+    ctx = _ctx(
+        tmp_path,
+        _FakeSurface("http://bank/overview.htm"),
+        ["resume"],
+        capability=SESSION_LOSS_PROBE,  # this one HAS preconditions
+    )
+
+    result = _hand_over(ctx, 0, _OBSERVE, _BLOCKED)
+
+    assert isinstance(result, NeedsOperator), result
+    assert "precondition" in result.why
+    assert "resume" in result.why, "the message must say WHICH sweep failed"
+    # The bracket still happened -- we record the window even when we refuse
+    # to come out of it.
+    assert _one(ctx, "handoff_returned")["frame"]
