@@ -25,7 +25,7 @@ artifact, deterministic replay with typed outcomes, human handoff of the live
 session, and one artifact serving two tenants.
 
 ```
-246 tests — 215 offline, 31 live · ruff clean
+247 tests — 216 offline, 31 live · ruff clean
 ```
 
 | Piece | State |
@@ -266,7 +266,9 @@ uv run interfaceai capability approve log_in_discovered --by "your name"
 ```
 
 Replay refuses anything unapproved. Evidence for both phases lands in
-`evidence/runs/`.
+`evidence/runs/`, and **six curated runs are committed** — discovery, success,
+business outcome, escalation, recovery, and a safety refusal — indexed with
+what each one shows in [`evidence/README.md`](evidence/README.md).
 
 ### A payment large enough to need a person
 

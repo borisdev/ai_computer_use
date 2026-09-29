@@ -422,9 +422,17 @@ def test_no_committed_artifact_carries_a_sensitive_value() -> None:
     seen = 0
     for path in files:
         for step in json.loads(path.read_text())["steps"]:
-            if step.get("slot") in sensitive:
-                seen += 1
-                assert step["value"]["kind"] == "secret", f"{path.name}: {step['slot']}"
+            if step.get("slot") not in sensitive:
+                continue
+            seen += 1
+            # Reading one back out is refused outright -- see the EXTRACT rule
+            # in `assert_replayable`. This asserted `value["kind"]` blindly and
+            # so CRASHED on an extract step rather than reporting it, which is
+            # how a real hole in the schema surfaced as a TypeError.
+            assert step["verb"] != "extract", (
+                f"{path.name}: extracts into the sensitive slot {step['slot']!r}"
+            )
+            assert step["value"]["kind"] == "secret", f"{path.name}: {step['slot']}"
     assert seen, "no sensitive slot appears in any artifact, so this asserted nothing"
 
 
@@ -542,3 +550,39 @@ def test_a_capability_that_returns_nothing_needs_no_checkpoint() -> None:
 def test_a_capability_that_RETURNS_something_must_check_it() -> None:
     with pytest.raises(ValueError, match="checkpoints nothing"):
         _capability(checkpoints=())
+
+
+def test_a_sensitive_slot_cannot_be_EXTRACTED_back_out() -> None:
+    """Rule 3 covers the way IN. This is the way OUT, and it was missing.
+
+    `username`/`password`/`ssn` may be written from an `input_ref` and never
+    read. Without this an EXTRACT into `password` would lift a secret off the
+    screen and hand it to the caller through `returns` -- past a redaction
+    rule that only ever guarded inputs.
+
+    ⚠️ Not hypothetical. A real discovery run emitted exactly this shape for
+    `username` on 2026-09-28, and the artifact validated. The disk test that
+    should have caught it CRASHED on a `None` instead of reporting, which is
+    why it went unnoticed -- a check that errors is not a check that fails.
+    """
+    leaky = _capability(
+        returns=(OutputSpec(name="who", slot="username"),),
+        steps=(
+            Step(
+                verb=StepVerb.EXTRACT,
+                control=ControlRef(screen="overview", control_id="welcome_banner"),
+                slot="username",
+                output="who",
+                note="lift the logged-in username and hand it back",
+            ),
+        ),
+        checkpoints=(
+            Checkpoint(
+                output="who",
+                expected=LiteralValue(value="john"),
+                why="proves we read the logged-in user",
+            ),
+        ),
+    )
+    with pytest.raises(CapabilityError, match="never read back out"):
+        validate_capability(leaky)

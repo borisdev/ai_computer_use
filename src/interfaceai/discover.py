@@ -671,6 +671,17 @@ def _synthesise(
     for out in outputs:
         if not VOCABULARY.has(out.slot):
             return f"model named output slot {out.slot!r}, which is not in the vocabulary"
+        # A sensitive slot may be filled in from an input_ref and must never be
+        # read back out. `validate_capability` refuses this too, but refusing it
+        # only at the approval gate is the wrong place: discovery proposed
+        # `extract username` on two runs out of two, so the draft would be
+        # unapprovable every time and a reviewer would carry the diagnosis.
+        # Refuse it where it is produced, and say what to do instead.
+        if VOCABULARY.qualifier(out.slot).sensitive:
+            return (
+                f"model tried to extract into {out.slot!r}, which is sensitive; a secret "
+                "can be filled in from an input_ref but never read back out"
+            )
         declared.append(OutputSpec(name=out.name, slot=out.slot))
         steps.append(
             Step(

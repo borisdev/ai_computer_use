@@ -270,12 +270,31 @@ def _finish(ctx: _Ctx, result: CapabilityResult) -> CapabilityResult:
     "incomplete", which reads like a crash.
 
     A run's own log should state its verdict rather than leave it inferable.
+
+    It is also where an escalation picks up its screenshot. 3.6 asks that an
+    intervention request carry "the current state or screenshot", and
+    `NeedsOperator` has always had the field -- but only 2 of its 19
+    construction sites filled it, so most escalations reached a human with no
+    picture of what stopped them. Attaching it at the single exit point rather
+    than at seventeen call sites is the same chokepoint argument `use_control`
+    rests on: one place to get right, one place to test.
     """
+    if isinstance(result, NeedsOperator) and result.frame is None:
+        try:
+            result = replace(
+                result,
+                frame=ctx.evidence.frame(
+                    ctx.surface.screenshot(), f"{result.step_index:02d}-stuck"
+                ),
+            )
+        except Exception as exc:  # noqa: BLE001 -- a dead page must not mask the real reason
+            ctx.evidence.event("stuck_frame_failed", why=str(exc))
     ctx.evidence.event(
         "replay_finished",
         outcome=type(result).__name__,
         capability=ctx.capability.name,
         recovered=list(ctx.recovered),
+        frame=str(result.frame) if isinstance(result, NeedsOperator) else None,
     )
     return result
 

@@ -11,15 +11,19 @@ Companions: [parabank.md](parabank.md) (the target), [parabank-screens.md](parab
 
 ## 1. Status against each requirement
 
+⚠️ **Rewritten 2026-09-29.** This table said §3.6 was "not built" and §3.3
+"partial" for many commits after both shipped. A status table nothing
+regenerates goes stale silently; `interfaceai status` is the one that cannot.
+
 | § | Requirement | State | Evidence |
 |---|---|---|---|
-| 3.1 | Goal-driven agent loop | **built** | real run 2026-09-26: 3 actions, logged in, artifact emitted |
-| 3.2 | Typed, versioned artifact | **built** | `capability.py` + 35 tests; two authored artifacts, both hand-written |
-| 3.3 | Deterministic replay | **partial** | `locate_control` exact (drift 0,0); no step executor, no control-map store |
-| 3.4 | Safety guardrails | **partial** | single action chokepoint + 8 tests; no per-step risk classing |
-| 3.5 | Evidence | **built** | wired: trace.jsonl + a frame per step, from a real run |
-| 3.6 | Escalation & handoff | **not built** | triggers exist (`unresolved`, `ambiguous`); no routing |
-| 3.7 | Heterogeneity & multi-tenant | **designed** | seam built and argued; limits measured |
+| 3.1 | Goal-driven agent loop | **built** | real runs; warm: 3 steps, 4 model calls, 24s ([evidence](../evidence/README.md)) |
+| 3.2 | Typed, versioned artifact | **built** | `capability.py`; composition with pinned versions; `establishes` postconditions |
+| 3.3 | Deterministic replay | **built** | drift (0,0); 4 outcome types, each with an observed instance |
+| 3.4 | Safety guardrails | **built** | one chokepoint; control-level *and* value-level risk; tenant permits |
+| 3.5 | Evidence | **built** | `trace.jsonl` + frames; every run writes its own `replay_finished` |
+| 3.6 | Escalation & handoff | **built** | live session, ownership, verified resume, window bracketed |
+| 3.7 | Heterogeneity & multi-tenant | **built, with a stated limit** | one artifact, two tenants; both ship the stock UI |
 
 ---
 
@@ -260,6 +264,10 @@ asserted — not yet measured.
 | Discovery run, cold (maps unbuilt) | 2 screens mapped, ~100 calls |
 | Discovery run, warm (maps cached) | 3 actions, **4 calls, 15s** |
 | Landmark score as a form fills | 0.99999 -> 0.9839 -> **0.8365** (below threshold) |
+| Control-id naming churn, one screenshot x3 draws | **0 of 62 ids**, two screens (closed A5) |
+| Sensitive slot proposed as an EXTRACT by discovery | **2 runs of 2**, before the producer-side refusal |
+| `NeedsOperator` sites that filled `frame` | **2 of 19**, before it moved to the single exit point |
+| Money threshold vs `--confirm-risky` | bypassed: $25,000 submitted against a $1,000 limit |
 
 ---
 

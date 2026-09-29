@@ -442,6 +442,23 @@ def validate_capability(
             raise CapabilityError(f"{where}: {step.slot!r} is not a vocabulary slot")
         if step.verb in _NEEDS_VALUE and step.slot is None:
             raise CapabilityError(f"{where}: needs a slot saying what it is filling in")
+        # A sensitive slot may be WRITTEN from an input_ref and must never be
+        # READ. Rule 3 covers the way in -- a password cannot be a literal --
+        # and said nothing about the way out, so an EXTRACT into `password`
+        # would take a secret off the screen and hand it to the caller through
+        # `returns`, past every redaction we have. Found 2026-09-28 when a
+        # discovery run emitted exactly that for `username`.
+        if (
+            step.verb is StepVerb.EXTRACT
+            and step.slot is not None
+            and vocab.has(step.slot)
+            and vocab.qualifier(step.slot).sensitive
+        ):
+            raise CapabilityError(
+                f"{where}: {step.slot!r} is sensitive, so it can be filled in from an "
+                "input_ref but never read back out; a secret that reaches `returns` "
+                "has left the system"
+            )
         check_value(step.value, where, step.slot)
         if step.control is not None:
             check_value(step.control.discriminator, f"{where} discriminator", None)
