@@ -211,15 +211,13 @@ SUCCESS read_savings_balance in 12 steps
   account_type = SAVINGS
 ```
 
-Four things are happening in that one command:
+Three of those twelve steps are `log_in`, invoked with its version pinned. No
+model chose any of them. Try `--param account_id=13122` ($1100.00) or `12345`
+(**-$2300.00**, negative on purpose).
 
-| | |
-|---|---|
-| **Composition** | step 0 is `invoke log_in v2` — written once, called by anything needing a session. The version is pinned, so a newer `log_in` cannot silently change what replays. Three of the twelve steps are its |
-| **A typed parameter** | `--param account_id=…` — try `13122` ($1100.00) or `12345` (**-$2300.00**, negative on purpose) |
-| **No model decides** | step order, controls, values and checkpoints all come from the artifact. One call reads the accounts table; the row is then selected **in code** |
-| **Panel extraction** | the table is a `TABLE_CONTROL_PANEL`: anchor its header, crop it, one model call against a response schema, get typed rows |
-| **A checkpoint with teeth** | `account_type = SAVINGS` is returned *and* checked. Proving the row says SAVINGS is the difference between reading the right record and reading a record |
+*Why it is built this way — composition, panel extraction, and why the
+checkpoint compares a value rather than a presence — is
+[REPORT §2](REPORT.md#2-artifact-schema).*
 
 ### A business outcome is an answer, not a crash
 
@@ -289,11 +287,9 @@ NEEDS A HUMAN at step 5: this step is irreversible and amount=25000,
   a person has to confirm it
 ```
 
-Same artifact, same flag, different **value**. `--confirm-risky` is the caller
-saying *this run may do irreversible things*; it cannot answer *this bank
-requires a person above $1,000*, because that question was never addressed to
-the caller. Drop the flag and both stop — but for different, distinguishable
-reasons.
+Same artifact, same flag, different **value**. Drop the flag and both stop, for
+different and distinguishable reasons. *Why a run-level flag cannot answer a
+tenant-level policy is [REPORT §6](REPORT.md#6-safety).*
 
 ### A session that dies mid-flow
 
@@ -307,11 +303,9 @@ SUCCESS session_loss_probe in 8 steps
   recovered accounts_overview_link gone -- log_in no longer holds
 ```
 
-The capability logs itself out halfway through. `log_in` declares what it
-`establishes`, so the engine knows which capability puts it back — and
-re-invokes exactly that one, **once**. The run is a `SUCCESS` that says what it
-survived: a recovered condition is not a terminal state, which is why there is
-no `Recoverable` variant.
+The capability logs itself out halfway through and the run survives it, saying
+so. *Why a recovery is a `SUCCESS` rather than a fifth outcome type is
+[REPORT §3](REPORT.md#3-determinism--error-handling).*
 
 ### One artifact, two institutions
 
@@ -402,6 +396,29 @@ handed it over and when we got it back*.
 operator surface is a terminal and `shot` is how you see the page. That is a
 real constraint, not a shortcut — it is also why `page.pause()` was rejected
 (REPORT §5).
+
+### The reskin experiment (optional, and it breaks two tests on purpose)
+
+REPORT §4's weakest claim was that cross-tenant reuse was only ever shown on
+two identical skins. To test it properly, put a different brand on tenant B:
+
+```bash
+scripts/reskin_tenant_b.sh on
+uv run interfaceai maps adopt index --from baseline --to feature
+scripts/reskin_tenant_b.sh off        # ⛔ REQUIRED before the live suite
+```
+
+```
+baseline -> feature   index: 8/25 locators matched
+  nothing written — this tenant needs its own discovery run or overrides
+```
+
+⚠️ **Turn it off afterwards.** With the skin on, `test_cross_tenant_live.py`
+fails — correctly, because the tenant really has drifted. Leaving it on reads
+as two broken tests instead of as a result.
+
+*What the 8 survivors say about template matching is
+[REPORT §4](REPORT.md#4-heterogeneity--multi-tenant).*
 
 ## What's next — the open work, as issues
 
