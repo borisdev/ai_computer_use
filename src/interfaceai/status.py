@@ -52,6 +52,10 @@ class ArtifactRow:
     name: str
     version: int
     approval: Approval
+    # WHICH PRODUCT this was authored against. Provenance, not a destination --
+    # the artifact is tenant-agnostic, and `app` is the axis you can actually
+    # search on. See docs/layering.md.
+    app: str
     params: tuple[str, ...]
     returns: tuple[str, ...]
     invokes: tuple[str, ...]
@@ -78,6 +82,31 @@ class RunRow:
     path: Path
 
 
+def runnable_by(
+    rows: list[ArtifactRow], *, app: str | None, permitted: frozenset[str] | None
+) -> list[ArtifactRow]:
+    """What a given tenant may actually run.
+
+    ⚠️ THERE IS NO "SEARCH CAPABILITIES BY TENANT", and there should not be: an
+    artifact is tenant-agnostic, which is the property that lets one recording
+    serve two institutions. The question people mean is a JOIN of two different
+    axes:
+
+        by APP      which product is this for?     Target.app
+        by TENANT   may this tenant run it?        allowed_capabilities(tenant)
+
+    so "what can tenant B run?" is `capabilities(app) ∩ permitted(tenant)`.
+    Both halves already existed and nothing joined them. docs/layering.md.
+
+    `permitted=None` means the tenant restricts nothing -- an unconfigured
+    gate, not an unknown tenant, which `allowed_capabilities` refuses outright.
+    """
+    out = [r for r in rows if app is None or r.app == app]
+    if permitted is not None:
+        out = [r for r in out if r.name in permitted]
+    return out
+
+
 def read_artifacts(root: Path) -> list[ArtifactRow]:
     """Every capability on disk. An approved copy hides the draft it came from.
 
@@ -96,6 +125,7 @@ def read_artifacts(root: Path) -> list[ArtifactRow]:
                 name=capability.name,
                 version=capability.version,
                 approval=capability.approval,
+                app=capability.target.app,
                 params=tuple(p.name for p in capability.params),
                 returns=tuple(o.name for o in capability.returns),
                 invokes=tuple(s.invokes for s in capability.steps if s.invokes),

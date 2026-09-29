@@ -602,14 +602,29 @@ def status_cmd(
     markdown: Path = _MARKDOWN_OPTION,
     limit: int = _LIMIT_OPTION,
     maps: Path = _MAPS_OPTION,
+    app_name: str = typer.Option(None, "--app", help="Only capabilities for this app."),
+    tenant: str = typer.Option(
+        None, "--tenant", help="Only what this tenant PERMITS. Implies its app policy."
+    ),
 ) -> None:
     """What capabilities exist, and what the recent runs did.
 
     Reads `artifacts/` and `evidence/runs/` -- no new storage. §3.2 asks that
     "both a human reviewer and a calling agent" understand a capability; the
     agent half was typed and validated, the human half was a JSON file.
+
+    ⚠️ `--tenant` is not a search over capabilities, because an artifact is
+    tenant-agnostic and that is the property this design rests on. It is a JOIN:
+    `capabilities(app) ∩ permitted(tenant)`. See docs/layering.md.
     """
     artifacts = status_mod.read_artifacts(ARTIFACTS)
+    if app_name or tenant:
+        try:
+            permitted = get_settings().allowed_capabilities(tenant) if tenant else None
+        except ValueError as exc:
+            console.print(f"[red]{exc}[/]")
+            raise typer.Exit(1) from exc
+        artifacts = status_mod.runnable_by(artifacts, app=app_name, permitted=permitted)
     runs = status_mod.read_runs(EVIDENCE)
 
     if markdown:

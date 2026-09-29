@@ -25,7 +25,7 @@ artifact, deterministic replay with typed outcomes, human handoff of the live
 session, and one artifact serving two tenants.
 
 ```
-259 tests — 228 offline, 31 live · ruff clean
+261 tests — 230 offline, 31 live · ruff clean
 ```
 
 | Piece | State |
@@ -221,7 +221,32 @@ nodes have **no permitted action at all**: you cannot click a
 cannot act on an `unknown`. That is the geometric guard and the grounding
 refusal, expressed as a gap in the diagram rather than as a paragraph.
 
-### 5. What an artifact is, and when it is trusted
+### 5. One language, many tenants — what is shared and what is not
+
+The layering, and the one question it answers: a capability recorded once at
+one bank, what travels to the next and what has to be re-measured?
+
+```
+① LANGUAGE        one vocabulary, one set of roles and verbs. Generated.
+② CAPABILITIES    tenant-agnostic, versioned, approved. Name controls, never pixels.
+③ CONTROL MAPS    the pixels. The ONLY tenant-specific thing in the system.
+```
+
+**[docs/layering.md](docs/layering.md)** draws it, and is honest that layer ③
+is not yet what it should be: today it is a full map per tenant, where it wants
+to be an app default plus only the controls that drift. The reskin is the
+argument — Bank B needs **17 overrides, not 25 locators** — and the reason is
+propagation, not storage: with a full copy, fixing a locator in the default
+reaches nobody.
+
+It also answers *"how do we search per tenant and per app?"*, which turns out
+not to be a search:
+
+```bash
+uv run interfaceai status --tenant feature   # capabilities(app) ∩ permitted(tenant)
+```
+
+### 6. What an artifact is, and when it is trusted
 
 ```mermaid
 stateDiagram-v2

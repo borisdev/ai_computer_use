@@ -13,7 +13,14 @@ import pytest
 
 from interfaceai import capabilities
 from interfaceai.capability import Approval
-from interfaceai.status import as_markdown, as_mermaid, read_artifacts, read_runs
+from interfaceai.status import (
+    ArtifactRow,
+    as_markdown,
+    as_mermaid,
+    read_artifacts,
+    read_runs,
+    runnable_by,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -164,3 +171,46 @@ def test_the_diagram_is_read_from_the_artifact_so_it_cannot_drift() -> None:
             assert step.control.control_id in diagram
     for check in capability.checkpoints:
         assert check.output in diagram
+
+
+def _row(name: str, app: str = "parabank") -> ArtifactRow:
+    return ArtifactRow(
+        name=name,
+        version=1,
+        approval=Approval.APPROVED,
+        app=app,
+        params=(),
+        returns=(),
+        invokes=(),
+        steps=1,
+        path=Path(f"{name}.json"),
+    )
+
+
+def test_what_a_tenant_can_run_is_a_JOIN_not_a_search() -> None:
+    """You cannot search capabilities BY TENANT, and that is the design.
+
+    An artifact is tenant-agnostic -- that property is what lets one recording
+    serve two institutions. The question people mean joins two different axes:
+    which APP a capability targets, and whether the TENANT permits it. Both
+    halves existed and nothing joined them. docs/layering.md.
+    """
+    rows = [_row("log_in"), _row("request_loan"), _row("other", app="corebank")]
+
+    by_app = runnable_by(rows, app="parabank", permitted=None)
+    assert {r.name for r in by_app} == {"log_in", "request_loan"}
+
+    joined = runnable_by(rows, app="parabank", permitted=frozenset({"log_in"}))
+    assert [r.name for r in joined] == ["log_in"]
+
+
+def test_an_unrestricted_tenant_is_not_an_unknown_one() -> None:
+    """`permitted=None` means the gate is off, not that the tenant is unknown.
+
+    An unknown tenant never reaches here -- `allowed_capabilities` raises, which
+    is the fail-closed fix from PR #5. Conflating the two is how a typo'd
+    tenant came to outrank the real one.
+    """
+    rows = [_row("log_in")]
+    assert runnable_by(rows, app=None, permitted=None) == rows
+    assert runnable_by(rows, app=None, permitted=frozenset()) == []
