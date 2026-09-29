@@ -330,6 +330,24 @@ Every failure mode we have observed, with the fixture or lever that reproduces
 it: [`docs/failure-modes.md`](docs/failure-modes.md). What is still open:
 [`STILL-OPEN.md`](STILL-OPEN.md).
 
+## What's next — the open work, as issues
+
+Every remaining item is a GitHub issue with the reasoning in it, rather than a
+TODO list that drifts from the code.
+
+| | why it matters |
+|---|---|
+| [#6](https://github.com/borisdev/ai_computer_use/issues/6) Discovery cannot produce a `TABLE_CONTROL_PANEL` | **the biggest one.** Replay uses panels; discovery cannot emit one, so panels are added by hand — the only seam in the record-once story |
+| [#7](https://github.com/borisdev/ai_computer_use/issues/7) Screenshots are written unmasked | redaction covers logs and artifacts, not frames. §3.4 names regulated data |
+| [#9](https://github.com/borisdev/ai_computer_use/issues/9) The headless mirror | closes the unlogged-input path by construction; argued, and argued against, in REPORT §5 |
+| [#4](https://github.com/borisdev/ai_computer_use/issues/4) Extraction cannot point at unstructured data | half solved — tables and label/value pairs are panels; a lone value is not |
+| [#8](https://github.com/borisdev/ai_computer_use/issues/8) REPORT is over length | the one failing mechanical check. **Not** to be fixed by moving the threshold |
+| [#1](https://github.com/borisdev/ai_computer_use/issues/1) · [#2](https://github.com/borisdev/ai_computer_use/issues/2) · [#3](https://github.com/borisdev/ai_computer_use/issues/3) | observability and console work, deliberately shelved |
+
+Closed by measurement rather than by code, which is the better outcome:
+**0001** (inventory variance 15/24/22 → 36/36/36) and **A5** (control-id naming
+churn → 0 over 62 ids). Both premises had already been fixed by something else.
+
 ## Grading this submission against the client's own rubric
 
 ```bash

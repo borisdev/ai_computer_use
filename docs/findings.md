@@ -258,6 +258,9 @@ asserted — not yet measured.
 | Account links grounded on their OWN row | 1/4 before A4; **1/11 after** — A4 fixed reading, not placement (issue 0009) |
 | **Nav links** grounded on their own row | **0/8** — the defect is repeated structures, not tables |
 | Cross-tenant adopt, `requestloan` | **refused** — 2 controls drift between the two image builds |
+| Cross-tenant adopt onto a **reskinned** tenant | **8/25 matched, nothing written** — colours + typeface only, same DOM |
+| Which locators survive a reskin | **image landmarks yes, text landmarks no** — `about_us_link` survived, `about_us_link_2` (same words, styled text) drifted |
+| Replay against a reskinned, unadopted tenant | refused at the precondition — no action taken |
 | Row reached by INDEX instead of grounding | **11/11** — panel read + measured pitch (capability 1 v3) |
 | Cross-check, correct pitch | 0 misaligned of 11 |
 | Cross-check, forced harmonic (2x pitch) | **11 misaligned of 11** — the guard fires |

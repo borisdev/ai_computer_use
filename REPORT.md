@@ -157,11 +157,34 @@ screen and **writes nothing if any drifted**, because a partially adopted map
 fails at replay far from the cause and reads like an application fault. A tenant
 miss never falls back to another tenant's pixels.
 
-⚠️ **The honest limit, and it is the weakest claim here.** Both images ship the
-stock unbranded UI, so every locator matches at `1.0000`. That proves the reuse
-*path* and little else — a restyled tenant is the test this design most needs
-and has not had. Template matching is the least portable locator there is, and
-that is the trade accepted in exchange for working without a DOM.
+**And it has now met a rebrand.** Both images ship the stock UI, so matching at
+`1.0000` proved the reuse *path* and little else. So tenant B was reskinned —
+Bank B's colours and typeface over the same product, same DOM, same layout
+(`docker-compose.reskin.yml`). Measured:
+
+```
+maps adopt index   baseline -> reskinned feature    8/25 matched, NOTHING WRITTEN
+replay             on the unadopted tenant          refused at the precondition
+```
+
+Both refusals are the design working. The adopter **wrote nothing** rather than
+half a map, and replay stopped at `username_textbox should be present` — a
+clean refusal, not a wrong click, against a failure the system had never seen.
+
+⚠️ **And the 8 that survived say exactly what a template locator is worth.**
+
+```
+SURVIVED   about_us_link · services_link · products_link · locations_link
+DRIFTED    about_us_link_2 · services_link_2 · products_link_2 · locations_link_2
+```
+
+Same words, same page. ParaBank's **top nav is a graphic**; its **footer
+repeats those words as styled text**. A locator survived exactly when its
+landmark was an image and drifted when the landmark was text — so a rebrand
+costs you every text-anchored control and none of the image-anchored ones.
+That is a mechanism, not a score, and it is the honest shape of the trade this
+design accepts in exchange for working without a DOM: **template matching does
+not survive a reskin, and the system's response to that is to refuse.**
 
 ## 5. Escalation & handoff
 

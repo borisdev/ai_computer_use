@@ -1,0 +1,18 @@
+# Tenant B wears a different skin.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.reskin.yml \
+#     --profile tenant-b up -d --wait parabank-b
+#
+# A SEPARATE FILE, not docker-compose.override.yml, which is gitignored --
+# an override nobody else can see is a measurement nobody else can reproduce.
+#
+# REPORT §4's weakest claim was that cross-tenant reuse is demonstrated while
+# both images ship the STOCK unbranded UI -- every locator matching at 1.0000
+# proves the reuse *path* and close to nothing about the design. This is the
+# test that was missing: same vendor product, same DOM, same layout, Bank B's
+# colours and typeface over it. A rebrand, not a redesign, which is what a
+# second institution running the same core banking package actually looks like.
+services:
+  parabank-b:
+    volumes:
+      - ./tenants/feature/template.css:/usr/local/tomcat/webapps/parabank/template.css:ro
