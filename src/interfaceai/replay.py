@@ -333,17 +333,14 @@ def _value(ctx: _Ctx, value: Value | None) -> str | None:
 
 
 def _check_preconditions(ctx: _Ctx, *, when: str, step_index: int = -1) -> NeedsOperator | None:
-    """Walk `capability.requires`. Returns a `NeedsOperator` if any is unmet.
+    """Walk `capability.requires` at run ENTRY. Returns `NeedsOperator` if unmet.
 
-    Run at entry AND again after a handoff. The second call is the one that
-    matters: a person has just had the live browser, and the artifact's
-    preconditions are the only written statement of what the run assumed.
-
-    ⚠️ Added 2026-09-29. Both REPORT.md and `Precondition`'s own docstring said
-    preconditions were "re-checked on resume" and they were not -- this sweep
-    ran once, at `_run` entry, and `_hand_over` re-checked only the stopped
-    step's own control. The claim was made in a graded document and shipped
-    beside code that did not do it. Found by `evals/grade.py`, not by a test.
+    ⚠️ Entry only, and the `when` parameter is a scar. This was briefly also
+    called from `_hand_over`, because REPORT.md claimed preconditions were
+    "re-checked on resume" and they were not. Making the claim true broke every
+    resume: `requires` holds ENTRY conditions -- `at_the_login_page` -- which
+    are necessarily false once a run is mid-flow. See the comment in
+    `_hand_over` for the full reasoning and issue #10 for the schema gap.
     """
     for precondition in ctx.capability.requires:
         try:
@@ -514,14 +511,26 @@ def _hand_over(ctx: _Ctx, n: int, step: Step, blocked: NeedsOperator) -> str | N
             completed_steps=tuple(ctx.done),
         )
 
-    # THE WHOLE CAPABILITY'S preconditions first, before this step's own
-    # target. A person has just had the live browser and may be anywhere;
-    # `requires` is the only written statement of what the run assumed, and
-    # checking the stopped step's control alone would resume a run whose
-    # footing is gone. Unmet here means stay paused -- never advance.
-    unmet = _check_preconditions(ctx, when="resume", step_index=n)
-    if unmet is not None:
-        return unmet
+    # ⛔ DO NOT RE-RUN `capability.requires` HERE. It was added on 2026-09-29
+    # and reverted the same hour, because running it is what showed the idea
+    # was wrong.
+    #
+    # `requires` holds ENTRY preconditions -- `at_the_login_page` for anything
+    # that logs in. They are statements about where a run STARTS, so by the
+    # time a handoff happens they are necessarily FALSE: you are mid-flow, past
+    # the login screen. Re-checking them made `resume` impossible for every
+    # capability in the library, always, with a message blaming the operator
+    # for a page they were right to have left.
+    #
+    # The claim in REPORT.md -- "re-checked on resume" -- was false, and
+    # evals/grade.py was right to catch it. The correct repair was to fix the
+    # SENTENCE. What resume actually verifies is below, and it is the right
+    # thing: the stopped step's own footing, with advance / retry / stay-paused
+    # decided per verb, and an irreversible step never retried on a guess.
+    #
+    # The distinction the schema cannot express is ENTRY PRECONDITION versus
+    # INVARIANT. Only an invariant is resume-checkable. Adding that flag is
+    # issue #10; it is a real gap and not a wording problem.
 
     if step.control is None:
         return "advance"

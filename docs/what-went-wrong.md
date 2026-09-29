@@ -77,6 +77,34 @@ Found by `evals/grade.py` reading the write-up against the code. **The claim
 was in a graded document for as long as it was false** — which is the
 uncomfortable part, and the reason that eval exists.
 
+## And the fix for that was wrong, which took one hour to find
+
+The obvious repair was to make the claim true: re-run `capability.requires`
+after the operator hands back. It shipped, and `resume` broke for every
+capability in the library.
+
+`requires` holds **entry** preconditions — `at_the_login_page` for anything
+that logs in. They describe where a run STARTS, so by the time a handoff
+happens they are necessarily false: you are mid-flow, past the login screen.
+The run came back *"username_textbox should be present"*, blaming the operator
+for a page they were right to have left.
+
+```
+entry precondition   must hold when the run starts       NOT resume-checkable
+invariant            must hold throughout                 resume-checkable
+```
+
+The schema cannot tell those apart, which is the actual gap ([#10]). The
+correct repair was to fix the **sentence**, and to let resume keep verifying
+what it already verified well: the stopped step's own footing, advance /
+retry / stay-paused per verb, and an irreversible step never retried on a
+guess.
+
+⚠️ Found by running the demo the README tells a reader to run — one hour after
+shipping the fix, and after the offline suite went green on a test that
+asserted the broken behaviour. **A false sentence in a document is cheaper
+than a true sentence bought with a broken resume.**
+
 ## Escalations reached a human with no screenshot
 
 §3.6 asks the request to carry *"the current state or screenshot"*.

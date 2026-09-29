@@ -166,34 +166,32 @@ def test_ownership_is_recorded_on_both_edges(tmp_path: Path) -> None:
     assert ctx.owner is Owner.WORKER
 
 
-def test_resume_re_checks_the_WHOLE_capability_preconditions(tmp_path: Path) -> None:
-    """Not just the stopped step's own control. 3.6, and it was not true.
+def test_resume_does_NOT_re_run_entry_preconditions(tmp_path: Path) -> None:
+    """The regression that a "fix" introduced, pinned so it stays fixed.
 
-    REPORT.md and `Precondition`'s docstring both said preconditions were
-    "re-checked on resume". They were not: the sweep ran once at `_run` entry
-    and `_hand_over` re-checked only the control the stopped step names. A
-    person who navigated somewhere else during the handoff would be resumed
-    onto footing nobody verified.
+    `evals/grade.py` correctly found that REPORT.md claimed preconditions were
+    "re-checked on resume" while the code did not. Making the CLAIM true was
+    the wrong repair: `requires` holds ENTRY conditions -- `at_the_login_page`
+    -- which are necessarily false once a run is mid-flow. Re-running them made
+    `resume` impossible for every capability in the library, always, blaming
+    the operator for a page they were right to have left.
 
-    Found by `evals/grade.py` reading the write-up against the code -- not by
-    a test, which is the uncomfortable part: the claim was in a graded
-    document for as long as it was false.
+    Caught by running it, one hour after shipping it. A false sentence in a
+    document is cheaper than a true sentence bought with a broken resume.
 
-    Here the capability requires a screen with no control map, so the resume
-    check cannot pass. Unmet means STAY PAUSED, never advance.
+    `session_loss_probe` requires the login page and this ctx gives no map for
+    it, so the reverted version would fail here. It must advance instead.
     """
     ctx = _ctx(
         tmp_path,
         _FakeSurface("http://bank/overview.htm"),
         ["resume"],
-        capability=SESSION_LOSS_PROBE,  # this one HAS preconditions
+        capability=SESSION_LOSS_PROBE,  # has an at_the_login_page precondition
     )
 
     result = _hand_over(ctx, 0, _OBSERVE, _BLOCKED)
 
-    assert isinstance(result, NeedsOperator), result
-    assert "precondition" in result.why
-    assert "resume" in result.why, "the message must say WHICH sweep failed"
-    # The bracket still happened -- we record the window even when we refuse
-    # to come out of it.
-    assert _one(ctx, "handoff_returned")["frame"]
+    assert result == "advance", (
+        f"resume re-ran an ENTRY precondition; mid-flow it can never hold. got: {result}"
+    )
+    assert not [e for e in _events(ctx) if e.get("when") == "resume"]

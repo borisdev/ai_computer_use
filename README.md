@@ -330,6 +330,79 @@ Every failure mode we have observed, with the fixture or lever that reproduces
 it: [`docs/failure-modes.md`](docs/failure-modes.md). What is still open:
 [`STILL-OPEN.md`](STILL-OPEN.md).
 
+### Doing the handoff yourself
+
+§3.6 is the piece you should *feel* rather than read about. Two runs, both
+against the live app.
+
+**1. A policy stop.** Nothing is broken; the system declines to proceed.
+
+```bash
+uv run interfaceai env reset
+uv run interfaceai replay artifacts/request_loan.v1.approved.json \
+  --param amount=25000 --param down_payment=5000 --confirm-risky --operator
+```
+
+You get a prompt. The run has filled the loan form and stopped **at the submit
+button**, because $25,000 is over this tenant's $1,000 threshold.
+
+```
+operator> url                      where am I?
+operator> shot                     writes a PNG to the run's evidence dir
+operator> resume                   hand control back
+```
+
+⚠️ **Expect `resume` to keep it paused, and that is the point.** The blocked
+step is irreversible, and the rule is that such a step is *never* retried on
+the strength of "it looks like it did not happen" — a submission that silently
+succeeded and one that failed look identical. Use `abort <reason>` to end it
+deliberately; the reason lands in the run log.
+
+**2. A broken world.** Now something really is wrong.
+
+```bash
+uv run interfaceai env break        # ParaBank's own admin page drops account 12345
+uv run interfaceai replay artifacts/log_in_discovered.v1.approved.json --operator
+uv run interfaceai env reset        # afterwards
+```
+
+It stops at step 4: `cannot read 12345_link: not_found (best score 0.8654)`.
+Try navigating and looking around before deciding:
+
+```
+operator> goto http://localhost:8080/parabank/overview.htm
+operator> shot
+operator> abort 12345 genuinely does not exist; not a locator fault
+```
+
+**The full command set** — `help` prints it:
+
+```
+click X Y      type TEXT      goto URL      shot      url      resume      abort
+```
+
+Everything you type goes through `use_control`, the same gate the agent uses:
+same allowlist, same redaction. The log records `value_length`, never the
+value. Try `click 5 5` to watch it refuse you.
+
+**Afterwards, read what it recorded about you:**
+
+```bash
+jq -r 'select(.event|startswith("handoff") or .=="human_acted")' \
+  evidence/runs/<the-dir-it-printed>/trace.jsonl
+```
+
+You will see `handoff_requested` → `human_acted` → `handoff_returned`, each edge
+carrying a frame and a URL, plus `url_changed`. That bracket is deliberate: the
+per-action log is complete for what you did *through the terminal* and blind to
+a hand on the mouse, so the honest claim is *what the page looked like when we
+handed it over and when we got it back*.
+
+⚠️ **`--headed` will not work on a machine with no display**, which is why the
+operator surface is a terminal and `shot` is how you see the page. That is a
+real constraint, not a shortcut — it is also why `page.pause()` was rejected
+(REPORT §5).
+
 ## What's next — the open work, as issues
 
 Every remaining item is a GitHub issue with the reasoning in it, rather than a

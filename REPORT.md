@@ -73,9 +73,13 @@ was measured failing first:
    route around.
 
 **Typed both ways:** `params` in, `returns` out, checked against a 34-term
-vocabulary carrying a `sensitive` flag. `requires` holds preconditions,
-re-checked at entry **and again on resume**, because after a handoff the
-operator may be anywhere.
+vocabulary carrying a `sensitive` flag. `requires` holds **entry**
+preconditions, checked once before step 0. ⚠️ This said "re-checked on resume"
+and the code did not do it; making it true broke every resume, because
+`at_the_login_page` is necessarily false mid-flow. Entry precondition versus
+invariant is a distinction the schema cannot express
+([#10](https://github.com/borisdev/ai_computer_use/issues/10)) — what resume
+verifies is the stopped step's own footing (§5).
 
 **Capabilities compose.** `INVOKE` calls another **in the same browser session**
 — a section of the same run, in the same evidence file — so `log_in` is written
