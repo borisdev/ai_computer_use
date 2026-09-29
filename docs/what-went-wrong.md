@@ -172,3 +172,68 @@ Recorded because it was the most expensive category and the least expected:
 
 `.claude/rules/checks.md`, in one line: a check must exercise the thing that can
 break, and *"I measured it"* is not the same as *"I measured the right thing."*
+
+## A pitch that every gap agreed with, and that was 20px wrong by row 10
+
+Deriving a panel's geometry (#6), the row pitch came from ink runs: take the gaps
+between consecutive rows and keep the ones within a pixel of the first. Eleven
+gaps all passed. The pitch it produced put marker band 10 **twenty pixels** off
+the row it was meant to contain.
+
+    gap 0    28        every gap within ±1 of the one before it
+    gap 1    29        a systematic +1 is INSIDE the tolerance
+    ...      ...       and it accumulates
+    row 10   576..586  band 596..623
+
+A tolerance chained pairwise measures agreement between neighbours and says
+nothing about the fit. Predicting `first + i * pitch` and then refitting across
+the whole stretch is the same three lines and cannot drift.
+
+⚠️ **Nothing about the failure was subtle except where it was checked.**
+`marker_bands_contain_every_row` caught it on the first live run, which is the
+argument for having written the verifier before the producer — the handoff for #6
+said so in as many words, and it was right.
+
+## A header row is exactly one row pitch above row one
+
+The same geometry, anchored on the page heading *Accounts Overview* rather than
+the *Account* column header, measured **13 rows over 11 accounts**: the shaded
+header row and the Total line both joined the rhythm, because a header sits one
+pitch above row one and nothing about its POSITION says otherwise.
+
+What distinguishes it is the shading — the one property a column header actually
+has. `_is_a_header_bar` compares the line's median against what is under it;
+zebra striping (230 and 238 against a median of 235) does not trip it and the bar
+(194 against white) does.
+
+⚠️ **And the model was right.** Asked for "the heading above the rows" it named
+the page heading, which IS a heading above the rows. The bug was in what the
+geometry did with a correct answer, and the test that pins it asserts that BOTH
+anchors arrive at the same table to the pixel.
+
+## A menu 68px from a table swallowed it, and no distance rule can help
+
+The account-services menu on the loan-result screen came out **722px wide**
+instead of 170, having absorbed the result table beside it. The gap between them
+is 68px; the accounts table's own column gutters are **79 and 84px**. So there is
+no threshold that keeps one and rejects the other — a fact worth knowing before
+reaching for one.
+
+The menu repeats every 24px and the table every 23, and containment was not
+enough either: an 11px row inside a 24px band leaves 12px of slack, which absorbs
+1px of drift for five rows. What gives it away is WHERE in its band each run
+sits. A real column of this table puts its glyphs the same distance below every
+row boundary; a foreign rhythm creeps — 5px, then 4, then 3.
+
+## The approval gate could not see the artifacts it exists for
+
+`interfaceai capability approve discovered_balance` answered *"no capability
+named 'discovered_balance'; known: log_in, read_savings_balance, …"*. It resolved
+names against the in-code registry only, so a draft a discovery run had just
+emitted could not be promoted — the `draft → approved` gate was **unreachable for
+every discovered artifact**, which is exactly the set it was built for.
+
+`interfaceai diagram` already had the fallback, with a comment explaining why
+("NOT EVERY CAPABILITY IS AUTHORED"). One command had learned the lesson and the
+one next to it had not, which is the argument for the shared `_capability_named`
+rather than a second copy of the fallback.
