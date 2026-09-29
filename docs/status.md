@@ -1,9 +1,9 @@
 # System status
 
 > **Generated** by `interfaceai status --markdown docs/status.md`.
-> Do not edit by hand. Last run 2026-09-28 23:56 UTC.
+> Do not edit by hand. Last run 2026-09-29 00:02 UTC.
 
-8 capabilities (5 approved) · 359 recorded runs.
+8 capabilities (5 approved) · 386 recorded runs.
 
 ## Capabilities
 
@@ -28,23 +28,23 @@ hit a condition and handled it — it succeeded, and it survived something.
 
 | when | kind | capability | outcome | steps | model calls | worst match | detail |
 |---|---|---|---|---|---|---|---|
-| 2026-09-28 23:55:40 | replay | `request_loan` | **SUCCESS** | 9 | 1 | 0.9998 |  |
-| 2026-09-28 23:55:07 | replay | `session_loss_probe` | **SUCCESS** | 10 | 3 | 0.9998 | recovered: accounts_overview_link gone -- log_in no longer holds |
-| 2026-09-28 23:53:09 | replay | `request_loan` | **FAILED** | 0 | 0 | — | request_loan not permitted |
-| 2026-09-28 23:53:08 | replay | `request_loan` | **FAILED** | 0 | 0 | — | log_in not permitted |
-| 2026-09-28 23:53:07 | replay | `request_loan` | **FAILED** | 0 | 0 | — | request_loan not permitted |
-| 2026-09-28 23:52:31 | replay | `request_loan` | **SUCCESS** | 9 | 1 | 0.9998 |  |
-| 2026-09-28 23:52:18 | replay | `request_loan` | **SUCCESS** | 9 | 1 | 0.9998 |  |
-| 2026-09-28 23:51:54 | replay | `request_loan` | **SUCCESS** | 9 | 1 | 0.9998 |  |
-| 2026-09-28 23:51:43 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
-| 2026-09-28 23:51:32 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
-| 2026-09-28 23:51:20 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
-| 2026-09-28 23:51:10 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
-| 2026-09-28 23:50:58 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
-| 2026-09-28 23:50:46 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
-| 2026-09-28 23:49:50 | replay | `request_loan` | **SUCCESS** | 9 | 1 | 0.9998 |  |
-| 2026-09-28 23:49:35 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
-| 2026-09-28 23:49:17 | replay | `request_loan` | **FAILED** | 0 | 0 | — | request_loan not permitted |
-| 2026-09-28 23:49:16 | replay | `request_loan` | **FAILED** | 0 | 0 | — | log_in not permitted |
-| 2026-09-28 23:49:15 | replay | `request_loan` | **needs_human** | 0 | 0 | — |  |
-| 2026-09-28 23:49:14 | replay | `request_loan` | **FAILED** | 0 | 0 | — | request_loan not permitted |
+| 2026-09-29 00:01:46 | replay | `request_loan` | **SUCCESS** | 9 | 1 | 0.9998 |  |
+| 2026-09-29 00:01:34 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
+| 2026-09-29 00:01:23 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
+| 2026-09-29 00:01:12 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
+| 2026-09-29 00:01:01 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
+| 2026-09-29 00:00:50 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
+| 2026-09-29 00:00:39 | replay | `request_loan` | **needs_human** | 8 | 1 | 0.9998 |  |
+| 2026-09-29 00:00:24 | replay | `log_in_discovered` | **needs_human** | 3 | 0 | 0.9998 |  |
+| 2026-09-29 00:00:17 | replay | `log_in_discovered` | **SUCCESS** | 4 | 1 | 0.9998 |  |
+| 2026-09-29 00:00:08 | replay | `session_loss_probe` | **needs_human** | 5 | 1 | 0.9998 |  |
+| 2026-09-29 00:00:07 | replay | `session_loss_probe` | **FAILED** | 0 | 0 | — | log_in not permitted |
+| 2026-09-28 23:59:48 | replay | `session_loss_probe` | **SUCCESS** | 10 | 3 | 0.9998 | recovered: accounts_overview_link gone -- log_in no longer holds |
+| 2026-09-28 23:59:29 | replay | `request_loan` | **FAILED** | 10 | 3 | 0.9998 | log_in not permitted |
+| 2026-09-28 23:59:28 | replay | `request_loan` | **needs_human** | 0 | 0 | — |  |
+| 2026-09-28 23:59:27 | replay | `request_loan` | **FAILED** | 0 | 0 | — | request_loan not permitted |
+| 2026-09-28 23:59:22 | replay | `log_in_discovered` | **needs_human** | 3 | 0 | 0.9998 | cannot read 12345_link: not_found (best score 0.8654 is below threshol |
+| 2026-09-28 23:59:18 | replay | `log_in_discovered` | **needs_human** | 3 | 0 | 0.9998 | cannot read 12345_link: not_found (best score 0.8654 is below threshol |
+| 2026-09-28 23:59:13 | replay | `log_in_discovered` | **needs_human** | 3 | 0 | 0.9998 | cannot read 12345_link: not_found (best score 0.8654 is below threshol |
+| 2026-09-28 23:59:00 | replay | `log_in_discovered` | **SUCCESS** | 4 | 1 | 0.9998 |  |
+| 2026-09-28 23:58:19 | replay | `read_savings_balance` | **SUCCESS** | 10 | 5 | 0.9998 |  |

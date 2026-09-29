@@ -444,6 +444,37 @@ the reader was quietly wrong in a way that looked fine.
 
 ---
 
+### A9 · ~~The handoff window is unbracketed~~ — **DONE 2026-09-28**
+
+**The question that produced it, from Boris:** *"'record what the human did'
+denotes control the browser??"*
+
+Re-read §3.6, and it says two things that pull apart:
+
+> Let the human operate the same live session … **record what the human did.**
+
+> A full real-time co-browsing operator console is **out of scope** … **mock
+> the operator UI if needed**, but make the handoff mechanism and the
+> control-transfer model **real**.
+
+So the human must genuinely drive the browser, and must not be given a console
+to do it with. The UI is the mockable part; the control transfer is the real
+part. We already satisfy both — and **`TerminalOperator` is not a mock**, which
+is a wording correction that makes the claim stronger, not weaker.
+
+**The one real hole:** the human can reach past the terminal and click the
+visible Chromium window, and we record nothing. The per-action log is complete
+for one path and blind to the other.
+
+**Fixed by bracketing, not by a recorder and not by a console.** A frame, a URL
+and `url_changed` at each edge of the window. Not *"here is what the human
+did"* but *"here is what the page looked like when we handed it over and when
+we got it back"* — the action may be invisible, the effect is not.
+
+> **Decision:** DONE
+
+---
+
 ## B · Deliberate cuts — revisit if you disagree
 
 ### B1 · No persistence
@@ -491,6 +522,46 @@ action layer, so they are captured exactly), and we lose the human's ability to
 do anything the surface cannot express.
 
 > **Decision:**
+
+---
+
+### B5 · The operator console (stage 2), and the headless mirror
+
+**Cut, and the brief cuts it by name:** *"a full real-time co-browsing operator
+console is out of scope."* Building one would spend the largest remaining
+block of time on the thing §7 calls feature breadth, to upgrade a requirement
+already met, and it would close no gap — a web page forwarding clicks records
+the same action set as the terminal, through a prettier door.
+
+**The design that WOULD close the gap is the headless mirror**, and it is worth
+recording because it is not the same idea. If the human's only window onto the
+page is a screenshot they click, then every action necessarily passes through
+`use_control`: the unlogged path stops existing rather than being guarded
+against. Same move as `check_not_inside_a_panel`.
+
+The cost is the reason it is not obviously right:
+
+```
+visible Chromium   maximum expressiveness — native selects, file pickers,
+                   hover menus, drag, anything a browser can do
+                   ...and an ADVISORY audit log
+
+headless mirror    complete, enforced audit — no second door
+                   ...and the human is restricted to verbs we anticipated
+```
+
+⚠️ **And the objection that actually matters:** you escalate to a human
+*because the system ran out of ideas.* A mirror can only express verbs someone
+anticipated, so it narrows the human's vocabulary at precisely the moment ours
+proved insufficient. The counter is real too — a regulated bank may well prefer
+the restriction, since "the operator could do anything and we have no record"
+is a finding, not a feature.
+
+**The resolution, designed and unbuilt:** two modes, with break-glass from
+mirrored to direct, and the takeover itself an audited event. Written into
+REPORT §5 rather than built.
+
+> **Decision:** CUT — out of scope by §3.6; the mirror is recorded as designed.
 
 ---
 
@@ -572,8 +643,25 @@ had a clear path.
    account, and a disputed row position refuses to click at all
 3. ~~**C1**~~ · ~~**A7a**~~ · ~~**A7b**~~ — **done.** A lost session recovers; a
    loan over the threshold stops; a forbidden capability never starts
-4. **A5** — reframed: constrain the SCHEMA, not the prompt. Measure the
-   naming churn first (20 min) before building the rest
-5. Everything else is defensible as-is and argued in REPORT §7
+4. ~~**A5**~~ — **measured, and the premise was already gone.** 62 ids, 6
+   draws, 0 churn. The remaining half is cut: it is caught fail-closed, so an
+   enum would buy enforcement rather than correctness
+5. ~~**A9**~~ — **done.** The handoff window is bracketed by evidence
+6. ~~**A2**~~ · ~~**B5**~~ — **cut**, with the reasoning filed:
+   [#4](https://github.com/borisdev/ai_computer_use/issues/4) and §3.6's own
+   scope note
+7. Everything else is defensible as-is and argued in REPORT §7
+
+### ⛔ And one thing found on the way out, which is why running the demo matters
+
+Capturing real output for the write-up surfaced a live defect in the safety
+layer: **`--confirm-risky` bypassed the money threshold entirely.** A $25,000
+loan against a $1,000 threshold replayed `SUCCESS` and submitted, with no
+human. A run-level flag was silently answering a tenant-level policy.
+
+`needs_human_confirmation` was correct the whole time, and a unit test of it
+passed throughout. The defect was the *branch*. Fixed, and pinned by two live
+tests — one for each direction, because a guard that stops everything passes
+the first one and is useless.
 
 > **Your ranking:**
