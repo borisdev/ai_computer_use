@@ -11,21 +11,34 @@ Companions: [parabank.md](parabank.md) (the target), [parabank-screens.md](parab
 
 ## 1. Status against each requirement
 
+⚠️ **Rewritten 2026-09-29.** This table said §3.6 was "not built" and §3.3
+"partial" for many commits after both shipped. A status table nothing
+regenerates goes stale silently; `interfaceai status` is the one that cannot.
+
 | § | Requirement | State | Evidence |
 |---|---|---|---|
-| 3.1 | Goal-driven agent loop | **not built** | perception half done; nothing decides yet |
-| 3.2 | Typed, versioned artifact | **partial** | control-map contract done; no *capability* artifact |
-| 3.3 | Deterministic replay | **partial** | `locate_control` exact (drift 0,0); no step executor |
-| 3.4 | Safety guardrails | **partial** | single action chokepoint + 8 tests; no per-step risk classing |
-| 3.5 | Evidence | **partial** | `EvidenceWriter` written, not yet wired into a run |
-| 3.6 | Escalation & handoff | **not built** | triggers exist (`unresolved`, `ambiguous`); no routing |
-| 3.7 | Heterogeneity & multi-tenant | **designed** | seam built and argued; limits measured |
+| 3.1 | Goal-driven agent loop | **built** | real runs; warm: 3 steps, 4 model calls, 24s ([evidence](../evidence/README.md)) |
+| 3.2 | Typed, versioned artifact | **built** | `capability.py`; composition with pinned versions; `establishes` postconditions |
+| 3.3 | Deterministic replay | **built** | drift (0,0); 4 outcome types, each with an observed instance |
+| 3.4 | Safety guardrails | **built** | one chokepoint; control-level *and* value-level risk; tenant permits |
+| 3.5 | Evidence | **built** | `trace.jsonl` + frames; every run writes its own `replay_finished` |
+| 3.6 | Escalation & handoff | **built** | live session, ownership, verified resume, window bracketed |
+| 3.7 | Heterogeneity & multi-tenant | **built, with a stated limit** | one artifact, two tenants; both ship the stock UI |
 
 ---
 
 ## 2. The central finding
 
 **Vision models read a screen accurately and locate it badly.**
+
+⚠️ **Qualified 2026-09-26, and the qualification is load-bearing.** "Read
+accurately" holds for **labelled controls** — the measurement below, five
+well-spaced labels on a login screen, named verbatim on every run. It does
+**not** hold for dense numeric data: on the Accounts Overview the model read
+**6 of 11** account numbers correctly, inventing `13001` for `13011`, `13323`
+for `13233` and `54221` for `54321`, each at full confidence. See
+[issue 0008](issues/0008-dense-numeric-text-is-misread.md). The original claim
+was true of what it measured and was generalised one step too far.
 
 Asked to map ParaBank's login screen, every model named every control correctly
 — labels verbatim, roles right, nothing hallucinated on the happy path. Asked
@@ -47,6 +60,15 @@ out. Horizontal was nearly free; vertical was broken. That points at a
 structural property of how a tall image is encoded, not a capability gap.
 
 **Consequence:** model tier is not a lever. Changing *what you ask for* is.
+
+⚠️ **And a second qualification, 2026-09-26, which cuts the other way.** The
+grounding work below measured **3/3** on a login screen with five well-spaced
+controls, and that stands. On a table of eleven rows 28px apart inside an 80px
+coarse grid it is **1/4**, and — unlike every failure recorded here — it is
+**silent**: the control reports `ready`, the landmark is genuine and unique, and
+it sits around the wrong row. See
+[issue 0009](issues/0009-wrong-row-grounding-is-silent.md). Control density, not
+model tier, is the variable neither measurement controlled for.
 
 ### What fixed it
 
@@ -81,6 +103,14 @@ One principle, twice: **code owns the resolution decision; the model only points
 ---
 
 ## 3. §3.2 — what an artifact may and may not store
+
+Now built: `src/interfaceai/capability.py`, and
+[ADR 0005](adr/0005-capability-artifact-shape.md) records the four constraints
+that ended up in the type system rather than in a convention. The measurements
+below are what put them there.
+
+⚠️ The two committed artifacts in `artifacts/` are **hand-authored**. Discovery
+does not exist, so they are the shape it must emit, not evidence that it can.
 
 Three storage schemes were tried. Two were measured failing.
 
@@ -223,6 +253,24 @@ asserted — not yet measured.
 | Context patch as template | 1 match (unique) |
 | ParaBank cold start | ~15s to healthy, plus an explicit seed |
 | ParaBank screens | 29 (9 public, 10 authenticated, 10 POST-only) |
+| Account numbers read, **gridded** screenshot | 6/11 live, 8-9/11 replicated (issue 0008) |
+| Account numbers read, **clean** screenshot | **11/11**, three runs (issue 0008) |
+| Account links grounded on their OWN row | 1/4 before A4; **1/11 after** — A4 fixed reading, not placement (issue 0009) |
+| **Nav links** grounded on their own row | **0/8** — the defect is repeated structures, not tables |
+| Cross-tenant adopt, `requestloan` | **refused** — 2 controls drift between the two image builds |
+| Cross-tenant adopt onto a **reskinned** tenant | **8/25 matched, nothing written** — colours + typeface only, same DOM |
+| Which locators survive a reskin | **image landmarks yes, text landmarks no** — `about_us_link` survived, `about_us_link_2` (same words, styled text) drifted |
+| Replay against a reskinned, unadopted tenant | refused at the precondition — no action taken |
+| Row reached by INDEX instead of grounding | **11/11** — panel read + measured pitch (capability 1 v3) |
+| Cross-check, correct pitch | 0 misaligned of 11 |
+| Cross-check, forced harmonic (2x pitch) | **11 misaligned of 11** — the guard fires |
+| Discovery run, cold (maps unbuilt) | 2 screens mapped, ~100 calls |
+| Discovery run, warm (maps cached) | 3 actions, **4 calls, 15s** |
+| Landmark score as a form fills | 0.99999 -> 0.9839 -> **0.8365** (below threshold) |
+| Control-id naming churn, one screenshot x3 draws | **0 of 62 ids**, two screens (closed A5) |
+| Sensitive slot proposed as an EXTRACT by discovery | **2 runs of 2**, before the producer-side refusal |
+| `NeedsOperator` sites that filled `frame` | **2 of 19**, before it moved to the single exit point |
+| Money threshold vs `--confirm-risky` | bypassed: $25,000 submitted against a $1,000 limit |
 
 ---
 
@@ -242,6 +290,16 @@ asserted — not yet measured.
 7. **A key in `.secret` never reaches the SDK** — pydantic-settings loads it into
    `Settings`, the client reads `os.environ`.
 8. **gpt-4o rejects `max_tokens > 4096`** on that deployment.
+9. **The compose healthcheck shelled out to `curl || wget`, and the amd64 image
+   has NEITHER.** Every probe exited 127, the container sat `unhealthy`
+   indefinitely while serving 200s, and `docker compose up -d --wait` — the
+   documented first command — could never return. `CLAUDE.md` recorded "the
+   image ships `/usr/bin/curl`" under *Verified against a running container*;
+   that reading was taken on arm64, and `parasoft/parabank` is multi-arch with
+   different package sets. Replaced with a `bash` `/dev/tcp` probe that asks for
+   the webapp path, so it still fails while Tomcat is listening but has not
+   deployed the war. **A verification is scoped to the machine it ran on**, and
+   nothing in the note said which one that was.
 
 ---
 
@@ -250,10 +308,16 @@ asserted — not yet measured.
 See [issues/](issues/README.md).
 
 1. **Coarse inventory instability** (15/24/22) — currently blocks end-to-end login.
-2. **No capability artifact** — §3.2's graded centrepiece.
+   The vocabulary that is one third of the fix now exists
+   (`vocabulary.py`) and is **not in the prompt yet**, so the number has not moved.
+2. **No control-map store** — a step names `(screen, control_id)` and nothing
+   turns that into a `VisualLocator`. The executor's missing prerequisite.
 3. **No agent loop** — §3.1.
-4. **No step executor / `StepResult`** — §3.3's result contract.
-5. **Patch contamination** — mechanically addressed, *unverified*: the last run
+4. **No step executor / `CapabilityResult`** — §3.3's result contract.
+5. **A parameterised control has no stable name** —
+   [issue 0007](issues/0007-parameterised-row-selection.md). One step of
+   capability 1 is expressed and unimplemented.
+6. **Patch contamination** — mechanically addressed, *unverified*: the last run
    never grounded the button, so there is no evidence either way.
-6. **No escalation path** — §3.6.
-7. **`REPORT.md` is a skeleton**, `/evidence/` holds screenshots only.
+7. **No escalation path** — §3.6.
+8. **`REPORT.md` is a skeleton**, `/evidence/` holds screenshots only.

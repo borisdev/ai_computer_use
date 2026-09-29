@@ -131,3 +131,43 @@ Whether inventorying the same screenshot N times with the vocabulary in the
 prompt produces the same set of resolved concepts — and specifically whether a
 required control is ever missing. That is the number [0001](0001-incomplete-inventory.md)
 is about.
+
+## ⚠️ Half of this is now code, and it is NOT the seed proposed above
+
+`src/interfaceai/vocabulary.py` ships the 34-term vocabulary from
+[capabilities-and-vocabulary.md](../capabilities-and-vocabulary.md) — derived
+backwards from the five capabilities — not the ~30-term seed in "Proposed seed"
+above. The two disagree in three ways, and the differences were not adjudicated,
+they were simply superseded by the later document:
+
+| | this issue's seed | what shipped |
+|---|---|---|
+| spelling | `fromAccountId` (the API's) | `from_account` (the code's) |
+| shape | entity + slot: `customer.ssn` | one flat list of 21 qualifiers |
+| UI-native terms | `confirmPassword`, `submit`, `cancel`, `navLink` | absent |
+
+**What shipped is used by the artifact validator** (`capability.py` types every
+parameter and every step slot against it) and is **not yet in the inventory
+prompt**, which is the half that would actually move the 15/24/22 number. So
+this issue is not closed — the measurement it asks for has not been taken.
+
+### The open language question, which is a human's to settle
+
+A flat slot list cannot say whose `city` it is. Capability 4 (update a
+customer's address) and a bill-payment capability both fill a `city` field, on
+different entities, and today both would resolve to the one term `city`. The
+nouns exist in the vocabulary (`customer`, `payee`) but nothing binds a
+qualifier to one.
+
+Two ways out, and they are not equivalent:
+
+- **Qualify the slot** — `customer.city`, `payee.city`. Precise, and it is what
+  this issue originally proposed. Costs a compound-term grammar in the prompt.
+- **Leave slots flat and let the SCREEN disambiguate** — a `city` control on
+  `billpay` is the payee's because of where it is. Cheaper, and it is what the
+  shipped code assumes by omission.
+
+The second is a decision that has been made by default rather than on purpose.
+Deciding it is a naming change to the vocabulary, so it wants a person, not a
+drive-by edit — and it should be decided before capability 4 is authored, not
+after.

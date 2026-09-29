@@ -185,7 +185,9 @@ from typing import Literal, Protocol, TypeVar
 import cv2
 import numpy as np
 from PIL import Image, ImageDraw
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field, model_validator
+
+from interfaceai.contracts import Contract
 
 # A patch flatter than this matches everything at 1.0 -- module docstring, B.
 _CONSTANT_STD = 1.0
@@ -199,7 +201,41 @@ _MAX_ZOOM = 8
 _SELF_MATCH_TOLERANCE_PX = 2
 # (size factor, fraction of height above the point). Ordered: reach up for a
 # label first, then down for a control below a form, then centred, then bigger.
-_PATCH_PLACEMENTS = ((1.0, 2 / 3), (1.0, 1 / 3), (1.0, 1 / 2), (1.5, 2 / 3), (1.5, 1 / 3))
+# (scale, fraction of the patch ABOVE the click point). `_choose_landmark`
+# builds one candidate per entry and keeps whichever overlaps the least
+# volatile content, so this list only has to OFFER a survivable option -- the
+# selection rule does the rest.
+#
+# ⚠️ The last two exist because of a measured failure, 2026-09-26. The first
+# five all place the patch top at or above the click point minus a third of the
+# patch height, which on ParaBank's login form means every candidate for the
+# Log In button swallowed the password field. Discovery self-matched all of
+# them at 1.0000 on the empty form and the run then died mid-login: username
+# matched at 0.99999, password at 0.9839 (already degraded by the typed
+# username), and Log In at 0.8365 -- below threshold, so the run correctly
+# refused to click and escalated.
+#
+# Re-scored offline against that run's own before/after frames:
+#
+#     bias  patch y     on the FILLED form
+#     0.67  325..421    not_found
+#     0.33  357..453    not_found
+#     0.25  365..461    not_found
+#     0.20  370..466    0.9572   <- the cliff is the field's bottom edge, y~370
+#     0.15  375..471    0.9998
+#     0.05  385..481    0.9998
+#
+# 0.20 clears by 0.007 and is deliberately not in the list; a placement that
+# only just passes today is one antialiasing change from failing.
+_PATCH_PLACEMENTS = (
+    (1.0, 2 / 3),
+    (1.0, 1 / 3),
+    (1.0, 1 / 2),
+    (1.5, 2 / 3),
+    (1.5, 1 / 3),
+    (1.0, 0.15),
+    (1.0, 0.05),
+)
 # Never accept a grounded point from a grid coarser than this. A dot cannot be
 # inside a control shorter than the dot spacing, so at coarser resolutions a
 # `click` is not a wrong answer by the model -- it is an answer we should not
@@ -208,16 +244,17 @@ _PATCH_PLACEMENTS = ((1.0, 2 / 3), (1.0, 1 / 3), (1.0, 1 / 2), (1.5, 2 / 3), (1.
 _MIN_TRUSTED_DOT_SPACING_PX = 12
 
 
-class Contract(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-        ser_json_bytes="base64",
-        val_json_bytes="base64",
-    )
-
-
 class ControlRole(StrEnum):
     TEXTBOX = "textbox"
+    # A REGION with structure, not a thing you click: a results table, an
+    # account list. Named by Boris, 2026-09-26. It exists because rows are
+    # self-similar and template matching needs something unique -- a panel's
+    # header is unique, its rows are not (docs/issues/0009, 0011).
+    #
+    # You do not act on a panel directly; `ACTIONS_BY_ROLE` gives it none. You
+    # either EXTRACT from it (snapshot the region, hand it to a model with a
+    # response schema) or DRILL DOWN into one of its rows (not implemented).
+    TABLE_CONTROL_PANEL = "table_control_panel"
     BUTTON = "button"
     LINK = "link"
     SELECT = "select"
@@ -262,6 +299,72 @@ class VisualLocator(Contract):
     ambiguity_margin: float = Field(default=0.05, ge=0, le=1)
 
 
+class ControlPolicy(Contract):
+    """What is true about a CONTROL regardless of who acts on it.
+
+    Deliberately only two fields. `allowed_actions` would duplicate
+    `decisions.ACTIONS_BY_ROLE`, which already derives legality from the role in
+    code the model cannot influence -- adding a second source would let them
+    disagree.
+
+    These two are genuinely new information:
+
+    `irreversible` -- `docs/findings.md` §5: "risk is a property of the CONTROL,
+    not the action kind. Clicking Log In is safe; clicking Transfer moves money;
+    both are CLICK." Recording it here rather than per authored step means every
+    capability touching that control inherits it.
+
+    `sensitive` -- the value typed into it must never be persisted. Distinct
+    from the vocabulary's sensitive SLOT, which is about the artifact; this is
+    about the screen.
+    """
+
+    irreversible: bool = False
+    sensitive: bool = False
+
+
+class PanelSpec(Contract):
+    """What a TABLE_CONTROL_PANEL is, beyond where its anchor is.
+
+    The anchor locator finds ONE stable thing -- a column header, which is
+    unique where every row is self-similar. These offsets say where the data
+    sits relative to it, and `columns` is what a reader is asked to return.
+
+    Offsets may be negative: a table usually starts left of and below the header
+    cell its anchor matched. `CropBox` cannot express that (it validates
+    `x >= 0`), which is why these are plain ints.
+    """
+
+    columns: tuple[str, ...] = Field(min_length=1)
+    key_column: str = Field(min_length=1)
+    # The region to crop and read, relative to the matched anchor point.
+    dx: int
+    dy: int
+    width: int = Field(gt=0)
+    height: int = Field(gt=0)
+    # A narrow band over the key column, used to measure the row rhythm so a
+    # row index can be turned into a click point for drilldown.
+    key_dx: int
+    key_dy: int
+    key_width: int = Field(gt=0)
+    # Where to click, horizontally, to DRILL INTO a row -- relative to the
+    # matched anchor. None means the panel is read-only: rows can be extracted
+    # but not opened, which is true of any table whose cells are not links.
+    key_click_dx: int | None = None
+    # The row pitch MEASURED when the panel was recorded. Autocorrelation needs
+    # several periods, so a table that has shrunk to one row has none to find --
+    # and refusing to open the only row left is a poor answer when we already
+    # know how tall a row is. Used ONLY when measurement fails; a live
+    # measurement always wins, because the recorded value can go stale.
+    row_pitch: int | None = None
+
+    @model_validator(mode="after")
+    def _key_is_a_column(self) -> PanelSpec:
+        if self.key_column not in self.columns:
+            raise ValueError(f"key_column {self.key_column!r} is not in {self.columns}")
+        return self
+
+
 class LocatedControl(Contract):
     id: str = Field(min_length=1)  # Unique within this saved map.
     label: str | None
@@ -271,6 +374,9 @@ class LocatedControl(Contract):
     click_point: ClickPoint | None = None
     locator: VisualLocator | None = None
     reason: str | None = None
+    policy: ControlPolicy = ControlPolicy()
+    # Only for role == TABLE_CONTROL_PANEL; None for every other control.
+    panel: PanelSpec | None = None
 
 
 class ScreenOutput(Contract):
@@ -583,6 +689,29 @@ class _CoarseInventory(BaseModel):
     controls: list[_CoarseControl]
 
 
+class _SeenControl(BaseModel):
+    """What the READ pass returns: what is there, not where it is."""
+
+    label: str | None = None
+    role: ControlRole = ControlRole.UNKNOWN
+    description: str
+
+
+class _Seen(BaseModel):
+    controls: list[_SeenControl]
+
+
+class _Placement(BaseModel):
+    index: int
+    cell_id: int | None = None
+
+
+class _Placements(BaseModel):
+    """What the LOCATE pass returns: one cell per control the read pass found."""
+
+    placements: list[_Placement]
+
+
 class _Refinement(BaseModel):
     action: Literal["click", "zoom", "unresolved"]
     number: int | None = None
@@ -605,6 +734,52 @@ For each one give:
 Do not give pixel coordinates or percentages. If you can see a control but
 cannot say which cell it is in, set cell_id to null. Do not invent controls that
 an application like this usually has but this screenshot does not show.
+"""
+
+# --- the two-pass replacement for the prompt above ---------------------------
+#
+# ⚠️ **One call cannot do both jobs well, and we measured why.** Naming controls
+# and assigning them a cell number want OPPOSITE images: reading wants the
+# content unobstructed, locating wants the annotation on top. Asked the same
+# read-only question three times each:
+#
+#     full screenshot, NO grid     11/11  11/11  11/11   nothing invented
+#     full screenshot, WITH grid    8/11   8/11   9/11   13000, 54221, 5678
+#
+# The gridded runs reproduced `54221` -- one of the exact wrong account ids from
+# a live discovery run -- and it never appears without the grid. Our own
+# instrument was corrupting the measurement. `docs/issues/0008`.
+#
+# So: read from the clean screenshot, then place what was read using the grid.
+# One extra call per screen, and only the first screen visit pays it.
+
+_READ_PROMPT = """\
+This is a screenshot of a business application. Nothing has been drawn on it.
+
+List every INTERACTIVE control you can see: links, buttons, text fields,
+checkboxes, radio buttons, dropdowns. Ignore static text, images and layout.
+
+For each one give:
+- label: the visible text on it, or the text immediately labelling it, verbatim
+- role: what the control is
+- description: enough to tell it apart from similar controls on this screen
+
+Read labels EXACTLY as printed, including digits. Do not invent controls that an
+application like this usually has but this screenshot does not show.
+"""
+
+_LOCATE_PROMPT = """\
+This is the same screenshot you were just shown, with a numbered grid drawn on
+top by our tooling. The numbers and lines are annotation, not page content.
+
+These controls were read from the clean image. For each one, give the number of
+the grid cell containing its centre:
+
+{controls}
+
+Return one placement per control, using the index shown above. If you can see a
+control but cannot say which cell it is in, set cell_id to null. Do not add,
+drop or rename controls -- the list is fixed.
 """
 
 _FINE_PROMPT = """\
@@ -927,6 +1102,51 @@ def _choose_landmark(
     return None, f"no distinctive patch around the point ({last})"
 
 
+async def _inventory(clean_png: bytes, overlay_png: bytes, vision: VisionCall) -> _CoarseInventory:
+    """Name the controls on a CLEAN image, then place them using the grid.
+
+    Two calls rather than one, because the two jobs want opposite images --
+    see the note above `_READ_PROMPT`. A failed call is never reported as "this
+    screen has no controls".
+    """
+
+    async def call[T: BaseModel](prompt: str, png: bytes, model: type[T], what: str) -> T:
+        try:
+            return await vision(prompt=prompt, image_png=png, response_model=model)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            raise DiscoveryError(f"{what} failed: {type(exc).__name__}: {exc}") from exc
+
+    seen = await call(_READ_PROMPT, clean_png, _Seen, "control read")
+    if not seen.controls:
+        return _CoarseInventory(controls=[])
+
+    listing = "\n".join(
+        f"  {n}. {c.label or '(no label)'} | {c.role} -- {c.description}"
+        for n, c in enumerate(seen.controls)
+    )
+    placed = await call(
+        _LOCATE_PROMPT.format(controls=listing), overlay_png, _Placements, "control placement"
+    )
+
+    # A control the locate pass did not mention keeps cell_id=None and comes
+    # back `unresolved` -- identified but not located, which the contract
+    # already has a word for. Losing it entirely would be worse.
+    by_index = {p.index: p.cell_id for p in placed.placements}
+    return _CoarseInventory(
+        controls=[
+            _CoarseControl(
+                label=c.label,
+                role=c.role,
+                description=c.description,
+                cell_id=by_index.get(n),
+            )
+            for n, c in enumerate(seen.controls)
+        ]
+    )
+
+
 async def extract_control_locators(
     inp: ScreenInput,
     *,
@@ -953,15 +1173,7 @@ async def extract_control_locators(
     size = ImageSize(width=image.width, height=image.height)
 
     overlay, cells = _grid_overlay(image, cfg.coarse_cell_px)
-    try:
-        inventory = await vision(
-            prompt=_COARSE_PROMPT, image_png=overlay, response_model=_CoarseInventory
-        )
-    except asyncio.CancelledError:
-        raise
-    except Exception as exc:
-        # Never report a failed call as "this screen has no controls".
-        raise DiscoveryError(f"coarse inventory failed: {type(exc).__name__}: {exc}") from exc
+    inventory = await _inventory(inp.screenshot_png, overlay, vision)
 
     wanted = set(only) if only is not None else None
     semaphore = asyncio.Semaphore(cfg.max_concurrency)

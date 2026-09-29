@@ -5,6 +5,7 @@ place the safety checks can be enforced -- and the only place worth testing them
 import pytest
 
 from interfaceai.decisions import ManualActionKind
+from interfaceai.handoff import InterventionRequest
 from interfaceai.surface import Acted, ActionPolicy, NotAllowedError, Viewport, use_control
 
 
@@ -84,3 +85,51 @@ def test_enter_text_without_a_value_is_refused() -> None:
     with pytest.raises(NotAllowedError, match="requires a value"):
         use_control(s, 1, 1, ManualActionKind.ENTER_TEXT)
     assert s.calls == []
+
+
+def test_the_OPERATOR_cannot_type_a_forbidden_value() -> None:
+    """The same gate, for real this time.
+
+    ⚠️ REGRESSION, found by Copilot on PR #5. `TerminalOperator._apply("type")`
+    called `surface.type_text` directly -- no allowed-action check, no
+    forbidden-value check -- while REPORT.md claimed "the human operator goes
+    through the same gate". A person could type a secret into a page during a
+    handoff and the guardrail built to stop exactly that never ran.
+
+    Two halves, and the second is the one a test would have missed: routing
+    `type` through the policy is useless if the operator holds a DIFFERENT
+    policy. The CLI built `TerminalOperator()` with no argument, so its gate
+    was an empty `ActionPolicy` that forbids nothing.
+    """
+    import io
+
+    from interfaceai.handoff import TerminalOperator
+
+    typed: list[str] = []
+
+    class _Surface:
+        def type_text(self, text: str) -> None:
+            typed.append(text)
+
+        def current_url(self) -> str:
+            return "http://bank/transfer.htm"
+
+        def screenshot(self) -> bytes:
+            return b""
+
+    op = TerminalOperator(stream=io.StringIO("type hunter2\nabort\n"))
+    op.adopt_policy(ActionPolicy(forbidden_values=frozenset({"hunter2"})))
+
+    op.resolve(
+        InterventionRequest(
+            why="unit test",
+            capability="c",
+            step_index=0,
+            screen="s",
+            url="u",
+            completed_steps=(),
+        ),
+        _Surface(),  # type: ignore[arg-type]
+    )
+
+    assert typed == [], f"a forbidden value reached the page: {typed}"

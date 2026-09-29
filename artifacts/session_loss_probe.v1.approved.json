@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "name": "session_loss_probe",
+  "version": 1,
+  "goal": "lose the session mid-capability, then try to continue",
+  "vocabulary_version": 1,
+  "target": {
+    "app": "parabank",
+    "tenant": "baseline",
+    "base_url": "http://localhost:8080/parabank"
+  },
+  "viewport_width": 1280,
+  "viewport_height": 900,
+  "params": [
+    {
+      "name": "account_id",
+      "slot": "account_id",
+      "required": true
+    }
+  ],
+  "returns": [
+    {
+      "name": "found_account_id",
+      "slot": "account_id"
+    }
+  ],
+  "requires": [
+    {
+      "name": "at_the_login_page",
+      "control": {
+        "screen": "index",
+        "control_id": "username_textbox",
+        "discriminator": null
+      },
+      "must": "present",
+      "why": "Establishes its own session by invoking `log_in`."
+    }
+  ],
+  "steps": [
+    {
+      "verb": "invoke",
+      "control": null,
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": "log_in",
+      "invokes_version": 2,
+      "bind": [],
+      "risky": false,
+      "note": "Establish a session."
+    },
+    {
+      "verb": "click",
+      "control": {
+        "screen": "overview",
+        "control_id": "account_services_nav",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": {
+        "kind": "literal",
+        "value": "Log Out"
+      },
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "THE INJECTED FAULT: throw the session away mid-capability."
+    },
+    {
+      "verb": "extract",
+      "control": {
+        "screen": "overview",
+        "control_id": "accounts_table_panel",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": "account_id",
+      "output": "found_account_id",
+      "row_key": {
+        "kind": "param",
+        "param": "account_id"
+      },
+      "field": "account_id",
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "Carry on as if nothing happened. Logged-out overview.htm serves HTTP 200 with the same heading and an EMPTY table, so nothing about the response says the session is gone."
+    }
+  ],
+  "checkpoints": [
+    {
+      "output": "found_account_id",
+      "op": "equals",
+      "expected": {
+        "kind": "param",
+        "param": "account_id"
+      },
+      "why": "The record the caller asked for."
+    }
+  ],
+  "establishes": null,
+  "approval": "approved",
+  "approved_by": "Boris Dev"
+}

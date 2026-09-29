@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "name": "log_in_discovered",
+  "version": 1,
+  "goal": "Log in to the bank as the seeded customer and reach the accounts overview.",
+  "vocabulary_version": 1,
+  "target": {
+    "app": "parabank",
+    "tenant": "baseline",
+    "base_url": "http://localhost:8080/parabank"
+  },
+  "viewport_width": 1280,
+  "viewport_height": 900,
+  "params": [],
+  "returns": [
+    {
+      "name": "account_id",
+      "slot": "account_id"
+    }
+  ],
+  "requires": [
+    {
+      "name": "at_the_recorded_starting_point",
+      "control": {
+        "screen": "index",
+        "control_id": "username_textbox",
+        "discriminator": null
+      },
+      "must": "present",
+      "why": "The first control the run acted on. If it is not on screen we are not where this recording began -- re-checked on resume after a human handoff, since the operator may have navigated away."
+    }
+  ],
+  "steps": [
+    {
+      "verb": "enter",
+      "control": {
+        "screen": "index",
+        "control_id": "username_textbox",
+        "discriminator": null
+      },
+      "value": {
+        "kind": "secret",
+        "input_ref": "parabank_username"
+      },
+      "slot": "username",
+      "output": null,
+      "risky": false,
+      "note": "To log in as the seeded customer, I need to enter the username first."
+    },
+    {
+      "verb": "enter",
+      "control": {
+        "screen": "index",
+        "control_id": "password_textbox",
+        "discriminator": null
+      },
+      "value": {
+        "kind": "secret",
+        "input_ref": "parabank_demo_password"
+      },
+      "slot": "password",
+      "output": null,
+      "risky": false,
+      "note": "To log in, I need to enter the password for the seeded customer after entering the username."
+    },
+    {
+      "verb": "click",
+      "control": {
+        "screen": "index",
+        "control_id": "log_in_button",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "risky": false,
+      "note": "The username and password have been entered. The next step is to click the LOG IN button to submit the credentials and proceed to the accounts overview."
+    },
+    {
+      "verb": "observe",
+      "control": null,
+      "value": null,
+      "slot": null,
+      "output": null,
+      "risky": false,
+      "note": "evidence frame of the final screen"
+    },
+    {
+      "verb": "extract",
+      "control": {
+        "screen": "overview",
+        "control_id": "12345_link",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": "account_id",
+      "output": "account_id",
+      "risky": false,
+      "note": "read account_id from the final screen (observed '12345')"
+    }
+  ],
+  "checkpoints": [
+    {
+      "output": "account_id",
+      "op": "equals",
+      "expected": {
+        "kind": "literal",
+        "value": "12345"
+      },
+      "why": "observed '12345' at discovery; REVIEW whether it is invariant"
+    }
+  ],
+  "approval": "draft",
+  "approved_by": null
+}

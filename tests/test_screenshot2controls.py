@@ -16,14 +16,20 @@ from interfaceai.screenshot2controls import (
     CropBox,
     DiscoveryConfig,
     DiscoveryError,
+    ImageSize,
     ResolveInput,
     ScreenInput,
     VisualLocator,
+    _choose_landmark,
     _CoarseControl,
-    _CoarseInventory,
+    _context_patch,
     _make_locator,
+    _Placement,
+    _Placements,
     _png_bytes,
     _Refinement,
+    _Seen,
+    _SeenControl,
     _slug,
     extract_control_locators,
     locate_control,
@@ -110,13 +116,29 @@ class TestLocateControl:
 
 
 def fake_vision(inventory: list[_CoarseControl], refine: str = "click"):
-    """A VisionCall that inventories `inventory` and then always picks dot 1."""
-    calls = {"coarse": 0, "fine": 0}
+    """A VisionCall speaking the two-pass protocol, then always picking dot 1.
+
+    Pass 1 reads the controls off a clean screenshot; pass 2 places them on the
+    gridded one. `inventory` carries both halves, so a test writes one list and
+    the double splits it — which also means a test cannot accidentally describe
+    a control the locate pass never placed.
+    """
+    calls = {"read": 0, "locate": 0, "fine": 0}
 
     async def call(*, prompt, image_png, response_model):
-        if response_model is _CoarseInventory:
-            calls["coarse"] += 1
-            return _CoarseInventory(controls=inventory)
+        if response_model is _Seen:
+            calls["read"] += 1
+            return _Seen(
+                controls=[
+                    _SeenControl(label=c.label, role=c.role, description=c.description)
+                    for c in inventory
+                ]
+            )
+        if response_model is _Placements:
+            calls["locate"] += 1
+            return _Placements(
+                placements=[_Placement(index=n, cell_id=c.cell_id) for n, c in enumerate(inventory)]
+            )
         calls["fine"] += 1
         if refine == "unresolved":
             return _Refinement(action="unresolved", reason="cannot see it")
@@ -189,13 +211,14 @@ class TestExtract:
         by_id = {c.id: c for c in out.controls}
         assert by_id["username_textbox"].status == "unresolved"
         assert by_id["username_textbox"].reason == "not requested"
-        assert vision.calls["coarse"] == 1, "coarse inventory always runs"
+        assert vision.calls["read"] == 1, "the read pass always runs"
+        assert vision.calls["locate"] == 1, "so does the placement pass"
 
     def test_a_failed_coarse_call_raises_rather_than_reporting_an_empty_screen(self) -> None:
         async def broken(*, prompt, image_png, response_model):
             raise RuntimeError("azure 500")
 
-        with pytest.raises(DiscoveryError, match="coarse inventory failed"):
+        with pytest.raises(DiscoveryError, match="control read failed"):
             run(vision=broken)
 
     def test_ready_controls_carry_a_point_and_a_locator(self) -> None:
@@ -215,3 +238,169 @@ class TestExtract:
 
 def test_slug_is_stable_for_the_same_label() -> None:
     assert _slug("Transfer Funds", ControlRole.LINK) == _slug("Transfer  Funds", ControlRole.LINK)
+
+
+class TestLandmarkSurvivesTypedInput:
+    """A submit button's landmark must not swallow the field above it.
+
+    Regression for the 2026-09-26 discovery run: every placement for ParaBank's
+    Log In button reached up over the password field, self-matched at 1.0000 on
+    the empty form, and scored 0.8365 once anything was typed -- so the run
+    escalated mid-login. The failure is invisible on the discovery screenshot by
+    construction, which is why the check has to fill the field and re-score.
+
+    ⚠️ The geometry is not decorative. The gap between the field's bottom edge
+    and the click point must be SMALLER than `context_height / 3`, or every
+    stock placement clears the field on its own and the test passes without
+    exercising anything. The first version of this test had a 33px gap against
+    a 26px reach and stayed green with the fix reverted.
+
+        field bottom   108
+        click point    125     gap = 17
+        context_height  80     bias 1/3 reaches 26px up -> top 98, INSIDE the field
+                               bias 0.15 reaches 12px up -> top 113, clear
+    """
+
+    FIELD = (60, 70, 260, 108)
+    CLICK = ClickPoint(x=150, y=125)
+    CONFIG = DiscoveryConfig(context_width=200, context_height=80)
+
+    def _form(self, *, typed: bool) -> Image.Image:
+        img = Image.new("RGB", (320, 220), "white")
+        d = ImageDraw.Draw(img)
+        d.text((60, 50), "Password", fill="black")
+        d.rectangle(self.FIELD, outline="gray", width=1)
+        if typed:
+            # A filled field differs across its whole height, which is what the
+            # overlapping patch actually sees.
+            d.rectangle((62, 72, 258, 106), fill="#404040")
+        d.rectangle((110, 112, 190, 138), outline="blue", width=2)
+        d.text((126, 119), "LOG IN", fill="black")
+        d.text((60, 160), "Forgot login info?", fill="black")
+        d.text((60, 180), "Register", fill="black")
+        return img
+
+    def _unstable(self) -> CropBox:
+        x0, y0, x1, y1 = self.FIELD
+        return CropBox(x=x0, y=y0, width=x1 - x0, height=y1 - y0)
+
+    def test_the_chosen_landmark_still_matches_once_the_field_is_filled(self) -> None:
+        empty = _png_bytes(self._form(typed=False))
+        filled = _png_bytes(self._form(typed=True))
+
+        locator, why = _choose_landmark(
+            ScreenInput(screenshot_png=empty),
+            self.CLICK,
+            self.CONFIG,
+            ImageSize(width=320, height=220),
+            [self._unstable()],
+        )
+        assert locator is not None, why
+        assert locator.reference_crop.y >= self.FIELD[3], (
+            f"chose a patch starting at y={locator.reference_crop.y}, inside the field "
+            f"that ends at y={self.FIELD[3]}"
+        )
+
+        after = locate_control(ResolveInput(screenshot_png=filled, locator=locator))
+        assert after.status == "matched", f"{after.status}: {after.reason}"
+        assert after.point == self.CLICK
+
+    def test_an_upward_landmark_is_what_this_avoids(self) -> None:
+        """The control. Without it the test above could pass for the wrong reason.
+
+        Forces the placement the chooser used to be stuck with and shows it
+        self-matching perfectly on the empty form and failing on the filled one
+        -- which is the whole shape of the bug.
+        """
+        empty = _png_bytes(self._form(typed=False))
+        filled = _png_bytes(self._form(typed=True))
+
+        upward = _context_patch(self.CLICK, 200, 80, ImageSize(width=320, height=220), above=1 / 3)
+        assert upward.y < self.FIELD[3], "the control placement must actually overlap the field"
+        locator = _make_locator(ScreenInput(screenshot_png=empty), upward, self.CLICK)
+
+        assert (
+            locate_control(ResolveInput(screenshot_png=empty, locator=locator)).status == "matched"
+        )
+        assert (
+            locate_control(ResolveInput(screenshot_png=filled, locator=locator)).status != "matched"
+        )
+
+
+class TestTwoPassInventory:
+    """Reading and locating want opposite images — `docs/issues/0008`."""
+
+    def test_the_read_pass_gets_the_CLEAN_image_and_locate_gets_the_GRID(self) -> None:
+        """The whole point of the split, asserted on the bytes each call receives.
+
+        Measured: the same question scores 11/11 on a clean screenshot and
+        8/11 through our 192-cell overlay, reproducing an account id that never
+        appears without the grid. If these two ever get handed the same image,
+        the split has silently stopped happening.
+        """
+        seen_images: dict[str, bytes] = {}
+
+        async def spy(*, prompt, image_png, response_model):
+            if response_model is _Seen:
+                seen_images["read"] = image_png
+                return _Seen(
+                    controls=[
+                        _SeenControl(label="Log In", role=ControlRole.BUTTON, description="x")
+                    ]
+                )
+            if response_model is _Placements:
+                seen_images["locate"] = image_png
+                return _Placements(placements=[_Placement(index=0, cell_id=1)])
+            return _Refinement(action="click", number=1)
+
+        clean = _png_bytes(canvas())
+        asyncio.run(
+            extract_control_locators(ScreenInput(screenshot_png=clean), vision=spy, only=[])
+        )
+
+        assert seen_images["read"] == clean, "the read pass must see the untouched screenshot"
+        assert seen_images["locate"] != clean, "the locate pass must see the gridded one"
+
+    def test_a_control_the_locate_pass_forgets_is_unresolved_not_dropped(self) -> None:
+        """Identified but not located is a state the contract already has.
+
+        Losing the control entirely would be worse: a capability naming it
+        would fail at replay with "no such control" rather than with the
+        honest reason.
+        """
+
+        async def forgetful(*, prompt, image_png, response_model):
+            if response_model is _Seen:
+                return _Seen(
+                    controls=[
+                        _SeenControl(label="Log In", role=ControlRole.BUTTON, description="a"),
+                        _SeenControl(label="Ghost", role=ControlRole.LINK, description="b"),
+                    ]
+                )
+            if response_model is _Placements:
+                return _Placements(placements=[_Placement(index=0, cell_id=1)])
+            return _Refinement(action="click", number=1)
+
+        out = asyncio.run(
+            extract_control_locators(
+                ScreenInput(screenshot_png=_png_bytes(canvas())), vision=forgetful
+            )
+        )
+        by_id = {c.id: c for c in out.controls}
+        assert "ghost_link" in by_id, "a forgotten control must survive as unresolved"
+        assert by_id["ghost_link"].status == "unresolved"
+
+    def test_an_empty_read_pass_does_not_bother_placing_anything(self) -> None:
+        calls = {"n": 0}
+
+        async def empty(*, prompt, image_png, response_model):
+            calls["n"] += 1
+            if response_model is _Seen:
+                return _Seen(controls=[])
+            raise AssertionError("nothing to place")
+
+        out = asyncio.run(
+            extract_control_locators(ScreenInput(screenshot_png=_png_bytes(canvas())), vision=empty)
+        )
+        assert out.controls == []
+        assert calls["n"] == 1

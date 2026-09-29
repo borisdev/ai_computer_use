@@ -150,17 +150,56 @@ these 34 words.
 
 ## What it needs to become code
 
-- **A schema.** `ControlledVocabulary` with nouns, verbs, qualifiers, and a
-  `version`. A capability records which version it was authored against, so v2
-  cannot silently redefine a term a saved artifact depends on.
-- **A resolver.** `ConceptResolver` as a Protocol, so the strategy is swappable
-  and measurable. For 34 terms the simplest implementation wins: put the
-  vocabulary in the prompt and let the model resolve directly, no separate step.
-  A cached, embedding-backed resolver of the kind nobsmed-v2 uses — described
-  there as *convergently deterministic*, an LLM whose every result is cached so
-  the same input yields the same output after the first call — earns its
-  complexity at thousands of terms, not at 34. Naming it as the growth path is
-  enough.
+- **A schema.** ✅ `src/interfaceai/vocabulary.py`. `ControlledVocabulary` with
+  nouns, verbs, qualifiers and a `version`; a capability records which version
+  it was authored against and `validate_capability` refuses a mismatch, so v2
+  cannot silently redefine a term a saved artifact depends on. The `sensitive`
+  flag landed with it — `username`, `password` and `ssn` — and it is what makes
+  a literal credential un-storable rather than merely discouraged.
+- **A resolver.** ❌ Not built, and the vocabulary reaches only ONE of the two
+  model calls. ⚠️ This used to say *"nothing calls `as_prompt_block()`"*, which
+  is false: `discover.py` supplies it to `_DECIDE_PROMPT`. The narrower and
+  still-real gap is that the **coarse inventory call** — the one that NAMES the
+  controls — does not receive it. Corrected 2026-09-29 (Copilot, PR #5).
+
+  ⚠️ And the 15/24/22 variance this was meant to fix **is gone anyway**,
+  measured: `scripts/measure_naming_churn.py` gives 36/36/36 and 26/26/26 over
+  three draws. It was the grid overlay fighting the read pass ([0008]), not a
+  naming problem. For 34
+  terms the simplest implementation still wins: put the vocabulary in the prompt
+  and let the model resolve directly, no separate step. A cached,
+  embedding-backed resolver earns its complexity at thousands of terms, not at
+  34. Naming it as the growth path is enough.
+
+## Layer 3, as built
+
+`src/interfaceai/capability.py`, and
+[ADR 0005](adr/0005-capability-artifact-shape.md) for why it has the shape it
+has. The sketch above survived contact with three changes, each forced by
+something already measured:
+
+- **`requires` and the checkpoint are capability-level, not step verbs.** A
+  precondition is re-checked after a human handoff, so it cannot live at a
+  position in the list. `escalate` went the same way: it is what the executor
+  does on a failure, so its authored form is `Step.risky`.
+- **A checkpoint can only compare an EXTRACTED VALUE.** `on_screen(...)` is not
+  expressible, because that shape passes on ParaBank's CLEAN state and hands
+  back a different record's balance.
+- **A step names a control; it does not carry one.** The locator lives in a
+  per-tenant control map, which is what keeps one artifact usable on two tenants.
+
+⚠️ **Stale the moment it was written, and corrected 2026-09-29 (Copilot).** It
+said two capabilities were authored and both were hand-written drafts. There
+are four — `log_in`, `log_in_discovered`, `read_savings_balance`,
+`request_loan`, `session_loss_probe` — several approved, and one of them came
+from a real discovery run rather than a hand.
+
+**Do not re-state the count here.** `uv run interfaceai status` reads the
+artifacts, so it cannot drift; [docs/status.md](status.md) is that view
+committed. Capability 3, 4 and 5 are not authored —
+and capability 4 should not be until the entity-qualified-slot question in
+[issue 0006](issues/0006-controlled-vocabulary.md) is settled, because it is the
+one that needs to say whose `city` it is.
 
 Stability is the property that matters either way: a resolver that answers
 differently on two runs reintroduces exactly the churn the vocabulary exists to

@@ -1,0 +1,168 @@
+# The grading rubric, transcribed from the assignment.
+#
+# ⚠️ Every `quote` below is VERBATIM from Assignment-A-Computer-Use-Automation.md.
+# Do not paraphrase them. The whole point of this file is that the grader is
+# scored against the client's words rather than against our summary of them --
+# a rubric written from memory grades the submission we think we were asked for.
+#
+# Weights follow S7's own sentence: "We'll weigh these roughly in this order."
+#
+# ⚠️ v2, after gpt-5.2-codex audited this file (`--critique-rubric`). The
+# original was a linear 8..1 ramp, which codex called "more aggressive than
+# 'roughly in this order'" -- an 8x spread read out of the word "roughly".
+# Now a mild taper: it still encodes the ordering, and no longer pretends to
+# know the first criterion is eight times the last. v1 is kept as
+# `rubric-v1.yaml` so the change to the instrument is auditable.
+
+meta:
+  source: Assignment-A-Computer-Use-Automation.md
+  section: "7. Evaluation criteria"
+  preamble: "We'll weigh these roughly in this order."
+  scale:
+    0: "absent -- no attempt, or a TODO"
+    1: "asserted -- claimed in prose, nothing behind it"
+    2: "partial -- built, but with a gap the submission does NOT name. A gap the submission states plainly is a 3, not a 2: disclosure is the thing being rewarded, and docking for it makes honesty cost a point."
+    3: "solid -- built, works, and the limits are stated"
+    4: "excellent -- built, measured, and the design choice is argued against a real alternative"
+
+# ---------------------------------------------------------------------------
+# Mechanical. NOT sent to the model. A judge asked "are the seven headings
+# present" is a worse grep, and a worse grep that costs money and varies
+# between runs. These are checked in code and reported as pass/fail.
+# ---------------------------------------------------------------------------
+deliverables:
+  - id: repo_public
+    quote: "Source code in a public git repository"
+    check: git_remote_is_public
+  - id: readme_setup
+    quote: "how to set up and run it (include any keys/config needed, and how to run without live services if applicable)"
+    check: readme_has_setup
+  - id: readme_demo
+    quote: "a demo path: the exact command(s) to run the agent on a goal, then replay the resulting artifact"
+    check: readme_demo_commands_resolve
+  - id: report_path
+    quote: "A design write-up at /REPORT.md"
+    check: report_exists
+  - id: report_headings
+    quote: "using these seven headings"
+    check: report_has_seven_headings
+  - id: report_length
+    quote: "(~1-3 pages)"
+    check: report_word_count
+  - id: evidence_present
+    quote: "A demonstration of the end-to-end flow in /evidence/ -- a saved example artifact plus logs from both a discovery run and a replay run"
+    check: evidence_has_discovery_and_replay
+  # ⚠️ ADVISORY, not pass/fail. The brief says "IDEALLY include" -- codex
+  # caught this file turning an explicitly optional deliverable into a hard
+  # gate, which would mark down a submission that complied exactly.
+  - id: evidence_error_case
+    advisory: true
+    quote: "Ideally include one replay that hits an error or exceptional state (a bad input, a not-found result, or an injected/simulated failure) to show how your system detects and reports it"
+    check: evidence_has_error_case
+
+# ---------------------------------------------------------------------------
+# Judged. These need reading and weighing, which is what a model is for.
+# ---------------------------------------------------------------------------
+criteria:
+  - id: system_design
+    name: System design
+    weight: 5
+    quote: >-
+      Clear boundaries, sensible data models, good trade-offs, appropriate
+      simplicity. The artifact schema and replay contract are central.
+    look_for:
+      - "Is there a real seam, or just modules? S3.7 asks only that the abstractions not paint you into a corner -- a design story suffices, a second implementation is not required."
+      - "Is the schema justified against a named alternative? Measurement is one way; a reasoned argument is another."
+      - "S3.2: is the artifact versioned and REVIEWABLE, with typed inputs, outputs and a checkpoint?"
+      - "Is anything built that S7 calls unrewarded (queues, clusters, plumbing)?"
+
+  - id: core_loop
+    name: Correctness of the core loop
+    weight: 4
+    quote: >-
+      The agent actually completes a real goal; the artifact replays
+      deterministically and verifies success.
+    look_for:
+      - "Is there evidence of a REAL discovery run, or only a described one?"
+      - "Does replay VERIFY, or merely finish? A checkpoint that cannot fail is not one."
+      - "Is the LLM genuinely out of the decision loop at replay?"
+
+  - id: robustness
+    name: Robustness & error handling
+    weight: 3
+    quote: >-
+      How your replay detects and responds to runtime errors and exceptional
+      states; how cleanly it separates expected business outcomes from
+      recoverable conditions and hard failures; sound locator, wait, and
+      checkpoint strategy.
+    look_for:
+      - "Are business outcomes genuinely distinct from failures, in the TYPE and not just the message?"
+      - "Is each variant HANDLED -- specified and exercised in code? A demonstrated instance is stronger, but S3.3 asks for handling, not a demo of every branch."
+      - "What happens on an ambiguous locator -- guess, or stop?"
+
+  - id: escalation
+    name: Human-in-the-loop escalation
+    weight: 2
+    quote: >-
+      A real, well-reasoned mechanism to detect "stuck," route an intervention
+      request with context, transfer control of the live session to a human,
+      and resume afterward -- not just a TODO.
+    look_for:
+      - "Does the human get the SAME live session, or a fresh one?"
+      - "Is resume verified, or is it 'continue from step N'?"
+      - "Is what the human did actually recorded, and is the scope of that recording stated honestly?"
+
+  - id: generalization
+    name: Generalization to the real environment
+    weight: 2
+    quote: >-
+      A credible design story for heterogeneous surfaces and for reusing
+      artifacts across many tenants running the same app, without brittle
+      assumptions or per-tenant rebuilds.
+    look_for:
+      - "Is the design STORY credible? S3.7 says 'we don't expect you to implement multi-tenant' -- a demonstration is a bonus, not the bar."
+      - "If something IS demonstrated, are its limits stated? Two identical skins prove less than they look like they prove."
+      - "S3.1 biases toward approaches that work with no clean DOM. Does the interaction method survive a hostile legacy surface?"
+      - "What happens on drift -- silent fallback, or refusal?"
+
+  - id: safety
+    name: Safety & data handling
+    weight: 2
+    quote: >-
+      Allowlist enforcement, treatment of risky and irreversible actions,
+      redaction of regulated financial data.
+    look_for:
+      - "Is there one chokepoint, or checks scattered where they can be bypassed?"
+      - "S3.4: are risky and irreversible actions actually BLOCKED, CONFIRMED or FLAGGED -- and by what mechanism?"
+      - "Does the human operator go through the same gate as the agent?"
+      - "Do secrets reach logs, artifacts, or screenshots? Is the gap stated?"
+
+  - id: code_quality
+    name: Code quality
+    weight: 1
+    quote: "Readable, reasonably typed and tested where it counts, easy to run."
+    look_for:
+      - "Do the tests exercise what can break, or do they assert that strings exist?"
+      - "S3.5: is there a structured log of what the agent did AND WHY, with a richer signal on failure -- adequate to debug a run, not merely present?"
+      - "Is 'easy to run' true from a cold clone?"
+
+  - id: communication
+    name: Communication
+    weight: 1
+    quote: >-
+      The write-up makes your reasoning, trade-offs, and cut lines clear.
+    look_for:
+      - "Are cuts argued, or just listed?"
+      - "Does the write-up admit what is broken, or only report what works?"
+      - "Would a reviewer reading side by side get the argument quickly?"
+
+# ---------------------------------------------------------------------------
+penalties:
+  - id: feature_breadth
+    quote: >-
+      We do not reward feature breadth, framework name-dropping, or building
+      scaling infrastructure (queues, clusters, multi-tenant plumbing).
+      Designing your core abstractions so they *could* scale to the real
+      environment is valuable; prematurely building that infrastructure is not.
+      A small, correct, well-argued system is the goal.
+    note: "Scored as a -2..0 adjustment. 0 means nothing unrewarded was built."

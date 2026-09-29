@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "name": "read_savings_balance",
+  "version": 3,
+  "goal": "read the current balance of a member's savings account",
+  "vocabulary_version": 1,
+  "target": {
+    "app": "parabank",
+    "tenant": "baseline",
+    "base_url": "http://localhost:8080/parabank"
+  },
+  "viewport_width": 1280,
+  "viewport_height": 900,
+  "params": [
+    {
+      "name": "account_id",
+      "slot": "account_id",
+      "required": true
+    }
+  ],
+  "returns": [
+    {
+      "name": "found_account_id",
+      "slot": "account_id"
+    },
+    {
+      "name": "balance",
+      "slot": "balance"
+    },
+    {
+      "name": "account_type",
+      "slot": "account_type"
+    }
+  ],
+  "requires": [
+    {
+      "name": "at_the_login_page",
+      "control": {
+        "screen": "index",
+        "control_id": "username_textbox",
+        "discriminator": null
+      },
+      "must": "present",
+      "why": "This capability establishes its session by invoking `log_in`, which starts from the login screen. Re-checked on resume."
+    }
+  ],
+  "steps": [
+    {
+      "verb": "invoke",
+      "control": null,
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": "log_in",
+      "invokes_version": 2,
+      "bind": [],
+      "risky": false,
+      "note": "Establish a session. Its own precondition checks we are at the login page."
+    },
+    {
+      "verb": "wait_for",
+      "control": {
+        "screen": "overview",
+        "control_id": "accounts_table_panel",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "The table's own header is the anchor -- unique, unlike any of its rows."
+    },
+    {
+      "verb": "observe",
+      "control": null,
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "Evidence frame of the screen the values below are read from (S3.5)."
+    },
+    {
+      "verb": "extract",
+      "control": {
+        "screen": "overview",
+        "control_id": "accounts_table_panel",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": "account_id",
+      "output": "found_account_id",
+      "row_key": {
+        "kind": "param",
+        "param": "account_id"
+      },
+      "field": "account_id",
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "Read the WHOLE table in one call, then select the row in code. Reading the id back is what lets the checkpoint prove we answered about the account the caller asked for."
+    },
+    {
+      "verb": "extract",
+      "control": {
+        "screen": "overview",
+        "control_id": "accounts_table_panel",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": "balance",
+      "output": "balance",
+      "row_key": {
+        "kind": "param",
+        "param": "account_id"
+      },
+      "field": "balance",
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "What the caller asked for. Never asserted -- it is the answer."
+    },
+    {
+      "verb": "click",
+      "control": {
+        "screen": "overview",
+        "control_id": "accounts_table_panel",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": {
+        "kind": "param",
+        "param": "account_id"
+      },
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "Open this account's detail page. Navigation only; reversible."
+    },
+    {
+      "verb": "wait_for",
+      "control": {
+        "screen": "activity",
+        "control_id": "account_details_panel",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "Account Details. One screen per record id (activity.htm?id=:id)."
+    },
+    {
+      "verb": "extract",
+      "control": {
+        "screen": "activity",
+        "control_id": "account_details_panel",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": "account_type",
+      "output": "account_type",
+      "row_key": {
+        "kind": "literal",
+        "value": "Account Type:"
+      },
+      "field": "value",
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "The field that separates the seeded record from the CLEAN one, and the only reason this capability visits the detail page at all."
+    }
+  ],
+  "checkpoints": [
+    {
+      "output": "found_account_id",
+      "op": "equals",
+      "expected": {
+        "kind": "param",
+        "param": "account_id"
+      },
+      "why": "The row we read must be the row that was asked for. An account that is absent entirely is a business outcome, not this."
+    },
+    {
+      "output": "account_type",
+      "op": "equals",
+      "expected": {
+        "kind": "literal",
+        "value": "SAVINGS"
+      },
+      "why": "This is the one that catches a changed record. After ParaBank's CLEAN, account 13344 still resolves -- as CHECKING $5,022.93 rather than SAVINGS $1,231.10. Without this the capability returns the wrong number to a bank and reports success."
+    }
+  ],
+  "establishes": null,
+  "approval": "draft",
+  "approved_by": null
+}

@@ -11,10 +11,32 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 
-# Run output
+# Run output. `evidence/` is a graded deliverable (brief S6), so the runs that
+# demonstrate the flow are committed by exception with `git add -f`; this line
+# stops every scratch run from following them in.
 evidence/runs/
-artifacts/*.json
-!artifacts/.gitkeep
+# ⚠️ Corrected 2026-09-29: this rule is IGNORED, deliberately, and the comment
+# said the opposite of what the repo does for long enough to be worth saying so.
+#
+# It used to argue that approved artifacts must not be committed -- approval is
+# a person's act, and shipping one lets the next clone replay unattended on a
+# review nobody there performed. That reasoning is sound for a deployed system
+# and wrong for a take-home: S6.1 asks for "the exact command(s) to run", and
+# every one of those names an approved artifact. A reviewer who clones this and
+# hits "no such file" has been handed a principle instead of a demo.
+#
+# So all five are committed with `git add -f`, and the gate is not decoration:
+# `assert_replayable` still refuses a draft, the approval is still recorded in
+# the artifact, and a test reads the committed files off disk to prove none
+# carries a literal secret. The pattern stays so a NEW approved artifact is
+# ignored by default and committing one is a deliberate act.
+artifacts/*.approved.json
+
+# Control maps written by discovery. NOT ignored: measured at 344 KB for the two
+# ParaBank screens, which is small enough that committing them lets a reviewer
+# replay without paying for a discovery run. Revisit if a real deployment's maps
+# grow -- the templates would move to blob storage and the store's interface
+# would not change.
 .playwright/
 *.log
 
