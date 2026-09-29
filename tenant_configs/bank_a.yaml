@@ -1,0 +1,13 @@
+# Tenant A — the institution every capability was recorded against.
+tenant: baseline
+app: parabank
+base_url: http://localhost:8080/parabank
+
+# This bank wants a person on anything at or above $1,000.
+confirm_money_above: 1000
+
+# "*" is an explicit decision to restrict nothing. An EMPTY list means nothing
+# is permitted -- absence is not permission.
+permits: ["*"]
+
+control_maps: control_maps

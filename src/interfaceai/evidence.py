@@ -19,7 +19,9 @@ class EvidenceWriter:
     was shown is the only honest record of why it chose what it chose.
     """
 
-    def __init__(self, root: Path, goal: str, model: str = "unset") -> None:
+    def __init__(
+        self, root: Path, goal: str, model: str = "unset", requested_by: str = "cli"
+    ) -> None:
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         self.dir = root / stamp
         self.dir.mkdir(parents=True, exist_ok=True)
@@ -27,7 +29,16 @@ class EvidenceWriter:
         self.frames.mkdir(exist_ok=True)
         self._trace = self.dir / "trace.jsonl"
         self._n = 0
-        self.event("run_started", goal=goal, model=model)
+        # ⚠️ WHO ASKED IS EVIDENCE, NEVER A BRANCH. A developer at a terminal,
+        # a test, and an agent calling this as a library all produce the SAME
+        # run -- what differs is who to ask when it stops, and that is supplied
+        # as an `operator`, not sniffed from a caller id. The moment behaviour
+        # forks on this field, the tested path and the production path diverge
+        # and the tested one is the one nobody runs.
+        #
+        # It is recorded because a run nobody can attribute is a run nobody can
+        # question. The original schema had it on `jobs`; this is that field.
+        self.event("run_started", goal=goal, model=model, requested_by=requested_by)
 
     def event(self, kind: str, **fields: Any) -> None:
         record = {"ts": datetime.now(UTC).isoformat(), "event": kind, **fields}
