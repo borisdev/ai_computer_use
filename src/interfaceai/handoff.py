@@ -103,7 +103,15 @@ class HumanResolution:
 
 @runtime_checkable
 class Operator(Protocol):
-    """Where an intervention goes. A terminal today; a console later."""
+    """Where an intervention goes. A terminal today; a console later.
+
+    ⚠️ `adopt_policy` is not optional politeness. The RUN owns the gate; an
+    operator that brings its own is an operator checked against different rules
+    from the agent it is rescuing, which is exactly the hole Copilot found on
+    PR #5 and exactly what the write-up claimed was impossible.
+    """
+
+    def adopt_policy(self, policy: ActionPolicy) -> None: ...
 
     def resolve(
         self, request: InterventionRequest, surface: PlaywrightSurface
@@ -132,8 +140,20 @@ class TerminalOperator:
     """
 
     def __init__(self, policy: ActionPolicy | None = None, stream=None) -> None:
+        # ⚠️ A DEFAULT POLICY HERE IS A GATE THAT PASSES EVERYTHING. The CLI
+        # built `TerminalOperator()` with no argument, so the human's actions
+        # were checked against an empty `forbidden_values` while the agent's
+        # were checked against the run's. Same call, different gate, and the
+        # write-up claimed they were the same one.
+        #
+        # `adopt_policy` is how the run imposes its own; this argument survives
+        # only so a test can construct one standalone. Found by Copilot, PR #5.
         self.policy = policy or ActionPolicy()
         self._stream = stream  # injected for tests; None means real stdin
+
+    def adopt_policy(self, policy: ActionPolicy) -> None:
+        """Take the RUN's gate. Called by replay before the human touches anything."""
+        self.policy = policy
 
     def _read(self, prompt: str) -> str:
         if self._stream is not None:
@@ -194,9 +214,18 @@ class TerminalOperator:
         elif verb == "type":
             if not rest:
                 raise ValueError("usage: type TEXT")
-            # Typing needs a target point for `use_control`; the human has
-            # already focused something, so click where the caret is by
-            # clicking nothing and typing directly.
+            # ⛔ THIS USED TO CALL `surface.type_text` DIRECTLY, and the
+            # write-up claimed all the while that "the human operator goes
+            # through the same gate". It did not: no allowed-action check and
+            # no forbidden-value check, so a person could type a secret into a
+            # page during a handoff and the guardrail that exists precisely to
+            # stop that never ran. Found by Copilot on PR #5.
+            #
+            # Typing has no target point -- the human has already focused
+            # something -- so `use_control` does not fit, but the POLICY still
+            # must. Calling it directly is the fix; the gate is the policy, not
+            # the function that happens to wrap it.
+            self.policy.check(ManualActionKind.ENTER_TEXT, rest)
             surface.type_text(rest)
             return HumanAction(
                 ManualActionKind.ENTER_TEXT, -1, -1, surface.current_url(), len(rest)
@@ -204,6 +233,8 @@ class TerminalOperator:
         elif verb == "goto":
             if not rest:
                 raise ValueError("usage: goto URL")
+            # `surface.navigate` enforces the ORIGIN allowlist itself, so
+            # this one was already gated -- checked before assuming otherwise.
             surface.navigate(rest)
             return HumanAction(ManualActionKind.CLICK, -1, -1, surface.current_url())
         elif verb == "shot":
@@ -223,6 +254,9 @@ class ScriptedOperator:
         self._inner = TerminalOperator(
             policy=policy, stream=io.StringIO("\n".join(commands) + "\n")
         )
+
+    def adopt_policy(self, policy: ActionPolicy) -> None:
+        self._inner.adopt_policy(policy)
 
     def resolve(self, request: InterventionRequest, surface: PlaywrightSurface) -> HumanResolution:
         return self._inner.resolve(request, surface)

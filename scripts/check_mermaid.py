@@ -38,9 +38,21 @@ def main() -> int:
                 src = Path(tmp) / f"{path.stem}-{i}.mmd"
                 src.write_text(block)
                 out = subprocess.run(
-                    ["npx", "-y", "@mermaid-js/mermaid-cli@11", "-p", str(cfg),
-                     "-i", str(src), "-o", str(src.with_suffix(".svg"))],
-                    capture_output=True, text=True, timeout=180, check=False,
+                    [
+                        "npx",
+                        "-y",
+                        "@mermaid-js/mermaid-cli@11",
+                        "-p",
+                        str(cfg),
+                        "-i",
+                        str(src),
+                        "-o",
+                        str(src.with_suffix(".svg")),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=180,
+                    check=False,
                 )
                 kind = block.strip().splitlines()[0][:22]
                 if out.returncode == 0 and src.with_suffix(".svg").exists():

@@ -456,6 +456,10 @@ def _hand_over(ctx: _Ctx, n: int, step: Step, blocked: NeedsOperator) -> str | N
     that failed can look identical, and repeating one moves money twice.
     """
     assert ctx.operator is not None
+    # The run's gate, not whatever the operator was constructed with. Imposed
+    # here rather than trusted at construction, because the caller that builds
+    # the operator (the CLI) does not know the policy -- replay does.
+    ctx.operator.adopt_policy(ctx.policy)
     ctx.owner = Owner.HUMAN
     before_url, before_frame = _bracket(ctx, f"handoff-{n}-before")
     ctx.evidence.event(
