@@ -9,6 +9,7 @@ reaching unattended replay is the approval gate being decoration.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -39,7 +40,8 @@ from interfaceai.capability import (
 )
 from interfaceai.vocabulary import VOCABULARY, VOCABULARY_VERSION
 
-ARTIFACTS = Path(__file__).resolve().parents[1] / "artifacts"
+ROOT = Path(__file__).resolve().parents[1]
+ARTIFACTS = ROOT / "artifacts"
 
 
 def _capability(**overrides: object) -> Capability:
@@ -586,3 +588,42 @@ def test_a_sensitive_slot_cannot_be_EXTRACTED_back_out() -> None:
     )
     with pytest.raises(CapabilityError, match="never read back out"):
         validate_capability(leaky)
+
+
+def test_a_committed_TRACE_carries_no_balance_or_secret() -> None:
+    """The redaction claim, checked against the files that ship.
+
+    ⚠️ `value_length, never the value` was only ever true of INPUTS. Extracted
+    OUTPUTS were written verbatim, so committed traces carried
+    `"value": "$1231.10"` and repeated it in `outputs` -- while REPORT.md,
+    evidence/README.md and issue #7 all described the gap as "screenshots
+    only". Copilot found it by reading the committed evidence, not the code,
+    which is why this test reads the evidence too.
+
+    `account_id` is deliberately NOT masked: evidence whose job is proving
+    WHICH record was read has to name the record.
+    """
+    import json
+    import subprocess
+
+    tracked = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-files", "evidence/runs"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    ).stdout.splitlines()
+    traces = [ROOT / f for f in tracked if f.endswith("trace.jsonl")]
+    assert traces, "no committed traces; this test would assert nothing"
+
+    money = re.compile(r"\$\s?\d[\d,]*\.\d\d")
+    offenders: list[str] = []
+    for trace in traces:
+        for n, line in enumerate(trace.read_text().splitlines(), 1):
+            event = json.loads(line)
+            if event.get("event") not in {"extracted", "replay_succeeded"}:
+                continue
+            blob = json.dumps({k: v for k, v in event.items() if k in {"value", "outputs"}})
+            if money.search(blob):
+                offenders.append(f"{trace.parent.name}:{n} {blob[:90]}")
+    assert not offenders, "regulated values in committed evidence:\n  " + "\n  ".join(offenders)

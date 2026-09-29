@@ -125,11 +125,27 @@ def test_the_threshold_is_tenant_configuration() -> None:
     assert needs_human_confirmation(five_hundred, above=Decimal(250)) is not None
 
 
-def test_a_malformed_threshold_disables_the_rule_rather_than_crashing() -> None:
-    assert (
+def test_a_malformed_threshold_is_REFUSED_not_quietly_disabled() -> None:
+    """⚠️ THIS TEST USED TO ASSERT THE BUG, under a reassuring name.
+
+    It was `test_a_malformed_threshold_disables_the_rule_rather_than_crashing`
+    and it pinned exactly the behaviour Copilot flagged on PR #5: a typo such
+    as `baseline=lots` returned None, so the money guardrail silently did
+    nothing while the config file still looked like it had one.
+
+    "Rather than crashing" was the whole mistake. A money guardrail that cannot
+    parse its own threshold has no safe default -- refusing to start is the
+    quiet failure's only honest alternative.
+    """
+    with pytest.raises(ValueError, match="not a number"):
         Settings(interfaceai_confirm_money_above="baseline=lots").confirm_money_above("baseline")
-        is None
-    )
+
+
+def test_a_negative_or_infinite_threshold_is_refused_too() -> None:
+    """`Decimal` accepts both, and neither can gate anything."""
+    for bad in ("baseline=-5", "baseline=Infinity", "baseline=NaN"):
+        with pytest.raises(ValueError):
+            Settings(interfaceai_confirm_money_above=bad).confirm_money_above("baseline")
 
 
 # --- it ends at the same chokepoint ----------------------------------------

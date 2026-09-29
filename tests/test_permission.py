@@ -47,18 +47,41 @@ def _replay(capability, permitted):
 # --- configuration ---------------------------------------------------------
 
 
-def test_a_star_permits_everything_and_an_unlisted_tenant_is_unrestricted() -> None:
+def test_a_star_permits_everything_and_an_unlisted_tenant_is_REFUSED() -> None:
+    """⚠️ The `unlisted` line used to assert `is None` -- the third test in this
+    repo that pinned a fail-open as if it were the feature.
+
+    `*` is an explicit decision to restrict nothing and stays. Being absent
+    from a configured gate is not a decision, it is an omission, and answering
+    an omission with "unrestricted" is how a typo outranks the real name.
+    """
     settings = Settings(
         interfaceai_allowed_capabilities="baseline=*;feature=log_in,read_savings_balance"
     )
     assert settings.allowed_capabilities("baseline") is None
-    assert settings.allowed_capabilities("unlisted") is None
     assert settings.allowed_capabilities("feature") == frozenset({"log_in", "read_savings_balance"})
+    with pytest.raises(ValueError, match="no capability policy"):
+        settings.allowed_capabilities("unlisted")
 
 
 def test_the_gate_is_opt_in() -> None:
-    """A tenant nobody configured is not accidentally locked out."""
+    """An ENTIRELY unconfigured gate stays off. Nobody opted in."""
     assert Settings(interfaceai_allowed_capabilities="").allowed_capabilities("anyone") is None
+
+
+def test_an_UNKNOWN_tenant_is_refused_once_the_gate_IS_configured() -> None:
+    """The fail-open Copilot found, and the distinction that makes it one.
+
+    An unconfigured gate returning None is a decision. A CONFIGURED gate that
+    does not mention this tenant returning None is a hole: `--tenant freature`
+    got no restriction at all while the correctly spelled `feature` got the
+    allowlist. A misspelling that grants MORE permission than the real name is
+    the worst direction for a guard to fail.
+    """
+    settings = Settings(interfaceai_allowed_capabilities="feature=log_in")
+    assert settings.allowed_capabilities("feature") == frozenset({"log_in"})
+    with pytest.raises(ValueError, match="no capability policy"):
+        settings.allowed_capabilities("freature")
 
 
 # --- the gate --------------------------------------------------------------
@@ -117,3 +140,35 @@ def test_an_empty_or_unrelated_allowlist_refuses(permitted: frozenset[str]) -> N
     result = _replay(_loan(), permitted)
     assert isinstance(result, Failed)
     assert result.step == "pre-flight"
+
+
+def test_every_capability_the_README_tells_you_to_replay_is_PERMITTED() -> None:
+    """The config must not silently break the documentation.
+
+    ⚠️ `feature` permitted `log_in,read_savings_balance` while the README's
+    cross-tenant demo replays `log_in_discovered`, so the documented proof of
+    §3.7 died at pre-flight with "not permitted for feature". I had SEEN that
+    failure and moved past it; Copilot read the config against the docs.
+
+    `request_loan`'s absence from `feature` is the real demonstration and is
+    asserted below, so this test cannot be satisfied by permitting everything.
+    """
+    import re
+
+    readme = (ROOT / "README.md").read_text()
+    settings = Settings()
+    checked = 0
+    for line in readme.splitlines():
+        match = re.search(r"interfaceai replay\s+artifacts/([a-z_]+)\.v\d+", line)
+        if not match:
+            continue
+        tenant = "feature" if "--tenant feature" in line else "baseline"
+        permitted = settings.allowed_capabilities(tenant)
+        checked += 1
+        assert permitted is None or match.group(1) in permitted, (
+            f"README replays {match.group(1)!r} on {tenant!r}, which does not permit it"
+        )
+    assert checked, "no replay commands found in the README; this asserted nothing"
+
+    # and the exclusion that carries the demonstration still stands
+    assert "request_loan" not in (settings.allowed_capabilities("feature") or set())

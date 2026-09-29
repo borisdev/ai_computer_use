@@ -71,7 +71,12 @@ class Settings(BaseSettings):
     #
     # "tenant=cap,cap" per tenant, comma separated. `*` permits everything. A
     # tenant not listed permits everything, so the gate is opt-in.
-    interfaceai_allowed_capabilities: str = "baseline=*;feature=log_in,read_savings_balance"
+    # Kept in step with `.env` deliberately: the demo must work from a clone
+    # that never loads it. `request_loan` is absent from `feature` on purpose --
+    # that exclusion IS the demonstration.
+    interfaceai_allowed_capabilities: str = (
+        "baseline=*;feature=log_in,log_in_discovered,read_savings_balance"
+    )
 
     # --- Demo fixtures ---
     parabank_demo_username: str = "john"
@@ -92,25 +97,62 @@ class Settings(BaseSettings):
         return os.environ.get("ANTHROPIC_API_KEY") or None
 
     def allowed_capabilities(self, tenant: str) -> frozenset[str] | None:
-        """What this tenant permits. None means no restriction."""
+        """What this tenant permits. None means no restriction.
+
+        ⛔ AN UNKNOWN TENANT IS REFUSED, NOT WAVED THROUGH. This used to fall
+        off the end and `return None`, so `--tenant freature` -- a typo -- got
+        NO capability restriction at all, while the correctly spelled `feature`
+        got the configured allowlist. A misspelling that grants more permission
+        than the real name is the worst possible direction for a guard to fail.
+        Found by Copilot, PR #5.
+        """
+        # An ENTIRELY unconfigured gate stays off -- nobody opted in, and
+        # locking every tenant out of a feature they never enabled is its own
+        # failure. That is different from a CONFIGURED gate that does not
+        # mention this tenant, which is the fail-open case below.
+        if not self.interfaceai_allowed_capabilities.strip():
+            return None
+        known: list[str] = []
         for entry in self.interfaceai_allowed_capabilities.split(";"):
             name, _, names = entry.partition("=")
+            known.append(name.strip())
             if name.strip() != tenant:
                 continue
             if names.strip() == "*":
                 return None
             return frozenset(n.strip() for n in names.split(",") if n.strip())
-        return None
+        raise ValueError(
+            f"tenant {tenant!r} has no capability policy; configured: "
+            f"{sorted(n for n in known if n)}. Refusing rather than running unrestricted."
+        )
 
     def confirm_money_above(self, tenant: str) -> Decimal | None:
-        """The amount at or above which this tenant wants a person to look."""
+        """The amount at or above which this tenant wants a person to look.
+
+        None means the tenant configured no threshold, which is a decision.
+
+        ⛔ A MALFORMED THRESHOLD IS AN ERROR, NOT A MISSING ONE. This used to
+        swallow `InvalidOperation` and return None, so `baseline=lots` -- or a
+        stray character -- silently DISABLED the money guardrail while the
+        config file still looked like it had one. Negative and non-finite are
+        refused for the same reason. Found by Copilot, PR #5.
+        """
         for pair in self.interfaceai_confirm_money_above.split(","):
             name, _, amount = pair.partition("=")
-            if name.strip() == tenant and amount.strip():
-                try:
-                    return Decimal(amount.strip())
-                except InvalidOperation:
-                    return None
+            if name.strip() != tenant or not amount.strip():
+                continue
+            try:
+                parsed = Decimal(amount.strip())
+            except InvalidOperation as exc:
+                raise ValueError(
+                    f"confirm_money_above for {tenant!r} is {amount.strip()!r}, which is not a "
+                    "number. Refusing to start with a money guardrail that silently does nothing."
+                ) from exc
+            if not parsed.is_finite() or parsed < 0:
+                raise ValueError(
+                    f"confirm_money_above for {tenant!r} is {parsed}, which cannot gate anything."
+                )
+            return parsed
         return None
 
     @property

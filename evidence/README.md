@@ -12,10 +12,10 @@ actually shown).
 | run | what it shows |
 |---|---|
 | [`runs/20260929T042350Z`](runs/20260929T042350Z) | **Discovery.** A real LLM drives the live app — 3 steps, 4 model calls, 24s — and emits [`artifacts/evidence_discovery.v1.draft.json`](../artifacts/evidence_discovery.v1.draft.json) |
-| [`runs/20260929T042505Z`](runs/20260929T042505Z) | **Success.** `read_savings_balance(13344)` → `$1231.10`, 12 steps, 3 of them `log_in` invoked |
-| [`runs/20260929T042522Z`](runs/20260929T042522Z) | **Business outcome.** `record_not_found` for account 99999 — **exit 0**, because a fair question with a negative answer is not a crash |
-| [`runs/20260929T042536Z`](runs/20260929T042536Z) | **Escalation.** A $25,000 loan against a $1,000 tenant threshold stops and asks a person, *even with `--confirm-risky`* |
-| [`runs/20260929T042550Z`](runs/20260929T042550Z) | **Recovery.** The session is destroyed mid-flow; `recovering` → `log_in` re-invoked → `SUCCESS`. A recovered condition is not a terminal state |
+| [`runs/20260929T071443Z`](runs/20260929T071443Z) | **Success.** `read_savings_balance(13344)` → `$1231.10`, 12 steps, 3 of them `log_in` invoked |
+| [`runs/20260929T071501Z`](runs/20260929T071501Z) | **Business outcome.** `record_not_found` for account 99999 — **exit 0**, because a fair question with a negative answer is not a crash |
+| [`runs/20260929T071538Z`](runs/20260929T071538Z) | **Escalation.** A $25,000 loan against a $1,000 tenant threshold stops and asks a person, *even with `--confirm-risky`* |
+| [`runs/20260929T071516Z`](runs/20260929T071516Z) | **Recovery.** The session is destroyed mid-flow; `recovering` → `log_in` re-invoked → `SUCCESS`. A recovered condition is not a terminal state |
 | [`runs/20260929T051949Z`](runs/20260929T051949Z) | **A full handoff.** The run blocks, a person takes the live session, navigates, and hands it back — `handoff_requested` → `human_acted` → `handoff_returned`, a frame and URL on each edge, `url_changed: true`. The operator aborts, having established the record genuinely does not exist |
 | [`runs/20260929T042311Z`](runs/20260929T042311Z) | **A safety refusal, at discovery time.** The model tried to `extract` into the sensitive slot `username`; the run stops rather than emitting an artifact that would leak a credential through `returns` |
 
@@ -43,7 +43,7 @@ exists.
 
 ```bash
 jq -r '"\(.event)\t\(.step // "")\t\(.why // .outcome // .capability // "")"' \
-  evidence/runs/20260929T042536Z/trace.jsonl
+  evidence/runs/20260929T071538Z/trace.jsonl
 ```
 
 Two events worth knowing:
@@ -58,8 +58,19 @@ Two events worth knowing:
   operator surface and blind to a hand on the mouse, so the bracket is the claim
   that holds either way.
 
-⚠️ **Frames are written unmasked.** Redaction covers logs and artifacts —
-`value_length`, never the value — and **not** screenshots. On a real system
+⚠️ **What is redacted, precisely.** Typed INPUTS record `value_length` and
+never the value. Extracted OUTPUTS are masked when the vocabulary says the slot
+is `sensitive` or typed MONEY — you will see `<money redacted, 8 chars>` where a
+balance was read. `account_id` is deliberately NOT masked: evidence whose job is
+proving *which* record was read has to name the record.
+
+⛔ **This was wrong until 2026-09-29, and this file said so anyway.** Extracted
+outputs were written verbatim, so committed traces carried `"value":
+"$1231.10"`. Found by Copilot reading the committed evidence rather than the
+code — which is why `test_a_committed_TRACE_carries_no_balance_or_secret` now
+reads the evidence too.
+
+⚠️ **Frames are still written unmasked** ([#7](https://github.com/borisdev/ai_computer_use/issues/7)). On a real system
 those would need a masking pass before persistence. Everything here is against
 synthetic fixtures in a throwaway container.
 

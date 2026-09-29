@@ -130,12 +130,18 @@ def money_entered(slot: str | None, value: str | None) -> Decimal | None:
         return None
     cleaned = value.strip().replace("$", "").replace(",", "").replace(" ", "")
     try:
-        return Decimal(cleaned)
+        parsed = Decimal(cleaned)
     except InvalidOperation:
-        # Unreadable, but still a money field. `UNREADABLE` rather than None so
-        # the caller can refuse it: a field we cannot read is not a field we may
-        # decide is small.
         return UNREADABLE
+    # ⛔ `Decimal` ACCEPTS "NaN", "Infinity" and "sNaN". So a page (or a hostile
+    # input) reading `amount: NaN` parsed cleanly, skipped the `except` below,
+    # and then blew up in `needs_human_confirmation` at `abs(v) >= above` with
+    # an InvalidOperation -- a crash where the whole point was to escalate.
+    # A number we cannot compare is a number we cannot call small.
+    # Found by Copilot, PR #5.
+    if not parsed.is_finite():
+        return UNREADABLE
+    return parsed
 
 
 def needs_human_confirmation(entered: dict[str, Decimal], *, above: Decimal | None) -> str | None:

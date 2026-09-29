@@ -96,6 +96,7 @@ from interfaceai.surface import (
     use_control,
 )
 from interfaceai.table import Offset, PanelNotFound, extract_panel
+from interfaceai.vocabulary import VOCABULARY, SlotType
 
 _VERB_ACTION = {
     StepVerb.ENTER: ManualActionKind.ENTER_TEXT,
@@ -410,6 +411,35 @@ def _run(ctx: _Ctx) -> CapabilityResult:
         continue
 
     return _checkpoints(ctx)
+
+
+def _for_evidence(capability: Capability, output: str | None, value: str) -> str:
+    """Mask a value that regulated data protection would not let us keep.
+
+    ⛔ `value_length, never the value` WAS ONLY TRUE OF INPUTS. Typed secrets
+    were redacted from the first commit; EXTRACTED outputs were written
+    verbatim, so committed traces carried `"value": "$1231.10"` and the
+    `outputs` map repeated it. REPORT.md and evidence/README.md both claimed
+    otherwise, and issue #7 described the gap as "screenshots only". Found by
+    Copilot on PR #5, against the committed evidence rather than the code.
+
+    The rule now follows the VOCABULARY rather than a guess: a slot that is
+    `sensitive`, or typed MONEY, is a balance or a credential and is masked to
+    its shape. Everything else -- notably `account_id` -- stays readable,
+    because evidence whose whole job is proving WHICH record was read must
+    still name the record.
+
+    ⚠️ A mask is not encryption and this is not a compliance control. It keeps
+    regulated VALUES out of a file that gets committed to a public repository,
+    which is the specific hazard here.
+    """
+    slot = next((o.slot for o in capability.returns if o.name == output), None)
+    if slot is None or not VOCABULARY.has(slot):
+        return value
+    qualifier = VOCABULARY.qualifier(slot)
+    if not (qualifier.sensitive or qualifier.type is SlotType.MONEY):
+        return value
+    return f"<{qualifier.type} redacted, {len(value)} chars>"
 
 
 def _bracket(ctx: _Ctx, label: str) -> tuple[str, str]:
@@ -802,7 +832,11 @@ def _extract(
     )
     ctx.outputs[step.output] = read.text.strip()
     ctx.evidence.event(
-        "extracted", step=n, output=step.output, value=read.text.strip(), frame=str(frame)
+        "extracted",
+        step=n,
+        output=step.output,
+        value=_for_evidence(ctx.capability, step.output, read.text.strip()),
+        frame=str(frame),
     )
     ctx.done.append(label)
     return None
@@ -1215,7 +1249,11 @@ def _extract_from_panel(
 
     ctx.outputs[step.output] = getattr(matches[0], step.field)
     ctx.evidence.event(
-        "extracted", step=n, output=step.output, value=ctx.outputs[step.output], via="panel"
+        "extracted",
+        step=n,
+        output=step.output,
+        value=_for_evidence(ctx.capability, step.output, ctx.outputs[step.output]),
+        via="panel",
     )
     ctx.done.append(label)
     return None
@@ -1264,7 +1302,11 @@ def _checkpoints(ctx: _Ctx) -> CapabilityResult:
     # Tagged with WHICH capability succeeded: an invoked one writes into the
     # same evidence file, so an untagged event makes a parent that failed
     # look successful to anything reading the trace back.
-    ctx.evidence.event("replay_succeeded", capability=ctx.capability.name, outputs=ctx.outputs)
+    ctx.evidence.event(
+        "replay_succeeded",
+        capability=ctx.capability.name,
+        outputs={k: _for_evidence(ctx.capability, k, v) for k, v in ctx.outputs.items()},
+    )
     return Success(
         outputs=dict(ctx.outputs),
         steps_run=len(ctx.done),

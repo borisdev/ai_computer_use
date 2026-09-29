@@ -1,0 +1,16 @@
+{"ts": "2026-09-29T07:15:01.574003+00:00", "event": "run_started", "goal": "read the current balance of a member's savings account", "model": "replay/none"}
+{"ts": "2026-09-29T07:15:01.574116+00:00", "event": "replay_started", "capability": "read_savings_balance", "version": 3, "inputs": ["account_id"], "target": {"app": "parabank", "tenant": "baseline", "base_url": "http://localhost:8080/parabank"}}
+{"ts": "2026-09-29T07:15:02.199374+00:00", "event": "precondition", "name": "at_the_login_page", "want": "present", "present": true, "when": "entry"}
+{"ts": "2026-09-29T07:15:02.199530+00:00", "event": "invoke_started", "step": 0, "capability": "log_in", "version": 2, "bound": []}
+{"ts": "2026-09-29T07:15:02.302280+00:00", "event": "precondition", "name": "at_the_login_page", "want": "present", "present": true, "when": "entry"}
+{"ts": "2026-09-29T07:15:02.507024+00:00", "event": "acted", "step": 0, "control": "username_textbox", "action": "enter_text", "value_length": 4, "score": 1.0, "url": "http://localhost:8080/parabank/index.htm"}
+{"ts": "2026-09-29T07:15:03.707789+00:00", "event": "acted", "step": 1, "control": "password_textbox", "action": "enter_text", "value_length": 4, "score": 1.0, "url": "http://localhost:8080/parabank/index.htm"}
+{"ts": "2026-09-29T07:15:04.826983+00:00", "event": "acted", "step": 2, "control": "log_in_button", "action": "click", "value_length": null, "score": 0.9997754693031311, "url": "http://localhost:8080/parabank/index.htm"}
+{"ts": "2026-09-29T07:15:05.942711+00:00", "event": "waited", "step": 3, "control": "accounts_overview_link"}
+{"ts": "2026-09-29T07:15:05.942858+00:00", "event": "replay_succeeded", "capability": "log_in", "outputs": {}}
+{"ts": "2026-09-29T07:15:05.942899+00:00", "event": "invoke_finished", "step": 0, "capability": "log_in", "result": "Success"}
+{"ts": "2026-09-29T07:15:06.033428+00:00", "event": "waited", "step": 1, "control": "accounts_table_panel"}
+{"ts": "2026-09-29T07:15:06.081372+00:00", "event": "observed", "step": 2, "frame": "/home/borisdev/workspace/ai_computer_use/evidence/runs/20260929T071501Z/frames/001-02-observe.png"}
+{"ts": "2026-09-29T07:15:12.969505+00:00", "event": "panel_read", "step": 3, "control": "accounts_table_panel", "rows": 11, "wanted": "99999"}
+{"ts": "2026-09-29T07:15:12.969643+00:00", "event": "row_not_found", "step": 3, "wanted": "99999", "seen": ["12345", "12456", "12567", "12678", "12789", "12900", "13011", "13122", "13233", "13344", "54321"]}
+{"ts": "2026-09-29T07:15:12.969710+00:00", "event": "replay_finished", "outcome": "BusinessOutcome", "capability": "read_savings_balance", "recovered": [], "frame": null}

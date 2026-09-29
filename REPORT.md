@@ -248,13 +248,22 @@ entered during the run. ⚠️ **This rule has been bypassable twice** — both 
 run-level `--confirm-risky` cannot answer a tenant-level policy, and an amount
 entered anywhere in the run is still in play at an irreversible step.
 
-**Secrets never land.** A sensitive slot takes only an `input_ref`, and cannot
-be extracted back out. The audit record carries `value_length`.
+**Secrets never land, and neither do balances.** A sensitive slot takes only an
+`input_ref` and cannot be extracted back out. Typed inputs record
+`value_length`; extracted outputs are masked when the vocabulary says the slot
+is `sensitive` or MONEY. ⚠️ That second half was **false until Copilot checked
+the committed traces**, which carried `"value": "$1231.10"` while this document
+claimed redaction covered logs. `account_id` stays readable on purpose —
+evidence proving *which* record was read must name it.
 
 **Limits.** A current-URL check cannot prevent outbound navigation. ParaBank has
 no roles, so our tenant permission gate demonstrates the enforcement point and
 **not** integration with a real entitlement system — make-believe, and labelled
-so. Redaction covers logs and artifacts, **not screenshots**.
+so. Redaction covers logs and artifacts, **not screenshots**
+([#7](https://github.com/borisdev/ai_computer_use/issues/7)). A tenant name not
+in the capability policy is refused rather than run unrestricted, and a
+threshold that will not parse stops the run rather than silently disabling the
+money rule — both were fail-open until Copilot found them.
 
 ## 7. Cuts
 
