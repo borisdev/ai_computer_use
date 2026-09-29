@@ -239,12 +239,18 @@ argument — Bank B needs **17 overrides, not 25 locators** — and the reason i
 propagation, not storage: with a full copy, fixing a locator in the default
 reaches nobody.
 
-It also answers *"how do we search per tenant and per app?"*, which turns out
-not to be a search:
+It also answers *"how do we search per tenant and per app?"* — which turns out
+not to be a search, and not to be answerable centrally at all:
 
 ```bash
 uv run interfaceai status --tenant feature   # capabilities(app) ∩ permitted(tenant)
 ```
+
+`target.app` travels **with** the registry; a tenant's allowlist lives **in the
+deployment** and never leaves it. So a shared registry can say which
+capabilities exist for an app, and only a deployment can say which it may run.
+There is no index — it is a full scan of `artifacts/`, 2.4 ms for 16 files, and
+at this size the scan *is* the index.
 
 ### 6. What an artifact is, and when it is trusted
 
