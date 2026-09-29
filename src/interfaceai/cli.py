@@ -29,13 +29,52 @@ from interfaceai import discover as discover_mod
 from interfaceai import replay as replay_mod
 from interfaceai import status as status_mod
 from interfaceai import surface as surface_mod
+from interfaceai import tenant_config as tenant_config_mod
 from interfaceai.settings import get_settings
 
 app = typer.Typer(no_args_is_help=True, help="Computer-use automation for legacy bank apps.")
 env = typer.Typer(no_args_is_help=True, help="Manage the local ParaBank target.")
 app.add_typer(env, name="env")
 
-console = Console()
+
+# ⚠️ RICH WHEN A HUMAN IS WATCHING, PLAIN WHEN PIPED. `Console()` styles and
+# WRAPS unconditionally, which is how `interfaceai diagram` shipped to main
+# emitting mermaid that looked fine in a terminal and did not parse when pasted:
+# rich ate `[square brackets]` as markup and folded a long `classDef` in half.
+#
+# `soft_wrap` off at the console level is not enough -- the real fix is that a
+# non-tty gets no styling and no wrapping at all, which is also what a CALLING
+# AGENT wants. §3.2 asks that an agent understand the output; an agent wants
+# parseable text, not boxes.
+def _base_url_for(tenant: str, deployment, settings) -> str:
+    """Where this tenant actually lives.
+
+    ⚠️ ONE resolution, used by BOTH retargets -- the entry capability and every
+    capability it invokes. They were separate, and `--tenant-config` retargeted
+    only the library: the entry stayed on baseline while its `log_in` moved to
+    feature, and `validate_invocations` refused the mismatch. Correctly -- a
+    child recorded for another tenant is that tenant's pixels.
+    """
+    if deployment is not None:
+        return deployment.base_url
+    return settings.parabank_b_base_url if tenant != "baseline" else settings.parabank_base_url
+
+
+def _whoami() -> str:
+    """A default that says something. `getuser` falls back on a bare uid."""
+    import getpass
+
+    try:
+        return getpass.getuser()
+    except Exception:  # noqa: BLE001 -- a nameless caller must not break a run
+        return "unknown"
+
+
+console = Console(
+    force_terminal=None,  # auto-detect; None means "ask isatty"
+    soft_wrap=not sys.stdout.isatty(),
+    no_color=not sys.stdout.isatty(),
+)
 
 
 @env.command("status")
@@ -369,8 +408,21 @@ def discover_cmd(
 # replay -- the production path (assignment 3.3)
 # ---------------------------------------------------------------------------
 
-_ARTIFACT_ARG_OPTIONAL = typer.Argument(
-    None, help="An artifact path. Prefer --capability; this is the low-level form."
+_CAPABILITY_ARG = typer.Argument(
+    None, help="A capability NAME, e.g. read_savings_balance. A path also works."
+)
+_TENANT_CONFIG_OPTION = typer.Option(
+    None,
+    "--tenant-config",
+    envvar="INTERFACEAI_TENANT_CONFIG",
+    help="A tenant's deployment config, e.g. tenant_configs/bank_b.yaml. "
+    "Supplies the tenant, base URL, money threshold and allowlist in one file.",
+)
+_REQUESTED_BY_OPTION = typer.Option(
+    None,
+    "--requested-by",
+    envvar="INTERFACEAI_REQUESTED_BY",
+    help="Who asked for this run. Recorded in the evidence; never changes behaviour.",
 )
 _CAPABILITY_OPTION = typer.Option(
     None, "--capability", "-c", help="Capability NAME. Resolves its approved artifact."
@@ -384,8 +436,10 @@ _INPUT_OPTION = typer.Option(None, "--param", help="Bind a typed input: name=val
 
 @app.command("replay")
 def replay_cmd(
-    artifact: Path = _ARTIFACT_ARG_OPTIONAL,
+    artifact: str = _CAPABILITY_ARG,
     capability_name: str = _CAPABILITY_OPTION,
+    requested_by: str = _REQUESTED_BY_OPTION,
+    tenant_config: Path = _TENANT_CONFIG_OPTION,
     version: int = _VERSION_OPTION,
     param: list[str] = _INPUT_OPTION,
     maps: Path = _MAPS_OPTION,
@@ -409,18 +463,27 @@ def replay_cmd(
     # NAME > PATH. `--capability read_savings_balance` is the address an agent
     # knows; the filename is storage layout. The positional path stays for the
     # low-level case (replaying an arbitrary file, including a draft in a test).
-    if capability_name:
-        if artifact is not None:
-            console.print("[red]give either an artifact path or --capability, not both[/]")
-            raise typer.Exit(2)
+    # A NAME OR A PATH, in the one positional. `replay read_savings_balance`
+    # reads like `git checkout <branch>` -- the thing being acted on is the
+    # subject, not a flag. A path still works for an arbitrary file or a draft
+    # in a test, and is told apart by simply being one.
+    name = capability_name or (str(artifact) if artifact is not None else None)
+    if name is None:
+        console.print("[red]which capability? e.g. `replay read_savings_balance`[/]")
+        raise typer.Exit(2)
+    if capability_name and artifact is not None:
+        console.print("[red]give a capability once, as a name or a path, not both[/]")
+        raise typer.Exit(2)
+
+    looks_like_a_path = Path(name).exists() or name.endswith(".json") or "/" in name
+    if looks_like_a_path:
+        artifact = Path(name)
+    else:
         try:
-            artifact = capability_mod.resolve_artifact(ARTIFACTS, capability_name, version=version)
+            artifact = capability_mod.resolve_artifact(ARTIFACTS, name, version=version)
         except KeyError as exc:
             console.print(f"[red]{exc}[/]")
             raise typer.Exit(1) from exc
-    elif artifact is None:
-        console.print("[red]need --capability NAME (or an artifact path)[/]")
-        raise typer.Exit(2)
 
     settings = get_settings()
     inputs: dict[str, str] = {}
@@ -441,11 +504,30 @@ def replay_cmd(
             update={"target": c.target.model_copy(update={"tenant": name, "base_url": base})}
         )
 
+    # ⚠️ ONE FILE BEATS FOUR ENV KEYS, and it is additive -- `.env` stays the
+    # default so every command in the README still works. A tenant config
+    # carries permissions and a money threshold, so naming the exact file that
+    # granted them is the point: auditable in a way `--tenant feature` is not.
+    deployment = None
+    if tenant_config is not None:
+        try:
+            deployment = tenant_config_mod.load_tenant_config(tenant_config)
+        except (ValueError, OSError) as exc:
+            console.print(f"[red]{exc}[/]")
+            raise typer.Exit(1) from exc
+        if tenant and tenant != deployment.tenant:
+            console.print(
+                f"[red]--tenant {tenant!r} contradicts {tenant_config} "
+                f"(tenant: {deployment.tenant!r}). Give one or the other.[/]"
+            )
+            raise typer.Exit(2)
+        tenant = deployment.tenant
+
     if tenant and tenant != loaded.target.tenant:
         # 3.7: the artifact is tenant-agnostic; only the control maps and the
         # entry URL are tenant-specific. `maps adopt` is what establishes that
         # the locators actually transfer.
-        base = settings.parabank_b_base_url if tenant != "baseline" else settings.parabank_base_url
+        base = _base_url_for(tenant, deployment, settings)
         loaded = retarget(loaded, tenant, base)
         console.print(f"[cyan]cross-tenant[/] replaying on {tenant} ({base})")
 
@@ -475,7 +557,13 @@ def replay_cmd(
         # tenant's pixels. Cross-tenant replay predates composition here, so
         # the two were never exercised together until a loan capability that
         # invokes `log_in` was pointed at tenant B.
-        base = settings.parabank_b_base_url if tenant != "baseline" else settings.parabank_base_url
+        base = (
+            deployment.base_url
+            if deployment is not None
+            else (
+                settings.parabank_b_base_url if tenant != "baseline" else settings.parabank_base_url
+            )
+        )
         library = {n: retarget(c, tenant, base) for n, c in library.items()}
 
     result = replay_mod.replay(
@@ -489,11 +577,20 @@ def replay_cmd(
         },
         vision=vision_llm.call_vision_llm,
         allowed_origins=settings.allowed_origins,
-        confirm_money_above=settings.confirm_money_above(loaded.target.tenant),
-        permitted=settings.allowed_capabilities(loaded.target.tenant),
+        confirm_money_above=(
+            deployment.confirm_money_above
+            if deployment is not None
+            else settings.confirm_money_above(loaded.target.tenant)
+        ),
+        permitted=(
+            deployment.permitted
+            if deployment is not None
+            else settings.allowed_capabilities(loaded.target.tenant)
+        ),
         confirm_risky=confirm_risky,
         headless=headless,
         operator=handoff.TerminalOperator() if operator else None,
+        requested_by=requested_by or _whoami(),
         library=library,
     )
 

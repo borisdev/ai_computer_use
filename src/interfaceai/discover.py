@@ -354,12 +354,13 @@ def discover(
     confirm_risky: bool = False,
     headless: bool = True,
     allowed_origins: tuple[str, ...] = (),
+    requested_by: str = "cli",
     forbidden_values: frozenset[str] = frozenset(),
     config: DiscoveryConfig | None = None,
 ) -> DiscoveryOutcome:
     """Drive the surface until the goal is met, and record what worked."""
     started = time.monotonic()
-    evidence = EvidenceWriter(evidence_root, goal=goal)
+    evidence = EvidenceWriter(evidence_root, goal=goal, requested_by=requested_by)
     evidence.event("discovery_config", target=target.model_dump(), max_steps=max_steps, name=name)
 
     policy = ActionPolicy(allowed_actions=DISCOVERY_ACTIONS, forbidden_values=forbidden_values)

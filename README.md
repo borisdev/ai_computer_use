@@ -25,7 +25,7 @@ artifact, deterministic replay with typed outcomes, human handoff of the live
 session, and one artifact serving two tenants.
 
 ```
-264 tests — 233 offline, 31 live · ruff clean
+269 tests — 238 offline, 31 live · ruff clean
 ```
 
 | Piece | State |

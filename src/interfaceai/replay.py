@@ -168,6 +168,7 @@ def replay(
     confirm_risky: bool = False,
     headless: bool = True,
     operator: Operator | None = None,
+    requested_by: str = "cli",
     library: Mapping[str, Capability] | None = None,
 ) -> CapabilityResult:
     """Run an APPROVED capability. The production path an agent would trigger."""
@@ -177,7 +178,9 @@ def replay(
         # cyclic is an authoring fault -- catch it before a browser opens.
         validate_invocations(capability, library)
 
-    evidence = EvidenceWriter(evidence_root, goal=capability.goal, model="replay/none")
+    evidence = EvidenceWriter(
+        evidence_root, goal=capability.goal, model="replay/none", requested_by=requested_by
+    )
     evidence.event(
         "replay_started",
         capability=capability.name,

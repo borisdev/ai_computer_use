@@ -172,7 +172,17 @@ class TerminalOperator:
         if request.completed_steps:
             print(f"  completed  {', '.join(request.completed_steps)}")
         if request.frame:
-            print(f"  screenshot {request.frame}")
+            # ⚠️ A `file://` URL, not a bare path. Most terminals make it
+            # clickable, and the browser is HEADLESS here -- this frame is the
+            # only view of the page the operator gets. A path they have to copy
+            # into something else is a view they will not look at.
+            #
+            # ⛔ NOT a localhost URL to a served page. There is no live view to
+            # serve; it would be this same still image behind a web server,
+            # looking authoritative while the page moved on. §3.6 puts a
+            # co-browsing console out of scope and #9 records the design that
+            # would actually work.
+            print(f"  screenshot {Path(request.frame).resolve().as_uri()}")
         print("=" * 72)
         print(_HELP)
 
