@@ -458,14 +458,7 @@ what each one shows in [`evidence/README.md`](evidence/README.md).
 ### A payment large enough to need a person
 
 ```bash
-uv run interfaceai replay artifacts/request_loan.v1.approved.json \
-  --param amount=500 --param down_payment=100 --confirm-risky
-```
-```
-SUCCESS request_loan in 10 steps
-```
-```bash
-uv run interfaceai replay artifacts/request_loan.v1.approved.json \
+uv run interfaceai replay artifacts/request_loan.v2.approved.json \
   --param amount=25000 --param down_payment=5000 --confirm-risky
 ```
 ```
@@ -474,9 +467,21 @@ NEEDS A HUMAN at step 5: this step is irreversible and amount=25000,
   a person has to confirm it
 ```
 
-Same artifact, same flag, different **value**. Drop the flag and both stop, for
-different and distinguishable reasons. *Why a run-level flag cannot answer a
-tenant-level policy is [REPORT §6](REPORT.md#6-safety).*
+Over the tenant's $1,000 threshold, so it stops at the submit button with the
+form already filled. An ordinary $500 gets **past** the money rule — drop
+`--confirm-risky` and both stop, for different and distinguishable reasons.
+
+⚠️ **The $500 case does not currently end in `SUCCESS`, and that is a finding.**
+v2 added `wait_for loan_result_panel` after the irreversible click, and the
+happy path stopped succeeding immediately: ParaBank returns *"An internal error
+has occurred"* for the submission replay makes, while the same inputs driven by
+hand return *"Loan Request Processed"*. **v1 reported `SUCCESS` for that error
+page for as long as it existed**, because nothing after the click looked. Root
+cause open — [#12](https://github.com/borisdev/ai_computer_use/issues/12), with
+everything already ruled out.
+
+*Why a run-level flag cannot answer a tenant-level policy is
+[REPORT §6](REPORT.md#6-safety).*
 
 ### A session that dies mid-flow
 
@@ -520,7 +525,7 @@ against the live app.
 
 ```bash
 uv run interfaceai env reset
-uv run interfaceai replay artifacts/request_loan.v1.approved.json \
+uv run interfaceai replay artifacts/request_loan.v2.approved.json \
   --param amount=25000 --param down_payment=5000 --confirm-risky --operator
 ```
 

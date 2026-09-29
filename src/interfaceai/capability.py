@@ -154,6 +154,9 @@ _NEEDS_CONTROL = frozenset(
     {StepVerb.ENTER, StepVerb.CLICK, StepVerb.SELECT, StepVerb.WAIT_FOR, StepVerb.EXTRACT}
 )
 _NEEDS_VALUE = frozenset({StepVerb.ENTER, StepVerb.SELECT})
+# Verbs that LOOK at the page rather than change it. An irreversible step must
+# be followed by one of these -- see `_irreversible_steps_are_observed`.
+_OBSERVING = frozenset({StepVerb.WAIT_FOR, StepVerb.OBSERVE, StepVerb.EXTRACT})
 
 
 class Step(Contract):
@@ -334,6 +337,42 @@ class Capability(Contract):
 
     approval: Approval = Approval.DRAFT
     approved_by: str | None = None
+
+    @model_validator(mode="after")
+    def _irreversible_steps_are_observed(self) -> Capability:
+        """Something irreversible must be followed by a look at what happened.
+
+        ⛔ `request_loan` ended on the click that submits a loan application.
+        Nothing followed it, so `Success` meant "we clicked" -- ParaBank could
+        reject the application, or render nothing at all, and the run reported
+        success either way. Found by Copilot on PR #5, filed as issue #11.
+
+        `_answers_are_checked` does not catch this and is not meant to: that
+        rule guards against handing back an unproven VALUE, and this is an
+        unverified ACTION. Arguably the worse of the two -- a wrong balance is
+        a bad answer, an unobserved submit is money moved with no record of
+        whether it landed.
+
+        ⚠️ An OBSERVATION, not a checkpoint. `log_in` already shows the shape:
+        it returns nothing and its final `wait_for` asserts arrival. Demanding
+        a checkpoint here would demand a predictable value, and a loan's result
+        is not predictable -- a denial is a legitimate answer, not a violated
+        expectation. What must be true is that the run LOOKED.
+
+        `risky` on the step is deliberately included alongside the control's
+        own `irreversible`: a step can be marked risky for a control that is
+        not, and both mean an effect nobody can take back.
+        """
+        for n, step in enumerate(self.steps):
+            if not step.risky:
+                continue
+            if not any(later.verb in _OBSERVING for later in self.steps[n + 1 :]):
+                raise ValueError(
+                    f"{self.name} step {n} is irreversible and nothing after it looks at the "
+                    "page, so a run cannot tell a completed action from one that silently did "
+                    "nothing. Add a wait_for, observe or extract on what the action produces"
+                )
+        return self
 
     @model_validator(mode="after")
     def _answers_are_checked(self) -> Capability:

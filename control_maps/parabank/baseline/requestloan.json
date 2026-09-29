@@ -333,43 +333,6 @@
       "panel": null
     },
     {
-      "id": "from_account_select",
-      "label": "From account #:",
-      "role": "select",
-      "description": "Dropdown for selecting the account number to apply the loan from",
-      "status": "ready",
-      "click_point": {
-        "x": 839,
-        "y": 331
-      },
-      "locator": {
-        "schema_version": 1,
-        "template_png": "iVBORw0KGgoAAAANSUhEUgAAAPAAAABgCAIAAACsUWiGAAABbElEQVR4nO3csUkEURRAUUd-DQoWsY1sg9uImS2YCDawmcjmazQ2YDQM_PFyTgUvuDx-8HnLuq4PUPE4ewDYk6BJETQpgiZF0KQImhRBkyJoUgRNiqBJETQpgiZF0KQImhRBkyJoUgRNiqBJETQpgiZF0KSM75_77BlgNzY0KYImRdCkCJoUQZMiaFIETYqgSRE0KYv70JTY0KQImhRBkyJoUgRNiqBJETQpgiZF0KQImhRBkyJoUgRNiqBJGW_vs0eA_djQpIyXp9kjwH5saFIETYqgSRE0KYImRdCkjOfX0-wZ-NvX-WP2CP-PQzMHdbucBL2BJwcpgiZF0KQImhRBkyJoUgRNiqBJETQpgiZF0KQImhRBkyJoUgRNyrhdfPCnY_m8-uBPhycHKYImRdCkCJoUQZPiLsdxOWOwgbscB-UuxzaeHKQImhRBkyJoUgRNiqBJETQpgiZF0KQImhRBkyJoUgRNiqBJ-QWvtyMsYHSASQAAAABJRU5ErkJggg==",
-        "reference_size": {
-          "width": 1280,
-          "height": 900
-        },
-        "reference_crop": {
-          "x": 719,
-          "y": 267,
-          "width": 240,
-          "height": 96
-        },
-        "click_offset": {
-          "x": 120,
-          "y": 64
-        },
-        "match_threshold": 0.95,
-        "ambiguity_margin": 0.05
-      },
-      "reason": null,
-      "policy": {
-        "irreversible": false,
-        "sensitive": false
-      },
-      "panel": null
-    },
-    {
       "id": "apply_now_button",
       "label": "APPLY NOW",
       "role": "button",
@@ -874,6 +837,95 @@
       "click_point": null,
       "locator": null,
       "reason": "no distinctive patch around the point (self-match returned incompatible: template is effectively constant (std=0.000); it would match every uniform region at score 1.0. Re-record with more context.)",
+      "policy": {
+        "irreversible": false,
+        "sensitive": false
+      },
+      "panel": null
+    },
+    {
+      "id": "loan_result_panel",
+      "label": "Loan Request Processed",
+      "role": "table_control_panel",
+      "description": "The processed-loan result: one row per field, anchored on the heading.",
+      "status": "ready",
+      "click_point": {
+        "x": 495,
+        "y": 290
+      },
+      "locator": {
+        "schema_version": 1,
+        "template_png": "iVBORw0KGgoAAAANSUhEUgAAAOYAAAAeCAIAAAC3yfWYAAAK3ElEQVR4nO2bf2wT5xnHv9h3toltYseJc84PnITE0BCS4AyCgELXpAIVutLSMaoGilTQSlsVrapQp1Wr2o3RpRslUkc6tWihZFqphAalILImtKQkSmgJLU0oJDQmP-3EsXOuz8n57nzZH3aCodR2gI25u88_Vvw-73Pf575P3nvPZ8-YmJiAhET8ILvbAiQkpofUshJxhtSyEnGG1LIScQYReuVdB98-VW0HTHNrni60kHdVVLie61GolGaT8cGVC9ZZ1Mq7oWuasO3nOhtZwyOL003fP6U3r5GkkrUFJfO2L73ZlB8Z_HeH3v24qk9UZBYd2Goxx1ZvnK2yHOvvsvVV1TS88ZXvbmuJgVHHweOXa5sG7ELsc3jHiLu-rnnb-1ft_H9OWRxDRA-5u4St-v5RV-uFS_vqBnvhP9H47Yb8_4GrQURcvQMdLKCKFjdVI-9r7-r74GRH_Yjo_ubSP-1pz8xW_DeExhXTa1nv4NXq45ca7V43CxDK2ZnUplWFa2ZPecJ1nru4_-zA-b4xBjLKlFJeVvxU_iwlAJ4--PbH1XYkFZbuWcwfOd3VaPO6CW35SuuOlUZDbEdX6g0rlhZ7u527uniM0j0sLCSAgKuzq6ru2xb7GANodEkrVhbvKDVog3N4tq35bOVpZy8rn51NPbIsR3Ouedc3PExz__F0oZl1VFZ_doRGUuHSAxvTDbjppSpyfl_L2Y5DrY6OET8DkjIllS-dv6nEoJ2sFwDonud-16PJsx6omBPlWk-qC_LnmXhXy6FBBr4uOwvT2OR5W_RytqO6rq8nJSQsmhcBV_ekbEGWlGwoLyt-qkinnRq9haJiGY2aueHc3rNTdmTF5vx1TKNlXZ3nnq3p7gUAaDQkw_h7bT273nZ2VJTtzFcBgc6m5ueOOxkAKmWS4HfYh2prP2O2lO20qACZggAAZrDrtzVuB0FCAARvfV2zX_fAH4vUMasIcEIAAAi5EgAC9q8-f_ZQnwPQmFLvVY212twnjjZxqrLXitQA19nc9EKdmwMAMPaBqlpHEsEDABHj6hU5P9ty_NMXzo4BgEpJgXfYh2oPD7X23fvWmgTKlEQ53Q4BgIxK1ppT1IrYrgmhAgEFIQfEoFCmt7PygscBBP-M6sWUbECmIUT3iPODQw0dfcv2rKW0t1zUOkobZTS6HS81eq63Q4zNiGvE3LLjwwc_6u4FoEn7zbYla1LkfufVXe98Xs-MHTnZ8WB2SQGcR5qcDKDJth7YMsckuPZVn6odGatvGtiUPcc05ceI17Tm_neWGdB76aV3vz4v8K1nHfb8aMtPiID94sVDNhGAxkTlqQCv82BdnwPQZBe9s8ViJrnO059uqfPU111aZymxCs4PmtwcAF3m69sWrdCj51zLs4cHAShi3MRHye86cXEMkC1cU7ZnmU4JuLovVJ2mFQTrBvXAY8u0-NcLbX7oMl_evtg6M6YD-kcHDp4eYgAQ2gKTCggELeJoj8K6qGZVpkUrx_jw3mheBGUj2bxn2-IlWrbto8bnmj0dzReOWFM2aW-1KB5aNvJoVDs8HACd-fVtJeF2TItYW9brHGwZAYA867zyFDkAZUraBqu2vtGLEWejkyuYTe3c-fOd12aozHoZRkSG8XmBqZaFjvpFoUELwJT5YHbH-S6R89IuAT_YsvbLW165fOOburQda7NMJLx2RxsNQJZXSFEkAIU5b_b8hq87aEejk8uDs50BgLzCvFK9HIA5f86KhsEjdIxFwzsaKb9VH1zzxPNNF_arLGssKeacwtdyYk0esUaydFXJhjQ5pu7AVGlPlWVZtEAMXpgRlI28_DkLtQBU1lXLavK9DGQG7e0VxUYajdmOObdmR5BYW5ZjWAYAZEkpqslPl-SGlAQNvAxYNyMCAVf3t_tPdzfavO4IN8gzdabgdouUa2eSgB9CgJuOYqpw0ZsPZ5lnhqsSzx-t--nR8Cje7uShndSsJ0OaiQSzFqBjPVaU_LOpDWWpLUeH3PRQ7eGhWkChS1qRP6diZai3bhFN0oY1i7YXzbruUzy91qy5QdUPesEhFEBNBZBqS05o9-Xqu42itJFG_9N2hCYFX5wc5wtuKsTAKMc6v7fBGOUDwfc4we_0ywEAAZcgTgDABMuzAz3dr_6toz0A0kA9uiRtgU5sq79wbEgMJYSfEQGAlIlujk0QAbDjMwAAEwGaY503XKiFST2puW9uvSeHAJjhfTWtdS44euyXxqgE2XWqjOa0Uip8oSbnJosjTLhmFgCEkIwJUXBzbALHjU8Ei-ZcflYMBYhTAf6I-Z1-Xl9cskfXc_gLx-V-T6dH4Gh3fbP7dI-3siIvR8V6Aj9c4E1rDOO76wWTMsI36UtUL1wIBTDXAm5i5S0VhQij-tu0I7ZtbayrrFo3y4hBGiI94ueQELw60CPjPgBIyNbJhq_0tQcAzFy9tvjJLBKCx4Zp76wjoTGuv49qPeygPf3vncm0rE7WAKRGqQZoQDcvd_OSxBtuqbj-BD1AQ6RpgQveuAjj_UxYBCELTuFZIbTSC_7hsIDI-QEAcn1WztasHAAc42k9c6G6lfYN9Jx0ZD2Tdacqv5FoXpBqTBY-FcCONnwxYGPk2QXZpbdVFBlhdPNt2hEbsT5KUCQnL0kFAFv7ldaRAABuZODDLxkAZKqxIFkOQhb2bxUYau_8cAgAIPD8ND5Ij0TqPMvjZhkA2xcddf08AI3OODcRADpbutvoAADmatcbtS1vHOn6mgkodIbsxKDm4Ghg6EpPqycsI6E0agDA5xi2MQD47i-vnAoLiJyfc1zdV_PJk3ubP3TwABSaxNJiKv3a7MnljfXT7J05A0GieqHQpSw0AIDt0tV2BgB7-Ux7dYPtWOuATZDfTlGRR2O24-rN7YiN762yQ1d-tevKDe9ZylbsWq6_v9zc8PeeAY_jT385Ua0mfD4BAOSa1eXZOYScyUjOAG3D-LHaT9p0oBlyYUlK-zkn7er5Qw2_eV3utKXdRGzi8nLzyf02W-C7w_V9pRU5GRrDxvuotqMO2tO_u2rQmEiOevw8oDYbH1fJQehXz9OcamXgGdxd5TAmKjmWhxLwTyVMsBYY3h9w-XyDu98aNRL-YTahwCBrd4k8AgAQMb8CpG-EoX3M_r_WHzOo1AgMu8Z9AJmaXkaRQMBIzSS_8vN-Z9W7n5zMzX1-bWbqHXl0Q0T2AiD0q-9LO3N4cNjV_-qfB9Vy0RcAgPSi-eszSBC3XpRCiFiyKkY7-ndXOYwGkmNEhRLwI3S2Y2MaD2z1uYWVv1ywKl0JwOcTAJnRbH5x6_KtuSoAmozcF9ebFyYSCPC8Sr9-XemO8nsen69RAzRzx548ajJyNxfNBODrufxeu5eDPLXYWvlE7sJEGSAOe_w8CEvR_N9vzMkgAJBzy0tfKTUYlQDEYWh-tq5kfXJ4yfKMn1h_XUZlKwE_r6bSnq-wPhTchAnBrULE_Jr07RXFD5mVgDDsYmyucZ96Vmnpgl0VlrkqAPKMgtz7DTIAvI_pZwJ38PlrZC8AeWpBceUT80oNMkD0BYj0dOrRh5dXrjPpidsrKlrJMdshDAua9Y8t2phFhJ3tmJgR_FVCaDv8o0fwnqxprB4QyfT5e7cEz6NEnBFnX4uRkJBaViLOkFpWIs74P9vLSsQ_M6QfhUvEF9LGQCLOkFpWIs6QWlYizpBaViLOkFpWIs6QWlYizvg3FULIN8OpBJ8AAAAASUVORK5CYII=",
+        "reference_size": {
+          "width": 1280,
+          "height": 900
+        },
+        "reference_crop": {
+          "x": 486,
+          "y": 276,
+          "width": 230,
+          "height": 30
+        },
+        "click_offset": {
+          "x": 9,
+          "y": 14
+        },
+        "match_threshold": 0.95,
+        "ambiguity_margin": 0.05
+      },
+      "reason": null,
+      "policy": {
+        "irreversible": false,
+        "sensitive": false
+      },
+      "panel": {
+        "columns": [
+          "field",
+          "value"
+        ],
+        "key_column": "field",
+        "dx": -10,
+        "dy": 22,
+        "width": 500,
+        "height": 80,
+        "key_dx": -10,
+        "key_dy": 22,
+        "key_width": 130,
+        "key_click_dx": null,
+        "row_pitch": 23
+      }
+    },
+    {
+      "id": "from_account_select",
+      "label": "From account #:",
+      "role": "select",
+      "description": "Dropdown for selecting the account number in the 'Apply for a Loan' section.",
+      "status": "ready",
+      "click_point": {
+        "x": 938,
+        "y": 316
+      },
+      "locator": {
+        "schema_version": 1,
+        "template_png": "iVBORw0KGgoAAAANSUhEUgAAAPAAAABgCAIAAACsUWiGAAABrElEQVR4nO3bMYoUURRA0R75oFFDIyoI5o2ByWxB6MCNGPdq3IiZWzBxCQaC0xgIE8wgWK5BaesPt8_ZwHvBrUcFVVfLsmyg4tHsBeCcBE2KoEkRNCmCJkXQpAiaFEGTImhSBE2KoEkRNCmCJkXQpAiaFEGTImhSBE2KoEkRNCmCJkXQpAiaFEGTImhSBE2KoEkRNCmCJkXQpAiaFEGTImhSBE2KoEkRNCnjdH83ewcme_b4yewVzsaFJkXQpAiaFEGTImhSBE2KoEkRNCmCJuVqWZbZO8DZuNCkCJoUQZMiaFIETYqgSRE0KYImRdCkCJoUQZMiaFIETYqgSRmfPs9egQfs7fXsDf6SC03KePl89go8SN9uZm_wT1xoUgRNiqBJETQpgiZF0KSMFx_frDzy-7svK0_kcoyn71fN68eHtZ8fLopXDlIETYqgSRE0KYImRdCkCJoUQZMiaFIETYqgSRE0KYImRdCkCJqU4QNlSob_RyjxykGKoEkRNCmCJmW8frXSpN_L5v7X5vRzc3u30kQu0NjtdiuM2W63-_3-eDweDoevJ03zv_wBbwcmPVc2oKcAAAAASUVORK5CYII=",
+        "reference_size": {
+          "width": 1280,
+          "height": 900
+        },
+        "reference_crop": {
+          "x": 818,
+          "y": 252,
+          "width": 240,
+          "height": 96
+        },
+        "click_offset": {
+          "x": 120,
+          "y": 64
+        },
+        "match_threshold": 0.95,
+        "ambiguity_margin": 0.05
+      },
+      "reason": null,
       "policy": {
         "irreversible": false,
         "sensitive": false

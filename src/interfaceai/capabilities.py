@@ -267,7 +267,7 @@ READ_SAVINGS_BALANCE = Capability(
 
 REQUEST_LOAN = Capability(
     name="request_loan",
-    version=1,
+    version=2,
     goal="apply for a loan of a given amount with a given down payment",
     vocabulary_version=VOCABULARY_VERSION,
     target=TARGET,
@@ -276,6 +276,13 @@ REQUEST_LOAN = Capability(
     params=(
         ParamSpec(name="amount", slot="amount"),
         ParamSpec(name="down_payment", slot="down_payment"),
+        # ⚠️ NO `from_account_id`. I added one, and a MEASUREMENT removed it:
+        # ParaBank accepts the form on the select's default value and returns
+        # "Status: Approved". I had claimed the opposite -- that v1 never
+        # submitted anything -- on the strength of a probe that printed only
+        # the first 700 characters of `#rightPanel`, which showed the form
+        # while the result block sat below the truncation. A truncated string
+        # read as evidence. `.claude/rules/checks.md`, exactly.
     ),
     returns=(),
     requires=(
@@ -340,11 +347,32 @@ REQUEST_LOAN = Capability(
         Step(
             verb=StepVerb.CLICK,
             control=ControlRef(screen="requestloan", control_id="apply_now_button"),
+            # ⚠️ DECLARED ON THE STEP as well as on the control. The control map
+            # carries `ControlPolicy.irreversible` and that is defence in depth,
+            # but a map is per-tenant and is not what a reviewer reads. An
+            # artifact that does not say which of its own steps cannot be taken
+            # back is not reviewable, and `_irreversible_steps_are_observed`
+            # cannot check what the artifact does not state.
+            risky=True,
             note="Submits a loan application. Irreversible.",
         ),
+        # ⛔ WITHOUT THIS THE RUN CANNOT TELL A SUBMITTED LOAN FROM A SILENT
+        # NO-OP. `Success` used to mean "we clicked" -- ParaBank could reject
+        # the application, or render nothing, and the run said success anyway.
+        # Copilot, PR #5, issue #11.
+        #
+        # The landmark is the "Loan Request Processed" heading, which exists
+        # ONLY after a submission is processed. That is what makes this a check
+        # rather than a pause: the heading cannot be there if the loan was not.
+        Step(
+            verb=StepVerb.WAIT_FOR,
+            control=ControlRef(screen="requestloan", control_id="loan_result_panel"),
+            note="The processed-loan result. Its heading cannot render unless the loan went in.",
+        ),
     ),
-    # Nothing is returned, so nothing needs checking -- reaching the submit is
-    # the whole of this capability, and the confirmation gate is the point.
+    # Still nothing RETURNED -- a loan's outcome is not predictable, and a
+    # denial is a legitimate answer rather than a violated expectation. What
+    # must be true is that the run LOOKED, which the wait_for above asserts.
     checkpoints=(),
 )
 

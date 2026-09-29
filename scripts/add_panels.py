@@ -44,6 +44,7 @@ from interfaceai.screenshot2controls import (
 
 OVERVIEW_SHOT = ROOT / "evidence" / "runs" / "20260926T022551Z" / "frames" / "004-03-overview.png"
 ACTIVITY_SHOT = ROOT / "tests" / "fixtures" / "activity-13344.png"
+LOAN_RESULT_SHOT = ROOT / "tests" / "fixtures" / "loan-result.png"
 
 # --- overview.htm: eleven accounts, one row each ----------------------------
 #
@@ -153,6 +154,50 @@ NAV = LocatedControl(
 NAV_ANCHOR = (CropBox(x=291, y=270, width=168, height=32), ClickPoint(x=300, y=287))
 
 
+# --- the LOAN RESULT: what an irreversible step has to be able to observe ----
+#
+# ⛔ `request_loan` used to end on the irreversible click, so `Success` meant
+# "we clicked" and not "the loan was submitted". ParaBank could reject the
+# application, or render nothing, and the run reported success either way.
+# Found by Copilot on PR #5, filed as issue #11.
+#
+# The result is three label/value rows -- Loan Provider, Date, Status -- which
+# is the same shape as the account detail block and therefore a panel, not a
+# lone piece of text. Measured from the DOM oracle: rows at y 328, 351, 374,
+# so the pitch is 23, exactly the detail panel's.
+#
+# The landmark is the "Loan Request Processed" heading, which only exists AFTER
+# a submission is processed. That is what makes waiting on it a real check
+# rather than a pause: the heading cannot be there if the loan was not.
+LOAN_RESULT = LocatedControl(
+    id="loan_result_panel",
+    label="Loan Request Processed",
+    role=ControlRole.TABLE_CONTROL_PANEL,
+    description="The processed-loan result: one row per field, anchored on the heading.",
+    status="ready",
+    # ⚠️ The click point must sit INSIDE the anchor crop -- `_make_locator`
+    # refuses otherwise, since an offset measured from outside the landmark is
+    # not anchored to it. So the point is in the HEADING and the offsets reach
+    # down to the rows, rather than the point sitting on row one.
+    click_point=ClickPoint(x=495, y=290),
+    locator=None,
+    policy=ControlPolicy(irreversible=False, sensitive=False),
+    panel=PanelSpec(
+        columns=("field", "value"),
+        key_column="field",
+        dx=-10,
+        dy=22,
+        width=500,
+        height=80,
+        key_dx=-10,
+        key_dy=22,
+        key_width=130,
+        row_pitch=23,
+    ),
+)
+LOAN_RESULT_ANCHOR = (CropBox(x=486, y=276, width=230, height=30), ClickPoint(x=495, y=290))
+
+
 def _anchored(control: LocatedControl, shot: Path, anchor, point) -> LocatedControl:
     return control.model_copy(
         update={
@@ -169,6 +214,7 @@ def main() -> int:
             _anchored(NAV, OVERVIEW_SHOT, *NAV_ANCHOR),
         ],
         "activity": [_anchored(DETAILS, ACTIVITY_SHOT, *DETAILS_ANCHOR)],
+        "requestloan": [_anchored(LOAN_RESULT, LOAN_RESULT_SHOT, *LOAN_RESULT_ANCHOR)],
     }
     for tenant in store.tenants("parabank"):
         recorded = store.screens("parabank", tenant)
