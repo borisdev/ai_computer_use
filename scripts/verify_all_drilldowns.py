@@ -55,7 +55,14 @@ for a in sorted(accounts, key=lambda x: x.id):
         allowed_origins=settings.allowed_origins,
         library={n: approve(c, "probe") for n, c in LIBRARY.items()},
     )
-    # Read the detail page's own account number out of the evidence.
+    # ⚠️ THIS COMMENT USED TO SAY "read the detail page's own account number",
+    # and the code below does not. `drilled` only proves SOME detail panel was
+    # read, and the type comparison passes for every checking account if all
+    # eleven clicks land on the same one. Found by Copilot, PR #5.
+    #
+    # The id is now read out of the panel and compared, which is the check the
+    # comment always claimed: it fails when a drilldown lands on the wrong row
+    # even though a panel was read and the type happens to match.
     events = [json.loads(l) for l in (result.evidence_dir / "trace.jsonl").read_text().splitlines()]
     rows = [
         e for e in events if e["event"] == "panel_read" and e["control"] == "account_details_panel"
@@ -63,11 +70,14 @@ for a in sorted(accounts, key=lambda x: x.id):
     resolved = next((e for e in events if e["event"] == "row_resolved"), None)
     drilled = bool(rows)
     kind = type(result).__name__
-    ok = drilled and getattr(result, "observed", a.type) in (a.type, "SAVINGS")
+    # The detail page's OWN id, from the extracted outputs -- not from what we
+    # asked for. `found_account_id` is the row the run actually landed on.
+    landed = (getattr(result, "outputs", {}) or {}).get("found_account_id")
+    ok = drilled and landed == a.id
     hits += ok
     idx = resolved["index"] if resolved else "-"
     print(
         f"  {a.id}  {a.type:8s} index={idx!s:>2}  drilled={'yes' if drilled else 'NO '}  "
-        f"{kind:14s} {'OK' if ok else 'MISMATCH'}"
+        f"landed={landed or '-':>6}  {kind:14s} {'OK' if ok else 'MISMATCH'}"
     )
 print(f"\n{hits}/{len(accounts)} drilldowns opened the account that was asked for")

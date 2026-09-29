@@ -41,10 +41,35 @@ def test_an_unknown_term_raises_rather_than_returning_none() -> None:
 
 
 def test_the_prompt_block_carries_every_term() -> None:
-    """The inventory prompt and the artifact validator read one source."""
+    """The formatter carries every term.
+
+    ⚠️ Its docstring used to claim "the inventory prompt and the artifact
+    validator read one source", which this test does not check and which is
+    not true: `discover.py` passes the block to `_DECIDE_PROMPT` only. The
+    COARSE INVENTORY call -- the one that names the controls -- never sees it.
+    Narrowed 2026-09-29 (Copilot, PR #5); the gap itself is real and recorded
+    in docs/capabilities-and-vocabulary.md.
+    """
     block = VOCABULARY.as_prompt_block()
     for term in VOCABULARY.terms:
         assert term in block
+
+
+def test_the_vocabulary_reaches_the_DECIDE_prompt_and_not_the_inventory() -> None:
+    """Pin the real state, so "wire it into inventory" is a visible change.
+
+    A test asserting only that a formatter works says nothing about whether
+    anyone calls it. This says which caller does.
+    """
+    import inspect
+
+    from interfaceai import discover, screenshot2controls
+
+    assert "as_prompt_block" in inspect.getsource(discover)
+    assert "as_prompt_block" not in inspect.getsource(screenshot2controls), (
+        "the inventory now consumes the vocabulary -- update "
+        "docs/capabilities-and-vocabulary.md, this gap is closed"
+    )
 
 
 def test_the_version_is_the_one_the_module_publishes() -> None:
