@@ -509,7 +509,17 @@ def _hand_over(ctx: _Ctx, n: int, step: Step, blocked: NeedsOperator) -> str | N
             screen=blocked.screen,
             url=ctx.surface.current_url(),
             completed_steps=tuple(ctx.done),
-            frame=blocked.frame,
+            # ⛔ THIS WAS `blocked.frame`, WHICH IS None FOR 17 OF THE 19 PLACES
+            # a NeedsOperator is built -- so the human arrived with no picture
+            # of what stopped them, which is the one thing §3.6 names in its
+            # list of context to carry.
+            #
+            # An earlier fix attached a frame in `_finish`. That is the EXIT,
+            # reached long after the operator has already been handed this
+            # request, so it fixed the trace and not the human. Found by
+            # Copilot, PR #5. `before_frame` is the shot taken at the moment
+            # control transferred, which is the one they want.
+            frame=Path(before_frame) if before_frame else blocked.frame,
         ),
         ctx.surface,
     )

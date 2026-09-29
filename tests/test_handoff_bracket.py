@@ -195,3 +195,33 @@ def test_resume_does_NOT_re_run_entry_preconditions(tmp_path: Path) -> None:
         f"resume re-ran an ENTRY precondition; mid-flow it can never hold. got: {result}"
     )
     assert not [e for e in _events(ctx) if e.get("when") == "resume"]
+
+
+def test_the_OPERATOR_is_handed_the_screenshot_not_just_the_trace(tmp_path: Path) -> None:
+    """§3.6 asks the request to carry "the current state or screenshot".
+
+    ⚠️ It carried `blocked.frame`, which is None at 17 of the 19 places a
+    `NeedsOperator` is constructed -- so the human arrived blind. An earlier
+    fix attached a frame in `_finish`, which is the EXIT: long after the
+    operator has been handed the request. It fixed the trace and not the
+    person. Found by Copilot on PR #5.
+    """
+    seen: list[object] = []
+
+    class _Recording:
+        def adopt_policy(self, policy) -> None:
+            pass
+
+        def resolve(self, request, surface):
+            seen.append(request.frame)
+            from interfaceai.handoff import HumanResolution, Resolution
+
+            return HumanResolution(Resolution.RESUMED, [], "")
+
+    ctx = _ctx(tmp_path, _FakeSurface("http://bank/overview.htm"), [])
+    ctx.operator = _Recording()  # type: ignore[assignment]
+
+    _hand_over(ctx, 0, _OBSERVE, _BLOCKED)
+
+    assert seen and seen[0] is not None, "the operator was handed no screenshot"
+    assert Path(str(seen[0])).exists()

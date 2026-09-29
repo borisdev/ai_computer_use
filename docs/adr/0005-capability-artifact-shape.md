@@ -61,11 +61,21 @@ than the objects in memory, because a hand-edited file is the case that matters.
 
 ### 4. Preconditions are visual, and separate from steps
 
-`require` is a capability-level list, not a position in the step sequence,
-because it is checked **twice**: before the first step, and again after a human
-handoff. Resume is never "continue from line N" — the operator may have logged
-out or navigated anywhere, so resume re-observes and re-checks preconditions
-before acting (§3.6).
+`require` is a capability-level list, not a position in the step sequence.
+
+⛔ **This said it is checked "twice: before the first step, and again after a
+human handoff". It is checked ONCE, at entry, and the attempt to make the
+second half true broke every resume.** `requires` holds ENTRY conditions —
+`at_the_login_page` — which are necessarily false once a run is mid-flow, so
+re-running them told the operator "username_textbox should be present": blaming
+them for a page they were right to have left. Reverted within the hour; see
+[`what-went-wrong.md`](../what-went-wrong.md).
+
+Resume is still never "continue from line N". What it verifies is the stopped
+step's own footing — advance, retry, or stay paused, decided per verb, with an
+irreversible step never retried on a guess. The distinction this schema cannot
+express is **entry precondition versus invariant**, and only the second is
+resume-checkable: [issue #10](https://github.com/borisdev/ai_computer_use/issues/10).
 
 A precondition asks whether a control is present or absent, which
 `locate_control` answers with no model and no DOM. `authenticated` is "the Log
@@ -99,10 +109,19 @@ an artifact that could approve itself would make the gate decoration.
 
 ## Consequences
 
-- Discovery must emit this shape. It does not exist yet, so the two committed
-  artifacts are **hand-authored** — the target shape, not evidence.
-- The executor needs a control-map store keyed by `(app, tenant, screen)`. Not
-  built.
-- One capability cannot yet be expressed end to end: selecting one of eleven
-  near-identical account rows by a parameter. `ControlRef.discriminator` says
-  which row; nothing honours it — [issue 0007](../issues/0007-parameterised-row-selection.md).
+⚠️ **Written when none of this existed; corrected 2026-09-29 after Copilot
+pointed out that an accepted ADR's *current* consequences were factually wrong,
+which obscures which trade-offs actually remain.**
+
+- Discovery emits this shape. The contrast is measured and unflattering to the
+  hand: hand-authored artifacts carry **3 and 8** faults against a real control
+  map, the discovered one **0**.
+- The control-map store keyed by `(app, tenant, screen)` is built, and is what
+  makes cross-tenant reuse work at all.
+- Selecting one of eleven near-identical rows **is** expressible, but not the
+  way this ADR imagined: rows are not named or grounded. A
+  `TABLE_CONTROL_PANEL` is read whole, the row is picked in code, and reached
+  by a measured pitch — [0011](../issues/0011-control-panel-structured-read.md)
+  replaced [0007](../issues/0007-parameterised-row-selection.md).
+- **Still true:** a template locator is the least portable thing in the design,
+  and a reskinned tenant drops it to 8/25 (REPORT §4).

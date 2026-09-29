@@ -156,9 +156,16 @@ these 34 words.
   cannot silently redefine a term a saved artifact depends on. The `sensitive`
   flag landed with it — `username`, `password` and `ssn` — and it is what makes
   a literal credential un-storable rather than merely discouraged.
-- **A resolver.** ❌ Not built, and the vocabulary is **not in the inventory
-  prompt yet**. `VOCABULARY.as_prompt_block()` exists and nothing calls it, so
-  the 15/24/22 variance this was meant to fix has not been re-measured. For 34
+- **A resolver.** ❌ Not built, and the vocabulary reaches only ONE of the two
+  model calls. ⚠️ This used to say *"nothing calls `as_prompt_block()`"*, which
+  is false: `discover.py` supplies it to `_DECIDE_PROMPT`. The narrower and
+  still-real gap is that the **coarse inventory call** — the one that NAMES the
+  controls — does not receive it. Corrected 2026-09-29 (Copilot, PR #5).
+
+  ⚠️ And the 15/24/22 variance this was meant to fix **is gone anyway**,
+  measured: `scripts/measure_naming_churn.py` gives 36/36/36 and 26/26/26 over
+  three draws. It was the grid overlay fighting the read pass ([0008]), not a
+  naming problem. For 34
   terms the simplest implementation still wins: put the vocabulary in the prompt
   and let the model resolve directly, no separate step. A cached,
   embedding-backed resolver earns its complexity at thousands of terms, not at

@@ -2,8 +2,13 @@
 
 `live` — needs ParaBank up and seeded, and spends one model call.
 
-This is NOT the capability replaying from an artifact; the replay engine (§3.3)
-does not exist. It is proof that the *mechanism* reaches the right answer:
+⚠️ This is the LOWER-LEVEL MECHANISM test, not an implementation gap. It used
+to say "the replay engine does not exist"; it does, and
+`test_capability_one_live.py` drives the same flow through an artifact. Both
+are kept deliberately: if the artifact path breaks, this one says whether the
+perception underneath it still works. Corrected 2026-09-29 (Copilot, PR #5).
+
+What it proves, without an artifact:
 
     login            control map -> locate_control -> use_control
     overview         the same

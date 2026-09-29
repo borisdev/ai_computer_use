@@ -69,9 +69,14 @@ container is down is not — it would be asserting nothing.
 - `REPORT.md` — the brief's design write-up deliverable, seven mandated headings
 - `evidence/`, `artifacts/` — graded deliverables, see brief §6
 
-Not written yet: the agent loop, the control-map store, the replay engine, the
-escalation path. `REPORT.md` exists but most sections are marked pending. Read
-`HANDOFF.md` for what is actually done and measured.
+⛔ **This used to say the agent loop, the control-map store, the replay engine
+and the escalation path were "not written yet". All four exist and are central.
+The sentence outlived the work by many commits** — the exact failure this repo
+keeps hitting, now four times over (`findings.md`, the issues index, ADR 0005,
+here). Found by Copilot on PR #5.
+
+`interfaceai status` is the description that cannot go stale; `STILL-OPEN.md`
+carries the decisions; `docs/what-went-wrong.md` carries the defects.
 
 ## Conventions
 

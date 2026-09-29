@@ -37,6 +37,12 @@ def seeded():
     if not parabank.is_seeded():
         pytest.skip("ParaBank is not up; run `interfaceai env reset`")
     parabank.ParaBankAdmin().init_db()
+    yield
+    # ⚠️ RESEED AFTERWARDS TOO. Two tests here click the irreversible submit,
+    # so the LAST one in the module left a real loan application in the live
+    # database for whatever ran next -- the suite's seeded-state contract held
+    # for every test except the one that broke it. Found by Copilot, PR #5.
+    parabank.ParaBankAdmin().init_db()
 
 
 def _run(
