@@ -19,6 +19,63 @@ a **name** for the group, not behaviour:
 | `approve()` | `capability.approve` / `assert_replayable` | `interfaceai capability approve` |
 | `check()` | `control_map_store.check_capability` | `interfaceai capability check` |
 
+## ⭐ `JobRunner` is implemented. `JobQueue` is declared and nothing implements it.
+
+`src/interfaceai/jobs.py`. This is the seam §3.7 asks for — *"the core
+abstractions not to paint you into a corner"* — expressed as a **type** rather
+than as a class whose methods raise.
+
+```python
+@runtime_checkable
+class JobRunner(Protocol):
+    def run(self, request: JobRequest) -> CapabilityResult: ...   # InProcessRunner
+
+class JobQueue(Protocol):            # ⛔ nothing implements this
+    def submit(self, request: JobRequest) -> str: ...
+    def status(self, job_id: str) -> JobStatus: ...
+    def result(self, job_id: str) -> CapabilityResult | None: ...
+    def cancel(self, job_id: str) -> None: ...
+```
+
+**Why a Protocol and not `raise NotImplementedError`.** Both say "not built."
+A Protocol says it in the type system, where nothing can call it by accident;
+a raising method is a call site waiting to happen. `project.md` has the scar —
+three tuning constants shipped before the code ran once, each with a confident
+docstring nobody could falsify. This repo already does it the right way twice:
+`Surface` is a Protocol with no `DesktopSurface`, and `Operator` is a Protocol
+whose console is mocked by `TerminalOperator` being *minimal*.
+
+**What a queue would change: almost nothing.** `submit` returns a `JobId` that
+later resolves to the same `CapabilityResult` `run` returns today. That is why
+`JobRequest` carries only what a **caller asked for** — capability, params,
+tenant, who asked — and none of the **wiring** a deployment provides. A request
+holding a control-map store or a browser could never go on a wire, which is
+exactly the corner to avoid. A test asserts that split.
+
+⚠️ **`job` is not a new word.** The original schema had it: *a job is requested
+work; a run is an attempt.* That distinction was cut with the SQLite layer and
+is reintroduced as the CLI's noun. `JobStatus` deliberately does **not** reuse
+the outcome words — a job is `queued` or `running`; a run `Succeeds` or
+`NeedsOperator`. Collapsing them is how a caller ends up branching on
+"pending" as though it were an answer.
+
+⚠️ **And the CLI goes through it**, so the Protocol has a real caller. A
+declared interface nothing calls is the speculation this section warns about.
+
+## `banking-jobs`, the same app under a domain name
+
+```toml
+interfaceai  = "interfaceai.cli:app"
+banking-jobs = "interfaceai.cli:app"
+```
+
+The engine is domain-agnostic — `Surface` is a protocol, artifacts are
+tenant-agnostic — but the **vocabulary is retail banking**: 21 qualifiers,
+`amount`, `balance`, `ssn`. `banking-jobs` names the domain this instance
+speaks; a second domain would be a second entry point over the same engine.
+Both names ship, because renaming 68 committed command references to prove a
+point is churn.
+
 ⚠️ **So a `CapabilityService` class would be a facade over six functions that
 already have callers.** It adds a place to hang them and a single import for an
 agent. It does not add behaviour, and `project.md` says an abstraction with no

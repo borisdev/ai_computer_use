@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 import typer
+import yaml
 from rich.console import Console
 from rich.table import Table
 
@@ -18,6 +19,7 @@ from interfaceai import (
     control_map_store,
     decisions,
     handoff,
+    jobs,
     outcomes,
     parabank,
     screenshot2controls,
@@ -432,6 +434,11 @@ _VERSION_OPTION = typer.Option(
 )
 _ARTIFACT_ARG = typer.Argument(..., help="Path to an APPROVED capability artifact.")
 _INPUT_OPTION = typer.Option(None, "--param", help="Bind a typed input: name=value. Repeatable.")
+_PARAMS_FILE_OPTION = typer.Option(
+    None,
+    "--params",
+    help="A YAML file of inputs. Individual --param flags override it.",
+)
 
 
 @app.command("replay")
@@ -442,6 +449,7 @@ def replay_cmd(
     tenant_config: Path = _TENANT_CONFIG_OPTION,
     version: int = _VERSION_OPTION,
     param: list[str] = _INPUT_OPTION,
+    params_file: Path = _PARAMS_FILE_OPTION,
     maps: Path = _MAPS_OPTION,
     headless: bool = typer.Option(True, "--headless/--headed"),
     confirm_risky: bool = typer.Option(
@@ -486,7 +494,29 @@ def replay_cmd(
             raise typer.Exit(1) from exc
 
     settings = get_settings()
+    # ⚠️ A FILE IS THE BASE, FLAGS OVERRIDE IT -- the usual precedence, and the
+    # one that lets a committed file hold the real inputs while a flag tweaks
+    # one for a single run.
+    #
+    # Worth having because seven `--param` flags is unreadable, and the
+    # vocabulary already carries `street, city, state, zip_code, phone_number,
+    # first_name, last_name` for a contact-details capability. It is also the
+    # only form that is AUDITABLE: a params file can be committed and reviewed;
+    # shell history cannot.
     inputs: dict[str, str] = {}
+    if params_file is not None:
+        try:
+            loaded_params = yaml.safe_load(params_file.read_text())
+        except (OSError, yaml.YAMLError) as exc:
+            console.print(f"[red]cannot read {params_file}: {exc}[/]")
+            raise typer.Exit(1) from exc
+        if not isinstance(loaded_params, dict):
+            console.print(f"[red]{params_file} must be a mapping of name: value[/]")
+            raise typer.Exit(1)
+        # Everything an artifact binds is a string; YAML will happily hand back
+        # an int for `account_id: 13344` and the slot types are `STRING`.
+        inputs = {str(k): str(v) for k, v in loaded_params.items()}
+
     for item in param or []:
         name, _, value = item.partition("=")
         if not value:
@@ -566,32 +596,49 @@ def replay_cmd(
         )
         library = {n: retarget(c, tenant, base) for n, c in library.items()}
 
-    result = replay_mod.replay(
-        loaded,
-        inputs,
-        store=control_map_store.ControlMapStore(maps),
+    # ⚠️ THROUGH THE `JobRunner`, not straight to `replay`. The Protocol has a
+    # real caller because of this line -- a declared interface nothing calls is
+    # the speculation `project.md` warns about, and `JobQueue` next door is
+    # already carrying that risk deliberately.
+    #
+    # The split is the point: a JobRequest is what a CALLER asked for; the
+    # wiring below is what a DEPLOYMENT provides. A queue would serialise the
+    # first and never touch the second.
+    runner = jobs.InProcessRunner(
         evidence_root=EVIDENCE,
-        secrets={
-            "parabank_username": settings.parabank_demo_username,
-            "parabank_demo_password": settings.parabank_demo_password.get_secret_value(),
+        maps_root=maps,
+        replay_fn=replay_mod.replay,
+        wiring={
+            "store": control_map_store.ControlMapStore(maps),
+            "secrets": {
+                "parabank_username": settings.parabank_demo_username,
+                "parabank_demo_password": settings.parabank_demo_password.get_secret_value(),
+            },
+            "vision": vision_llm.call_vision_llm,
+            "allowed_origins": settings.allowed_origins,
+            "confirm_money_above": (
+                deployment.confirm_money_above
+                if deployment is not None
+                else settings.confirm_money_above(loaded.target.tenant)
+            ),
+            "permitted": (
+                deployment.permitted
+                if deployment is not None
+                else settings.allowed_capabilities(loaded.target.tenant)
+            ),
+            "headless": headless,
+            "operator": handoff.TerminalOperator() if operator else None,
+            "library": library,
         },
-        vision=vision_llm.call_vision_llm,
-        allowed_origins=settings.allowed_origins,
-        confirm_money_above=(
-            deployment.confirm_money_above
-            if deployment is not None
-            else settings.confirm_money_above(loaded.target.tenant)
-        ),
-        permitted=(
-            deployment.permitted
-            if deployment is not None
-            else settings.allowed_capabilities(loaded.target.tenant)
-        ),
-        confirm_risky=confirm_risky,
-        headless=headless,
-        operator=handoff.TerminalOperator() if operator else None,
-        requested_by=requested_by or _whoami(),
-        library=library,
+    )
+    result = runner.run(
+        jobs.JobRequest(
+            capability=loaded,
+            params=inputs,
+            tenant=tenant or loaded.target.tenant,
+            requested_by=requested_by or _whoami(),
+            confirm_risky=confirm_risky,
+        )
     )
 
     if isinstance(result, outcomes.Success):

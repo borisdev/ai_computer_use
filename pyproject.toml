@@ -31,6 +31,15 @@ dev = [
 
 [project.scripts]
 interfaceai = "interfaceai.cli:app"
+# ⚠️ The SAME app under a domain name. The engine (`src/interfaceai/`) is
+# domain-agnostic -- `Surface` is a protocol, artifacts are tenant-agnostic --
+# but the VOCABULARY is retail banking: 21 qualifiers, `amount`, `balance`,
+# `ssn`. `banking-jobs` names the domain this instance speaks, and a second
+# domain would be a second entry point over the same engine.
+#
+# Both names, because `interfaceai` is what every doc and every committed
+# command already says, and renaming 68 references to prove a point is churn.
+banking-jobs = "interfaceai.cli:app"
 
 [build-system]
 requires = ["hatchling"]
