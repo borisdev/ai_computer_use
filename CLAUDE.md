@@ -69,8 +69,10 @@ container is down is not — it would be asserting nothing.
 - `REPORT.md` — the brief's design write-up deliverable, seven mandated headings
 - `evidence/`, `artifacts/` — graded deliverables, see brief §6
 
-⛔ **This used to say the agent loop, the control-map store, the replay engine
-and the escalation path were "not written yet". All four exist and are central.
+⛔ **This used to say the agent loop, the control-map store, the replay engine,
+the escalation path and DISCOVERY were "not written yet". All of them exist and
+are central — discovery emits artifacts, and the one real limitation is that it
+cannot yet emit a panel-backed capability ([#6](https://github.com/borisdev/ai_computer_use/issues/6)).
 The sentence outlived the work by many commits** — the exact failure this repo
 keeps hitting, now four times over (`findings.md`, the issues index, ADR 0005,
 here). Found by Copilot on PR #5.

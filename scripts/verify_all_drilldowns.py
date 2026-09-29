@@ -70,10 +70,21 @@ for a in sorted(accounts, key=lambda x: x.id):
     resolved = next((e for e in events if e["event"] == "row_resolved"), None)
     drilled = bool(rows)
     kind = type(result).__name__
-    # The detail page's OWN id, from the extracted outputs -- not from what we
-    # asked for. `found_account_id` is the row the run actually landed on.
-    landed = (getattr(result, "outputs", {}) or {}).get("found_account_id")
-    ok = drilled and landed == a.id
+    # ⚠️ MY FIRST FIX FOR THIS WAS ALSO WRONG, twice over: it read
+    # `result.outputs`, which only a `Success` has -- so every CHECKING run,
+    # the interesting case, compared against nothing -- and it compared a
+    # string id to `a.id`, an int, so the equality could never hold anyway.
+    # Copilot caught both on PR #5's second pass.
+    #
+    # The `extracted` EVENT is recorded whatever the outcome, which is the
+    # point of having it: a run that fails its checkpoint still tells you which
+    # detail page it opened.
+    read = next(
+        (e for e in events if e["event"] == "extracted" and e.get("output") == "found_account_id"),
+        None,
+    )
+    landed = str(read["value"]).strip() if read else None
+    ok = drilled and landed == str(a.id)
     hits += ok
     idx = resolved["index"] if resolved else "-"
     print(

@@ -74,6 +74,10 @@ class Settings(BaseSettings):
     # Kept in step with `.env` deliberately: the demo must work from a clone
     # that never loads it. `request_loan` is absent from `feature` on purpose --
     # that exclusion IS the demonstration.
+    #
+    # ⚠️ A tenant NOT named here is REFUSED, not unrestricted. Only an entirely
+    # empty setting disables the gate. Adding a tenant to the system means
+    # adding it here, or its runs will not start.
     interfaceai_allowed_capabilities: str = (
         "baseline=*;feature=log_in,log_in_discovered,read_savings_balance"
     )
@@ -139,8 +143,19 @@ class Settings(BaseSettings):
         """
         for pair in self.interfaceai_confirm_money_above.split(","):
             name, _, amount = pair.partition("=")
-            if name.strip() != tenant or not amount.strip():
+            if name.strip() != tenant:
                 continue
+            # ⚠️ `baseline=` -- the tenant NAMED with no amount -- used to fall
+            # through this loop and return None, silently disabling the money
+            # guardrail. Same fail-open as `baseline=lots`, one character
+            # shorter, and it survived the first fix. A tenant that appears in
+            # the policy has asked for a threshold; an empty one is malformed,
+            # not absent. Copilot, PR #5 second pass.
+            if not amount.strip():
+                raise ValueError(
+                    f"confirm_money_above names {tenant!r} with no amount. Remove the entry to "
+                    "mean 'no threshold', or give it one -- an empty value silently gates nothing."
+                )
             try:
                 parsed = Decimal(amount.strip())
             except InvalidOperation as exc:

@@ -25,6 +25,12 @@ depends on.
 sensitive can never carry a literal value (enforced in `capability.py`), so a
 password reaches the page through an `input_ref` resolved at replay and never
 lands in a file. Assignment 3.4.
+
+⚠️ REACH, PRECISELY. `as_prompt_block()` is passed to discovery's DECIDE prompt
+and NOT to the coarse inventory -- the call that actually names the controls.
+Text here (and on the method) implied both. Corrected 2026-09-29 after Copilot
+read the module against its caller; the gap is real and tracked in
+docs/capabilities-and-vocabulary.md.
 """
 
 from __future__ import annotations

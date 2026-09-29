@@ -76,6 +76,13 @@ def test_read_the_savings_balance_of_account_13344() -> None:
     base = settings.parabank_base_url
     if not parabank.is_seeded(base):
         pytest.skip(f"{base} is not seeded; run `interfaceai env reset`")
+    # ⚠️ `is_seeded()` only checks that 13344 EXISTS, and ParaBank's CLEAN
+    # state keeps that id deliberately -- as a one-row CHECKING record worth
+    # $5,022.93. So this test passed its own guard and then asserted an 11-row
+    # SAVINGS table that was not there, failing after any CLEAN-state run.
+    # Every other live fixture calls init_db; this one never did. Copilot, PR
+    # #5 second pass.
+    parabank.ParaBankAdmin(base).init_db()
 
     store = ControlMapStore(MAPS)
     index = MapKey(app="parabank", tenant="baseline", screen="index")

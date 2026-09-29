@@ -188,9 +188,15 @@ something already measured:
 - **A step names a control; it does not carry one.** The locator lives in a
   per-tenant control map, which is what keeps one artifact usable on two tenants.
 
-Two capabilities are authored (`capabilities.py`): `log_in`, which exercises the
-sensitive slots, and `read_savings_balance`, which is capability 1. **Both are
-hand-written and both are `draft`.** Capability 3, 4 and 5 are not authored —
+⚠️ **Stale the moment it was written, and corrected 2026-09-29 (Copilot).** It
+said two capabilities were authored and both were hand-written drafts. There
+are four — `log_in`, `log_in_discovered`, `read_savings_balance`,
+`request_loan`, `session_loss_probe` — several approved, and one of them came
+from a real discovery run rather than a hand.
+
+**Do not re-state the count here.** `uv run interfaceai status` reads the
+artifacts, so it cannot drift; [docs/status.md](status.md) is that view
+committed. Capability 3, 4 and 5 are not authored —
 and capability 4 should not be until the entity-qualified-slot question in
 [issue 0006](issues/0006-controlled-vocabulary.md) is settled, because it is the
 one that needs to say whose `city` it is.

@@ -627,3 +627,36 @@ def test_a_committed_TRACE_carries_no_balance_or_secret() -> None:
             if money.search(blob):
                 offenders.append(f"{trace.parent.name}:{n} {blob[:90]}")
     assert not offenders, "regulated values in committed evidence:\n  " + "\n  ".join(offenders)
+
+
+def test_every_approved_artifact_the_docs_and_tests_LOAD_is_committed() -> None:
+    """`.gitignore` excludes approved artifacts, so committing one is deliberate.
+
+    ⚠️ And I forgot to. `request_loan.v2.approved.json` was created, approved,
+    referenced by the README and by `test_value_risk_live.py` -- and never
+    added, because `git add -A` respects `.gitignore`. A fresh clone got
+    `FileNotFoundError` on the documented demo and on the live suite. Found by
+    Copilot on PR #5's second pass.
+
+    The ignore rule is right: approval is a person's act and a new approved
+    artifact should not slip in unnoticed. What was missing is the check that
+    the deliberate act happened.
+    """
+    import re
+    import subprocess
+
+    tracked = set(
+        subprocess.run(
+            ["git", "-C", str(ROOT), "ls-files", "artifacts"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        ).stdout.split()
+    )
+    referenced: set[str] = set()
+    for path in (ROOT / "README.md", *(ROOT / "tests").glob("*.py")):
+        referenced |= set(re.findall(r"artifacts/[a-z_]+\.v\d+\.approved\.json", path.read_text()))
+    assert referenced, "nothing references an approved artifact; this asserted nothing"
+    missing = sorted(referenced - tracked)
+    assert not missing, "referenced but NOT committed (git add -f each): " + ", ".join(missing)

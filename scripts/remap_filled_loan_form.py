@@ -62,12 +62,20 @@ def main() -> int:
         print(f"  {TARGET}: {fresh.status if fresh else 'absent'} -- nothing written")
         return 1
 
-    for tenant in store.tenants("parabank"):
-        key = MapKey(app="parabank", tenant=tenant, screen="requestloan")
-        control_map = store.get(key)
-        controls = [c for c in control_map.controls if c.id != TARGET] + [fresh]
-        store.put(key, control_map.model_copy(update={"controls": controls}))
-        print(f"  {tenant}/requestloan: {TARGET} re-located on a filled form")
+    # ⛔ BASELINE ONLY. This used to loop over every tenant and write the
+    # BASELINE template into each of them, unverified -- so running it while
+    # tenant B was reskinned would have silently overwritten B's own locator
+    # with pixels from A. That is precisely the thing `maps adopt` refuses to
+    # do, bypassed by a helper script. Copilot, PR #5 second pass.
+    #
+    # Other tenants get it the supported way, which verifies before writing:
+    #     interfaceai maps adopt requestloan --from baseline --to <tenant>
+    key = MapKey(app="parabank", tenant="baseline", screen="requestloan")
+    control_map = store.get(key)
+    controls = [c for c in control_map.controls if c.id != TARGET] + [fresh]
+    store.put(key, control_map.model_copy(update={"controls": controls}))
+    print(f"  baseline/requestloan: {TARGET} re-located on a filled form")
+    print("  other tenants: interfaceai maps adopt requestloan --from baseline --to <tenant>")
     return 0
 
 
