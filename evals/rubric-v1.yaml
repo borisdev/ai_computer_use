@@ -6,13 +6,9 @@
 # a rubric written from memory grades the submission we think we were asked for.
 #
 # Weights follow S7's own sentence: "We'll weigh these roughly in this order."
-#
-# ⚠️ v2, after gpt-5.2-codex audited this file (`--critique-rubric`). The
-# original was a linear 8..1 ramp, which codex called "more aggressive than
-# 'roughly in this order'" -- an 8x spread read out of the word "roughly".
-# Now a mild taper: it still encodes the ordering, and no longer pretends to
-# know the first criterion is eight times the last. v1 is kept as
-# `rubric-v1.yaml` so the change to the instrument is auditable.
+# That is an ordering, not a set of numbers, so these are a linear ramp over
+# the eight criteria in the order given. The ramp is an interpretation and is
+# recorded here as one, not smuggled in as a fact.
 
 meta:
   source: Assignment-A-Computer-Use-Automation.md
@@ -21,7 +17,7 @@ meta:
   scale:
     0: "absent -- no attempt, or a TODO"
     1: "asserted -- claimed in prose, nothing behind it"
-    2: "partial -- built, but with a gap the submission does NOT name. A gap the submission states plainly is a 3, not a 2: disclosure is the thing being rewarded, and docking for it makes honesty cost a point."
+    2: "partial -- built, but with a gap the submission does not name"
     3: "solid -- built, works, and the limits are stated"
     4: "excellent -- built, measured, and the design choice is argued against a real alternative"
 
@@ -52,11 +48,7 @@ deliverables:
   - id: evidence_present
     quote: "A demonstration of the end-to-end flow in /evidence/ -- a saved example artifact plus logs from both a discovery run and a replay run"
     check: evidence_has_discovery_and_replay
-  # ⚠️ ADVISORY, not pass/fail. The brief says "IDEALLY include" -- codex
-  # caught this file turning an explicitly optional deliverable into a hard
-  # gate, which would mark down a submission that complied exactly.
   - id: evidence_error_case
-    advisory: true
     quote: "Ideally include one replay that hits an error or exceptional state (a bad input, a not-found result, or an injected/simulated failure) to show how your system detects and reports it"
     check: evidence_has_error_case
 
@@ -66,19 +58,18 @@ deliverables:
 criteria:
   - id: system_design
     name: System design
-    weight: 5
+    weight: 8
     quote: >-
       Clear boundaries, sensible data models, good trade-offs, appropriate
       simplicity. The artifact schema and replay contract are central.
     look_for:
-      - "Is there a real seam, or just modules? S3.7 asks only that the abstractions not paint you into a corner -- a design story suffices, a second implementation is not required."
-      - "Is the schema justified against a named alternative? Measurement is one way; a reasoned argument is another."
-      - "S3.2: is the artifact versioned and REVIEWABLE, with typed inputs, outputs and a checkpoint?"
+      - "Is there a real seam, or just modules? Would a desktop backend actually drop in?"
+      - "Is the artifact schema shaped by measured failures, or by taste?"
       - "Is anything built that S7 calls unrewarded (queues, clusters, plumbing)?"
 
   - id: core_loop
     name: Correctness of the core loop
-    weight: 4
+    weight: 7
     quote: >-
       The agent actually completes a real goal; the artifact replays
       deterministically and verifies success.
@@ -89,7 +80,7 @@ criteria:
 
   - id: robustness
     name: Robustness & error handling
-    weight: 3
+    weight: 6
     quote: >-
       How your replay detects and responds to runtime errors and exceptional
       states; how cleanly it separates expected business outcomes from
@@ -97,12 +88,12 @@ criteria:
       checkpoint strategy.
     look_for:
       - "Are business outcomes genuinely distinct from failures, in the TYPE and not just the message?"
-      - "Is each variant HANDLED -- specified and exercised in code? A demonstrated instance is stronger, but S3.3 asks for handling, not a demo of every branch."
+      - "Does each outcome variant have an observed instance, or are some hypothetical?"
       - "What happens on an ambiguous locator -- guess, or stop?"
 
   - id: escalation
     name: Human-in-the-loop escalation
-    weight: 2
+    weight: 5
     quote: >-
       A real, well-reasoned mechanism to detect "stuck," route an intervention
       request with context, transfer control of the live session to a human,
@@ -114,36 +105,33 @@ criteria:
 
   - id: generalization
     name: Generalization to the real environment
-    weight: 2
+    weight: 4
     quote: >-
       A credible design story for heterogeneous surfaces and for reusing
       artifacts across many tenants running the same app, without brittle
       assumptions or per-tenant rebuilds.
     look_for:
-      - "Is the design STORY credible? S3.7 says 'we don't expect you to implement multi-tenant' -- a demonstration is a bonus, not the bar."
-      - "If something IS demonstrated, are its limits stated? Two identical skins prove less than they look like they prove."
-      - "S3.1 biases toward approaches that work with no clean DOM. Does the interaction method survive a hostile legacy surface?"
+      - "Is cross-tenant reuse demonstrated or only argued?"
+      - "Are the limits of the demonstration stated? Two identical skins prove less than they look like they prove."
       - "What happens on drift -- silent fallback, or refusal?"
 
   - id: safety
     name: Safety & data handling
-    weight: 2
+    weight: 3
     quote: >-
       Allowlist enforcement, treatment of risky and irreversible actions,
       redaction of regulated financial data.
     look_for:
       - "Is there one chokepoint, or checks scattered where they can be bypassed?"
-      - "S3.4: are risky and irreversible actions actually BLOCKED, CONFIRMED or FLAGGED -- and by what mechanism?"
       - "Does the human operator go through the same gate as the agent?"
       - "Do secrets reach logs, artifacts, or screenshots? Is the gap stated?"
 
   - id: code_quality
     name: Code quality
-    weight: 1
+    weight: 2
     quote: "Readable, reasonably typed and tested where it counts, easy to run."
     look_for:
       - "Do the tests exercise what can break, or do they assert that strings exist?"
-      - "S3.5: is there a structured log of what the agent did AND WHY, with a richer signal on failure -- adequate to debug a run, not merely present?"
       - "Is 'easy to run' true from a cold clone?"
 
   - id: communication

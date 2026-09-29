@@ -238,10 +238,29 @@ Reserve 4 for criteria where the submission shows a number, a counterexample,
 or a rejected alternative."""
 
 
+ASSIGNMENT = ROOT / "Assignment-A-Computer-Use-Automation.md"
+
+
 def build_payload() -> str:
+    """The WHOLE assignment, not my extract of it.
+
+    ⚠️ This used to pass only the S7 criteria I had transcribed. That makes the
+    grader's view of the brief a thing I CHOSE -- it cannot notice a
+    requirement I left out of the rubric, so the eval measures agreement with
+    my reading rather than compliance with the client's. Boris caught it.
+    Cost: ~4k extra tokens against a 1M window.
+    """
     parts = [
         (
-            "THE ASSIGNMENT -- section 7, the criteria you are applying",
+            (
+                "THE ASSIGNMENT, IN FULL -- grade against THIS. If the brief "
+                "asks for something the criteria below do not mention, that is "
+                "a gap in the rubric and you should say so in `overall`."
+            ),
+            ASSIGNMENT.read_text(),
+        ),
+        (
+            "THE CRITERIA YOU ARE SCORING (S7, transcribed)",
             "\n".join(f"{c['name']}: {c['quote']}" for c in RUBRIC["criteria"]),
         ),
         ("REPORT.md -- the design write-up", _report()),
@@ -259,6 +278,13 @@ def build_payload() -> str:
             (ROOT / "src" / "interfaceai" / "replay.py").read_text(),
         ),
     ]
+    # Codex twice scored code quality low saying the test counts were "taken
+    # on trust, with no assertion I can read". Fair: the payload named 249
+    # tests and showed none. Two real files now travel with it.
+    for name in ("tests/test_value_risk.py", "tests/test_handoff_bracket.py"):
+        f = ROOT / name
+        if f.exists():
+            parts.append((f"{name} -- a real test file, read the assertions", f.read_text()))
     tr = _committed_traces()
     if tr:
         parts.append(
@@ -361,8 +387,10 @@ def render(mech: list[dict], grades: dict[str, list[Grade]], models: list[str]) 
     A("| | check | result |")
     A("|---|---|---|")
     for m in mech:
-        A(f"| {'✅' if m['pass'] else '❌'} | `{m['id']}` | {m['detail']} |")
-    fails = [m for m in mech if not m["pass"]]
+        mark = "✅" if m["pass"] else ("⚠️" if m.get("advisory") else "❌")
+        note = ' *(advisory — the brief says "ideally")*' if m.get("advisory") else ""
+        A(f"| {mark} | `{m['id']}`{note} | {m['detail']} |")
+    fails = [m for m in mech if not m["pass"] and not m.get("advisory")]
     A(
         f"\n**{len(mech) - len(fails)}/{len(mech)} pass.**"
         + (f" Failing: {', '.join(m['id'] for m in fails)}." if fails else "")
@@ -394,7 +422,7 @@ def render(mech: list[dict], grades: dict[str, list[Grade]], models: list[str]) 
     pct = (weighted / (4 * total_w)) * 100
     A(
         f"\n**Weighted: {pct:.0f}%** of the maximum "
-        f"(weights are a linear ramp over §7's stated order — an interpretation, see the rubric). "
+        f"(weights are a mild taper over §7's stated order — an interpretation, see the rubric). "
         f"Mean penalty {pen:+.1f}."
     )
 
@@ -425,16 +453,97 @@ def render(mech: list[dict], grades: dict[str, list[Grade]], models: list[str]) 
     return "\n".join(L)
 
 
+class RubricFlaw(BaseModel):
+    where: str = Field(description="Which rubric id, or 'missing'.")
+    flaw: str
+    why_it_biases: str = Field(description="Which direction it pushes the score, and how.")
+    fix: str
+
+
+class RubricCritique(BaseModel):
+    flaws: list[RubricFlaw]
+    requirements_the_rubric_misses: list[str]
+    leading_questions: list[str] = Field(
+        description="`look_for` prompts phrased so the flattering answer is the obvious one."
+    )
+    verdict: str
+
+
+CRITIQUE = """You are auditing a grading rubric, not a submission.
+
+The rubric was written by the same party whose work it grades. Assume it is
+biased in their favour until you have checked. Look specifically for:
+
+- requirements in the assignment that NO criterion covers
+- `look_for` prompts that are leading -- phrased so the flattering answer is
+  obvious, or that presuppose a design choice the submission happens to have made
+- weights that do not follow the assignment's own stated ordering
+- mechanical thresholds set where the submission happens to pass
+- anything scored by a model that could have been checked in code
+
+Be concrete. Name the id and quote the line."""
+
+
+async def critique_rubric(model_name: str) -> RubricCritique:
+    """Audit the rubric itself. Boris's idea, and it closes a real hole.
+
+    A rubric written by the graded party is the weakest link in this eval --
+    weaker than the model choice, because every run inherits it. Asking a
+    different model to attack it is cheap and can only reveal.
+    """
+    cfg = PROFILES[model_name]
+    key = get_settings().key_named(cfg["key_field"])
+    body = (
+        f"THE ASSIGNMENT\n{ASSIGNMENT.read_text()}\n\n"
+        f"THE RUBRIC UNDER AUDIT\n{(ROOT / 'evals' / 'rubric.yaml').read_text()}"
+    )
+    r = await litellm.acompletion(
+        model=cfg["model"],
+        api_base=cfg.get("api_base"),
+        api_key=key,
+        api_version=cfg.get("api_version"),
+        max_tokens=int(cfg.get("max_tokens", 8000)),
+        temperature=_clamp_temperature(cfg["model"], 0),
+        response_format=response_format(RubricCritique),
+        messages=[
+            {"role": "system", "content": CRITIQUE},
+            {"role": "user", "content": body},
+        ],
+    )
+    return RubricCritique.model_validate_json(r.choices[0].message.content)
+
+
 async def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--models", nargs="+", default=["gpt-4.1", "gpt-5.2-chat", "claude-cli"])
     ap.add_argument("--runs", type=int, default=2)
     ap.add_argument("--out", type=Path, default=None)
+    ap.add_argument(
+        "--critique-rubric",
+        metavar="MODEL",
+        help="Audit the rubric itself instead of grading. Try gpt-5.2-codex.",
+    )
     args = ap.parse_args()
+
+    if args.critique_rubric:
+        c = await critique_rubric(args.critique_rubric)
+        print(f"\n=== {args.critique_rubric} on the rubric ===\n{c.verdict}\n")
+        for f in c.flaws:
+            print(f"[{f.where}] {f.flaw}\n   bias: {f.why_it_biases}\n   fix:  {f.fix}\n")
+        if c.requirements_the_rubric_misses:
+            print("REQUIREMENTS NO CRITERION COVERS")
+            for m in c.requirements_the_rubric_misses:
+                print(f"  - {m}")
+        if c.leading_questions:
+            print("\nLEADING look_for PROMPTS")
+            for q in c.leading_questions:
+                print(f"  - {q}")
+        return 0
 
     mech = run_mechanical()
     for m in mech:
-        print(f"  {'PASS' if m['pass'] else 'FAIL'}  {m['id']:<26} {m['detail']}")
+        tag = "PASS" if m["pass"] else ("ADVS" if m.get("advisory") else "FAIL")
+        print(f"  {tag}  {m['id']:<26} {m['detail']}")
 
     prompt = build_prompt(build_payload())
     print(f"\npayload ~{len(prompt) // 4:,} tokens; {len(args.models)} models x {args.runs} runs")
