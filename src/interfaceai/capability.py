@@ -104,23 +104,57 @@ Value = Annotated[LiteralValue | ParamValue | SecretValue, Field(discriminator="
 
 
 class ControlRef(Contract):
-    """Which control, by name, on which recorded screen.
+    """Which control, by name, on which recorded screen. A NAME, never pixels.
 
-    Resolved at replay through the control map for the tenant in hand, and from
-    there through `locate_control`. The artifact stays tenant-agnostic; only
-    the locator payload behind this name is tenant-specific.
+    An address with three parts from two places:
+
+        ControlRef   (screen, control_id)   index / log_in_button   THIS artifact
+        Target       (app, tenant)          parabank / baseline     swapped at replay
+                            ↓
+        MapKey       parabank/baseline/index  →  LocatedControl
+                                                   ├─ VisualLocator (the pixels)
+                                                   └─ ControlPolicy (irreversible?)
+
+    `screen` is what makes `control_id` unique: `about_us_link` exists on every
+    ParaBank page with different pixels each time.
+
+    ⭐ `tenant` is the ONLY part this does not fix, and that is the whole
+    multi-tenant story — same `index/log_in_button`, a different pixel file,
+    and the capability cannot tell which institution it is running at.
+
+    ⚠️ Deliberately NOT called `ControlLocator`. It is not a locator; it is the
+    name a locator is found BY. Same shape as Kubernetes' `secretKeyRef` — a
+    name resolved at runtime against a namespace, never the thing itself.
     """
 
     screen: str = Field(min_length=1)
     control_id: str = Field(min_length=1)
 
-    # For one-of-many rows: "the account link whose text is <account_id>".
-    # The accounts overview has 11 near-identical rows, which `locate_control`
-    # correctly reports as `ambiguous` rather than guessing. This field is how
-    # a capability says WHICH one; the mechanism that honours it is not built
-    # yet (docs/issues/0001). An artifact that could not express this could not
-    # express capability 1 at all, which is why the field exists before the
-    # code that reads it.
+    # ⛔ SUPERSEDED, AND KEPT ONLY SO A HISTORICAL DRAFT STILL LOADS.
+    #
+    # This was meant to say WHICH of eleven near-identical account rows a step
+    # wanted -- "the link whose text is <account_id>" -- because
+    # `locate_control` correctly reports such a row as `ambiguous` rather than
+    # guessing. The docstring used to promise the mechanism was "not built
+    # yet". It never will be: the row problem was solved a different way.
+    #
+    # Grounding a row is wrong 3 times in 4 and says `ready` while doing it
+    # (docs/issues/0009). So rows are not named or grounded at all now -- a
+    # TABLE_CONTROL_PANEL is read whole in one model call and the row is picked
+    # IN CODE by a measured pitch (docs/issues/0011). `check_capability` then
+    # refuses a direct click inside a panel region, which makes the path this
+    # field was built for unreachable rather than merely unused.
+    #
+    # ⚠️ It is DECLARED AND VALIDATED BUT NEVER READ -- replay does not look at
+    # it. Exactly one artifact sets it, `read_savings_balance.v1.draft.json`,
+    # whose own note says it is "the one with no mechanism behind it yet". That
+    # is a superseded DRAFT, and replay refuses drafts, so nothing can silently
+    # depend on it today.
+    #
+    # Removing it changes the artifact schema, which means re-exporting and
+    # RE-APPROVING every capability -- a person's act, spent on a field no
+    # approved artifact uses. Do it the next time an artifact is re-approved
+    # anyway; see issue #15, which is blocked on the same cost.
     discriminator: Value | None = None
 
 
