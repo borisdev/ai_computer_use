@@ -51,15 +51,23 @@ a step the system will not take ([status.md](docs/status.md)).
 
 ## 2. Artifact schema
 
-Five capabilities are authored and tested (`interfaceai status` lists them):
+Six capabilities are approved. `interfaceai status` is the view that cannot
+drift; what matters here is the **split**:
 
 | | exercises |
 |---|---|
-| `read_savings_balance` v3 | the brief's own worked example — panel read, row by index, a checkpoint on the account TYPE |
+| `discovered_balance` v1 | 🤖 **discovered end to end** — the read pass named the accounts table, geometry measured it, and the row is picked by a `row_key` parameter. Replays on both tenants |
+| `log_in_discovered` v1 | 🤖 **discovered**; the cross-tenant and handoff subject |
+| `read_savings_balance` v3 | the brief's own worked example — two panels, a drilldown, and a checkpoint on the account TYPE |
 | `log_in` v2 | composition: invoked by three others, version pinned |
-| `log_in_discovered` v1 | **produced by a real discovery run**; the cross-tenant and handoff subject |
 | `request_loan` v2 | an irreversible step, a tenant money threshold, and a post-submit observation |
 | `session_loss_probe` v1 | destroys its own session mid-flow, to earn recovery an instance |
+
+⚠️ **The other four are not one category.** `session_loss_probe` reads the same
+table `discovered_balance` discovered — hand-written only because it predates
+the producer. `read_savings_balance` and `request_loan` are not: they need the
+account-detail and loan-result panels, where the read pass still names a
+**neighbouring** region (§7). That is a gap, not a backlog item.
 
 `capability.py`; reasoning in [ADR 0005](docs/adr/0005-capability-artifact-shape.md).
 Each constraint is in the type system rather than a style guide, because each
@@ -147,11 +155,21 @@ bounded to **once per condition** so a dead session fails rather than loops.
 **Repeated structure needs a panel, not grounding.** Grid cell assignment was
 never fixed — it was made *unreachable*. A table is a `TABLE_CONTROL_PANEL`:
 read the region in one call, index the row in code, reach it by a **measured
-pitch** (28px, autocorrelation 0.899), then verify by re-reading the row it
-landed on. `check_capability` **refuses a direct click inside a panel region**,
-turning "we stopped doing that" into "that cannot be done". 11/11 — and it
+pitch**, then verify by re-reading the row it landed on. 11/11 — and it
 generalises: the site nav was **0/8** grounded, the same defect in different
 clothes.
+
+⭐ **No pixel is asked of a model.** A read pass names the repeated structures;
+**geometry** measures them — ink runs cross-checked against `find_row_rhythm`,
+because autocorrelation says *what the period is* and cannot say *where the
+first row starts*. It reproduced all four hand-measured regions: pitch
+**28/24/23/23** over **11/8/4/3** rows.
+
+⭐ **And a row cannot be clicked at the DECISION, not just in the artifact.**
+`table_control_panel` has no permitted action in `ACTIONS_BY_ROLE`, so
+`validate_decision` refuses one before `use_control` is reached, and
+`check_capability` refuses it geometrically at authoring time. Two callers, one
+rule, and the permission is a property of the role so they cannot drift.
 
 **Determinism rests on** re-resolution against the current screenshot rather
 than a stored coordinate; refusals rather than guesses; a factory-reset target;

@@ -21,25 +21,30 @@ def test_a_serialised_locator_says_WHICH_KIND_it_is() -> None:
     assert DomLocator(selector="#login").kind == "dom"
 
 
-def test_existing_control_maps_load_without_a_kind_field() -> None:
-    """The committed maps predate the discriminator and must still resolve.
+def test_a_locator_written_BEFORE_the_discriminator_still_loads() -> None:
+    """Backward compatibility is the whole reason `kind` has a default.
 
-    A default is what makes adding a discriminator a non-event. Without it,
-    every control map in the repo becomes unreadable on the commit that
-    introduces the union.
+    ⚠️ This used to read a committed control map and assert it had NO `kind`
+    field. That passed until panel discovery regenerated the maps, and then it
+    failed on CORRECT behaviour — the test depended on a fixture staying stale
+    rather than on the property it was about. A check that goes red when the
+    repo improves is a check that gets deleted.
+
+    So the legacy shape is constructed here instead. Without the default, every
+    control map written before the union became unreadable on the commit that
+    introduced it.
     """
-    import json
-    from pathlib import Path
-
     from interfaceai.screenshot2controls import VisualLocator
 
-    maps = Path(__file__).resolve().parents[1] / "control_maps"
-    raw = json.loads((maps / "parabank" / "baseline" / "index.json").read_text())
-    locator = next(
-        c["locator"] for c in raw["controls"] if c.get("locator") and c["status"] == "ready"
-    )
-    assert "kind" not in locator, "fixture no longer exercises the missing-field case"
-    assert VisualLocator.model_validate(locator).kind == "visual"
+    legacy = {
+        "schema_version": 1,
+        "template_png": "",
+        "reference_size": {"width": 1280, "height": 900},
+        "reference_crop": {"x": 0, "y": 0, "width": 10, "height": 10},
+        "click_offset": {"x": 5, "y": 5},
+    }
+    assert "kind" not in legacy
+    assert VisualLocator.model_validate(legacy).kind == "visual"
 
 
 def test_the_DOM_kind_refuses_rather_than_pretending() -> None:
