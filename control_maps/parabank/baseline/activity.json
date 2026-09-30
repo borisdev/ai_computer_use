@@ -17,6 +17,7 @@
         "y": 326
       },
       "locator": {
+        "kind": "visual",
         "schema_version": 1,
         "template_png": "iVBORw0KGgoAAAANSUhEUgAAAGoAAAAZCAIAAABW9SyvAAAFqElEQVR4nO2Yf2gTdxTAn-O-kDuSJQcX4Qo96JXGGmllKTSyFtvMUsMi1OGKWnF1Wlx1UEUdOkoHQ0cdm2N2g4JkPzpZVYLY0oZ1osZKJjuhJ22xakoiXKA3TOB6XMgFvgfuj9ja2LVVMyaDfP66fHl5730_9313JKuePHkCBV6VN153A_9vCvryoqAvLwr68qKgLy8K-vKioC8vFuvTHwyeOXjyS_-U9t93o0rjoqznrmFp9OyezlO9E8qzsKn-T78bij4X-MJg6bfPvvoxrKwcuSKL9GmxsEx7qll5IpbE_0KBl0GL3rkZimmLyhKUyZi8fm3yNdzQFSByP-Lk9Jhkq-qoJtRLwuSs02NHAACgS8Kw_8a4lDFxZVXNvoYKGmHl4cDgQGhaAVuxa-N7Le4iCnRJHO4bjakGgMnuqvFudRWBNHT6UsLXttdNA-hSwH9BrtnfsVbp8weSHA_yTFLTgF63tWkzGwn03ZXV--d7UlvaNq-xLmjLWlJfC0LgxsPSpjXUgvX0MslZHmRJSmpUidtXlgqLMXkW2Epv27vrrQBg6NHbvwTFKdkwl1Y0tPo2cCSAFgsODoXkDADBOr2tjesYpIkXzw0Az8jjEtt8YpPi9wvc9oMtPJltIPf04YQ4oXCVPEPzblYXphLZg6BGhntvKe5tHWcPf-AxxvzBiaQ-E7o8MGluOHqss8tXJN0IBCVdjYz0Xtdqdxz5-pMjJ-pMYvBKSF7yACNDk5Tiln2Hug_v98C9gdt_MdXexmJz-Tu7O3LdAQAA7dpUZ41cC8ZeaGKRocmGo7X9aPe-eurR6IDsPNB-vLu1Ek-FhexMZeQHmqO1vbN7Vy2aHukXZzB-HLrcHyLqTxw-3t3mtUau9ImPMQCALse18qZD3TvWMbb1Lbt2NrLkfKEcfWl5XMhwtSUWALL0LR7fH5N0ANCkiRgurql1rLbSnGf7x11NldZUTFTMtTWVpbSFdW452r7XxxnSRAQXu10sAkBM2YYKsxKVU0tskAAwcWvXsAgAWTg7ibXFM5sDxVQ1v42Eq4K0skACwMQ6OAYBZWc5G805OCsCiuZYUyapGwAAJnttXVW53cI6qhpLyGRcUWcjgmzx1DkZBIh2-KppeTKSxACArOx6N08jAEAWjitiyJxK8-jROxPRuHL6lDC3Yg49qi8tM9QURjSZHWMgaQYgnVBUg6RM2SVkpRFgJSeMMDEEyDpeUgqBEPm0OiKWCloAQpzL65680C862ugVBSLKlE2KAGDumgAAMAAIAIKknhYlKJLASkZPKWpKDnzfFZhPYitSDQAAZDGhpeo8u1Qi4bjZ91FHM5fVi6XRc71iTC3jrWaEdf2pCP1xdBYxJE2BlM5kl3BSlrHZnBNmZJIGoiwkBQQAzEk00kYe7yOS8zU6T18eEarnvL9yckNPG3Pf0g1kNr9ppq02vnHPh3OP-yyauGya-eHFcmQsSvJu-_zRRKxjHSUL4qyJc_IoPjaZwIAVYfCnnt8fYhvvtqfCYjwNkI5d6_05EEqQXKUDxQVRxgA4Of3npGF3FZuQZTUDmqToAJCW70Vnl9kigQCwYSzTLsXXNzuU4K2Ymm3xJZLnkkkIYkwFwEokHMcsv9pqc7jtSuh2RMUAoEf_CPSLM89nw5okzSQXPD3mTh9OiHdnrCUNCx6LgBiHyxIOTyVq67Yc0K74_Z_7UwbYKtv2VDEk8mzbqg4GjnUqaTCVbtzp40kreA9sGu67-E0woyUzFnfTbjeNABwex82eH74QGK7c6SxlyeRSW0IWrpjsv9pzLN7ctb2K-eeBsVRs9FZMnReykukXTv4cZq4chDNfBVQDMWUNrWtpQODZ1pweHDr57QgCPW3im9-nEeTcSzw73v9rzpt3VeHv0nwo_GjLi4K-vCjoy4uCvrwo6MuLgr68KOjLi78BflaKjWwu5aMAAAAASUVORK5CYII=",
         "reference_size": {
@@ -62,13 +63,14 @@
       "id": "account_services_table_control_panel",
       "label": "Account Services",
       "role": "table_control_panel",
-      "description": "A vertical menu of account service links such as Open New Account, Accounts Overview, and Transfer Funds. (8 rows, pitch 24px, autocorrelation 0.797)",
+      "description": "A vertical menu of account service links such as Open New Account, Accounts Overview, Transfer Funds, etc., located on the left side of the screen. (8 rows, pitch 24px, autocorrelation 0.797)",
       "status": "ready",
       "click_point": {
-        "x": 389,
+        "x": 370,
         "y": 289
       },
       "locator": {
+        "kind": "visual",
         "schema_version": 1,
         "template_png": "iVBORw0KGgoAAAANSUhEUgAAAI0AAAAQCAIAAACkxGtvAAAJVUlEQVR4nO1Yf2wb5Rl-iH2Xi2Onjt2j51S2k1Y2bVzc1BWO1SopU5NRNUgNYiNsSgQSMFEoYkQKqhiCf9jEqJQRFVSJFqmI_lECSKm0RHQ4EziK5bSqQ1ySdD7VqX1K7NTxD3oX53z-wf6I0_xok2Zb2IbUR_fH6Xvve7_3nvd7n--9e-DHH3_Effzfo-h_HcB9rAvyu4xlkp-d6e_i8gBR19L4592l__WoNgb8VKjHFXAGkqyQAQhGp3bYdrTZGR2xgYuIX3_61dvjGcZW98mvGNUGOl6Ou9RTOhpxhvMAgMywLxr7ydb-j5ELD33zyzd63w9Id9rSUf9bZ4ZO-aKskFEqFRoqEwlHe3oHXrswubFvpKU1Ft0m04Ym_07cWU-5yMQkmwXkBJnNCBMhb6KysfwnjeHfRWbW44sJoO5mywXHbgyJgFrfedThUAHIhUc8L3w2FfJdc-5jWipkGxQEZTtUf_rQBjlbHXfkKcN7fEkJRRZ7tXFspC8Zd4ZmG8sXpS8dDZ3querkUvFsEaNnnjjw8FPVZcX3MvEhf1cv6-JSAqBUa-oP1Lxaq1UByNz67MzFLg6Wxxo_OKAuBmJjg785NyUo9Z2vOByYfOeku09QNLc6HKFrH3sjbJaqte998yCjTPrbT44MZwGkus9c6NY9dPZFq3nJnpb4eUkgyMIrynTVj5w-JkJVqlPJACAjet1XugYjrJAnKcUeW83rj23VEQC_sGiLRXnJ1x0t--322bMjKSwukQsODTxzISop9Z2v1PA9y3RvLRKmbpzqHXVyKSFbpNFtfe6I7QkDOR9scOzax99yHi4lyAmDTuOwW5_bq16qoit1Lx2NOLk85OoG29aGbYoV0pdO3Pjj6aHuiZRE03V6IsJNnTo30DUmrm3iA98dOzPSx6VI3ZYG0yYyGe-78E37Vzf5e-8iGSkHkHL9dfB9NsfQFCmmhlye93y3oNQettMMABSZdm5rtTPa5VO1NEUCSAaOnex_56vrrkAyBlJXUVZIEqTvL7qOXZxiRWrPzi1GpIbc7td6I_zioqK3_7tzXF5JUUYLYwAQjQ5Hc_MJ_n4sJgGMudKy_ERam593zl7umUiR9JY6PSWEuRNnPb3RHIDwiPflc_9whmHaqT9sUkncdPeXri6_uIyJ5W-Xi7CTLEDqtjroUo2VZrzByKL0SezgNacA6Eydz9fsKhE9Pf3tl1J9g5NtJn1sNVMl7em_zmahsdZ-8qRBS-TCVwaf-XJ69NKYq1bbpLxnrgBAKt_x4bNmIyG6zv_tuC897IvHrZVN-ytd3mhEpPbsf_ilbeTyGTKdtaZjwnPCx0vJeJ8r3ucCUGSyWo4-ZnKUy9IJ7mPvD4DiqWcbf7-NTEf97SdHhn3XPQeYxoKO5kOo7OzY61ABczfHNwdCM0kXN9tcUVYsRF1cHlA4rOrlaboHPwMClCbb6dbtOkL0fNHf7p3uvpJsOFQaZG_GAYP9kXcff1AFxEI3XGEYy5eV0PI8ZXjPWFICLNU0Q6BYZ3Cogz23pS_DD0_wABh9hbEEAOVobnI3z0-MOVcxpRPXXVweIGw7tVoCgEy3zWChpofEpCskNlWvJ01FpmqGIQAQjI6CLy0I4l06hxUoUTc93ejYN9l36YbLPz0qAMizvqvtU7c6X7CbQpFREaBUlnISQLFSa1FjeCY5nJAadQUHpurKPaqCqwazqnuGZ8eicVsZGZocFQE13aCngCW7fh38aGi1hgBAGatUSm8qyMXiGbVGSQLpkNt9LFHZbKWNNN1QW7qidVyWp4LoAezg5d_5gEwulkRB-naXarO52BwAqCjZit2LNUxzs_EsgCJlycLpISe0cgA5Qcil70k3AMiUStm8xBfLZSQgQVrnRK3B0GYwtCHHJ5LDvtH3L05HZrhPfdtfl2ckAOL02yc-f3vx-UwskUEhTwRDU8WFcdJYTRvcfIiLfC8wqvFYHDCYDaaSdZOwYAq5__4L95JxPhXLynbtt70avdw1nmLH2RPjLACot3S0Op6oWHSzNE-5IBsaBQBIAs8Ki4ZC16eUaUuAJHgxJwHFS2ZCvrqJKFXKgWxemMsvBJ2JZbHAfq4QMD9_kxMS66iVeyIj-tnIaELSmivraRKQqcq19ftqYmNfn-Dy4WgOVQQJSPJNrU9aHbfplhdpaQpYODeXcKPS6R2bA6GZ2FAgilAaUDismpVfS2uQsGDS7Nz9Zm3ZIv2UylgC4MGWtqZm_hbLRVw-zuWPh5LTp_qn6tsqbx-6S0Qwww-P8QAM9rqLf_q1e_7qqK2jADHuDM2CKDXSxQAi3FRwDkDO_23_o298vu-kz49VTcFitUUNIOMdvxkDgFw4EBoVAbnCRlOATEkRACJcNJIBMrPeseS_mKeclM2vHMvODvVfPtE78tb5q67ogj8xOZrIA0U6mtLQWqMcyOYllcZmZmxVCilxK8znIV-lXy9RN5hVQNrj9nuSwGamQbeyZtbDj5SVGasYm5kxUmIwMStARkL0j1x774srTr50V7X5pacPfnhkixKQxJyUWfS9uGcWPm8VtqU7pVzbUEUMjM9LX2Vt_Y5a_8hQmG0_ldxTMjvEpSQUN9RvNxOUcTVTGaU6ZHSdC4Z8Q88kbtiolIflBRRZ7NaGChlAmbapSDYucVdfPnPTkuVH5wgS6XWliqK0FCCmnRevwL-1-WCl-XZllGgPHzT2nguGwoHjfwmAUhiUEGZScYDUVT5nLVNRsjbr9eNevvu8WzBTfDgyEM6Quoc-MDOrLEYarYzBzYfCPwAwmfXGkjufodbgR1dv3uO_Osx-d_x8zALew8Yj2eKGFqbeIIuz13u8qZ4AP2xWKSGOjk0LIOpstGbJZ8btesoF2dBoFlDTy3dK6S4rrSxIH4orzO8erX2qSoFkdIBLSZTq8JH9HbtLgTVMMl21_fSLuw_rFRI37WRnSbWm-cmDnY_Pd9Iys73mqIkAEI-mUGV5t3krAwC5dXQKdPN-WgkI4am-iZVVqK3e--GLj7RaNYwcEFOhGRHqTXV220fP77WpAKK0_sjBj1oeaqBnXV5ueE5Ra3u481nLrruwX4CK1tdvLtzWruz0CliDH1XFjs6jdR12GhzXw_KkrqK1pb5jdylAOZr2_8G2SZmM9l0KdF-KxsorWlsefXNv2VLlfOD-__KfBe7_L_954J8cbu9hM_DvpQAAAABJRU5ErkJggg==",
         "reference_size": {
@@ -82,7 +84,7 @@
           "height": 16
         },
         "click_offset": {
-          "x": 99,
+          "x": 80,
           "y": 11
         },
         "match_threshold": 0.95,
@@ -98,16 +100,17 @@
           "service"
         ],
         "key_column": "service",
-        "dx": -120,
+        "dx": -101,
         "dy": 16,
         "width": 151,
         "height": 192,
-        "key_dx": -96,
+        "key_dx": -77,
         "key_dy": 16,
         "key_width": 124,
-        "key_click_dx": -35,
+        "key_click_dx": -16,
         "row_pitch": 24
       }
     }
-  ]
+  ],
+  "panels_scanned": true
 }

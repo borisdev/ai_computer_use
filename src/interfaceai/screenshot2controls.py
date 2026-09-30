@@ -393,6 +393,12 @@ class ScreenOutput(Contract):
     screenshot_sha256: str
     image_size: ImageSize
     controls: list[LocatedControl]
+    # Whether the PANEL pass has run on this screen. ⛔ `panels == []` is not the
+    # same fact: a screen with no repeated structure and a screen recorded before
+    # panel discovery existed are spelled identically in `controls`, and equating
+    # them means a cached map silently never gets panels (Copilot, #13). Defaults
+    # to False so every map already on disk reads as NOT scanned and is backfilled.
+    panels_scanned: bool = False
 
 
 class DiscoveryConfig(Contract):

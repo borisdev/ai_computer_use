@@ -422,6 +422,60 @@ class TestExtractPanelLocators:
         assert calls == [_SeenPanels]
 
 
+def test_merge_panels_records_that_the_pass_has_RUN() -> None:
+    """⛔ `panels == []` cannot say whether a screen was ever scanned.
+
+    A map recorded before panel discovery existed and a screen that genuinely has
+    no repeated structure are spelled identically in `controls`, and equating them
+    meant every cached map stayed panel-less forever — a normal discovery session
+    on those screens could not produce a panel-backed artifact (Copilot, #13).
+    """
+    bare = ScreenOutput(
+        screenshot_sha256="0" * 64,
+        image_size=ImageSize(width=1280, height=900),
+        controls=[],
+    )
+    assert bare.panels_scanned is False, "a map on disk must read as NOT scanned"
+    assert merge_panels(bare, []).panels_scanned is True, "an empty read is still a read"
+
+
+def test_merging_twice_does_not_accumulate_a_renamed_panel() -> None:
+    """The idempotence contract, checked on the SECOND merge.
+
+    A collision with a non-panel control saves the proposal as `<id>_2`. Matching
+    only the bare id left that copy in place and appended `_3` on the next run,
+    which is the opposite of what this function promises (Copilot, #13).
+    """
+    control_map = ScreenOutput(
+        screenshot_sha256="0" * 64,
+        image_size=ImageSize(width=1280, height=900),
+        controls=[
+            LocatedControl(
+                id="account_table_control_panel",
+                label="Account",
+                role=ControlRole.LINK,
+                description="a link that slugs the same way",
+                status="unresolved",
+                reason="not requested",
+            )
+        ],
+    )
+    panel = LocatedControl(
+        id="account_table_control_panel",
+        label="Account",
+        role=ControlRole.TABLE_CONTROL_PANEL,
+        description="the accounts table",
+        status="unresolved",
+        reason="measured nothing",
+    )
+    once = merge_panels(control_map, [panel])
+    twice = merge_panels(once, [panel])
+    assert [c.id for c in twice.controls] == [
+        "account_table_control_panel",
+        "account_table_control_panel_2",
+    ], [c.id for c in twice.controls]
+
+
 def test_merge_panels_renames_an_id_a_control_already_holds() -> None:
     control_map = ScreenOutput(
         screenshot_sha256="0" * 64,

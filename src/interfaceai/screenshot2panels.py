@@ -56,6 +56,7 @@ decide prompt already shows unresolved entries as not actionable.
 from __future__ import annotations
 
 import asyncio
+import re
 from dataclasses import dataclass
 
 import numpy as np
@@ -809,11 +810,25 @@ def merge_panels(control_map: ScreenOutput, panels: list[LocatedControl]) -> Scr
     something that is not a panel is renamed instead -- two different controls
     cannot share an address.
     """
+    # ⚠️ **Including the ones a collision renamed.** `_unique` may have saved a
+    # previous proposal as `<id>_2` when a non-panel control already owned `<id>`;
+    # matching the bare id only left that copy behind and appended `_3` next time,
+    # which is the opposite of the idempotence this function promises (Copilot,
+    # #13). `test_merge_panels_twice_does_not_accumulate` is the check.
     replacing = {p.id for p in panels}
+    numbered = (
+        re.compile(rf"^({'|'.join(re.escape(i) for i in replacing)})(_\d+)?$")
+        if replacing
+        else None
+    )
     surviving = [
         c
         for c in control_map.controls
-        if not (c.id in replacing and c.role is ControlRole.TABLE_CONTROL_PANEL)
+        if not (
+            c.role is ControlRole.TABLE_CONTROL_PANEL
+            and numbered is not None
+            and numbered.match(c.id)
+        )
     ]
     taken = {c.id for c in surviving}
     merged: list[LocatedControl] = []
@@ -825,4 +840,9 @@ def merge_panels(control_map: ScreenOutput, panels: list[LocatedControl]) -> Scr
         )
         taken.add(kept.id)
         merged.append(kept)
-    return control_map.model_copy(update={"controls": [*surviving, *merged]})
+    # `panels_scanned` is set HERE, by the function that performs the pass -- a
+    # caller that had to remember to set it would eventually forget, and the cost
+    # of forgetting is a map that gets re-scanned on every visit.
+    return control_map.model_copy(
+        update={"controls": [*surviving, *merged], "panels_scanned": True}
+    )

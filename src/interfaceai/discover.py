@@ -460,10 +460,29 @@ def discover(
                         return DiscoveryFailure(
                             f"could not map screen {screen!r}: {exc}", index, evidence.dir, recorded
                         )
-                    # Panels are proposed on the SAME screenshot, by the same
-                    # kind of pass, and merged into the one map -- a panel IS a
-                    # control (`ControlRole.TABLE_CONTROL_PANEL`), so a second
-                    # store would be a second source of truth for one screen.
+                    store.put(key, control_map)
+                    evidence.event(
+                        "control_map_built",
+                        step=index,
+                        screen=screen,
+                        controls=len(control_map.controls),
+                        ready=sum(1 for c in control_map.controls if c.status == "ready"),
+                    )
+
+                # ⛔ **Asked of every map, not only a fresh one.** Panels are
+                # proposed on the SAME screenshot, by the same kind of pass, and
+                # merged into the one map -- a panel IS a control
+                # (`ControlRole.TABLE_CONTROL_PANEL`), so a second store would be a
+                # second source of truth for one screen.
+                #
+                # `panels_scanned` is the fact this reads, and it exists because
+                # `panels == []` cannot answer the question: a screen with no
+                # repeated structure and a screen recorded BEFORE panel discovery
+                # are spelled identically. Running the pass only on a cache MISS
+                # meant every map already on disk stayed panel-less forever, so a
+                # normal session on those screens could not produce a
+                # panel-backed artifact at all (Copilot, #13).
+                if not control_map.panels_scanned:
                     try:
                         panels = caller.run(
                             extract_panel_locators(
@@ -483,11 +502,9 @@ def discover(
                     control_map = merge_panels(control_map, panels)
                     store.put(key, control_map)
                     evidence.event(
-                        "control_map_built",
+                        "panels_scanned",
                         step=index,
                         screen=screen,
-                        controls=len(control_map.controls),
-                        ready=sum(1 for c in control_map.controls if c.status == "ready"),
                         panels=len(panels),
                         panels_ready=sum(1 for p in panels if p.status == "ready"),
                     )
@@ -842,9 +859,16 @@ def _synthesise(
             "unmatched to a parameter, so replay would have nothing to verify"
         )
 
-    used = {
-        s.value.param for s in steps if s.value is not None and isinstance(s.value, ParamValue)
-    } | {c.expected.param for c in checkpoints if isinstance(c.expected, ParamValue)}
+    # ⚠️ **A row_key counts.** A parameter can be used NOWHERE else: read the
+    # balance of the row where account_id = the caller's id, and check a different
+    # output against a literal. Leaving row_keys out dropped that parameter from
+    # `params` and the draft then failed its own validation, since `row_key` named
+    # something undeclared. Found by Copilot on #13.
+    used = (
+        {s.value.param for s in steps if s.value is not None and isinstance(s.value, ParamValue)}
+        | {s.row_key.param for s in steps if isinstance(s.row_key, ParamValue)}
+        | {c.expected.param for c in checkpoints if isinstance(c.expected, ParamValue)}
+    )
 
     # The one precondition discovery can honestly infer: we must be where the
     # recording started. Anything richer would be invented.

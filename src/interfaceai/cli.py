@@ -171,8 +171,15 @@ _MAPS_OPTION = typer.Option(
 )
 
 
-def _capability_named(name: str) -> capability.Capability:
+def _capability_named(name: str, *, prefer_draft: bool = False) -> capability.Capability:
     """A capability by NAME -- authored OR discovered.
+
+    ⚠️ `prefer_draft` is for APPROVAL only, and it is not a nicety.
+    `resolve_artifact` answers with the highest APPROVED version when one exists,
+    because that is what replay may run. So once `v1` was approved,
+    `capability approve <name>` re-approved v1 and re-wrote its file while a newly
+    discovered v2 draft sat there untouched -- the command that exists to promote a
+    draft could not see the draft (Copilot, #13).
 
     ⛔ **Not every capability is authored, and looking only in the registry broke
     the one command discovery's output has to pass.** `log_in_discovered` and
@@ -189,6 +196,13 @@ def _capability_named(name: str) -> capability.Capability:
     try:
         return capabilities.get(name)
     except KeyError:
+        if prefer_draft:
+            drafts = sorted(
+                ARTIFACTS.glob(f"{name}.v*.draft.json"),
+                key=lambda p: int(p.name.split(".v")[1].split(".")[0]),
+            )
+            if drafts:
+                return capability_mod.load_capability(drafts[-1])
         return capability_mod.load_capability(
             capability_mod.resolve_artifact(ARTIFACTS, name, approved_only=False)
         )
@@ -261,7 +275,7 @@ def cap_approve(
     artifact that approved itself would make the gate decoration.
     """
     try:
-        source = _capability_named(name)
+        source = _capability_named(name, prefer_draft=True)
     except KeyError as exc:
         console.print(f"[red]{exc}[/]")
         raise typer.Exit(1) from exc
