@@ -25,7 +25,7 @@ evidence/runs/
 # every one of those names an approved artifact. A reviewer who clones this and
 # hits "no such file" has been handed a principle instead of a demo.
 #
-# So all five are committed with `git add -f`, and the gate is not decoration:
+# So they are all committed with `git add -f`, and the gate is not decoration:
 # `assert_replayable` still refuses a draft, the approval is still recorded in
 # the artifact, and a test reads the committed files off disk to prove none
 # carries a literal secret. The pattern stays so a NEW approved artifact is

@@ -71,8 +71,10 @@ from interfaceai.control_map_store import ControlMapMiss, ControlMapStore, MapKe
 from interfaceai.decisions import AgentDecision, ManualActionKind, validate_decision
 from interfaceai.evidence import EvidenceWriter
 from interfaceai.screenshot2controls import (
+    ControlRole,
     DiscoveryConfig,
     DiscoveryError,
+    LocatedControl,
     ResolveInput,
     ScreenInput,
     ScreenOutput,
@@ -80,6 +82,7 @@ from interfaceai.screenshot2controls import (
     extract_control_locators,
     locate_control,
 )
+from interfaceai.screenshot2panels import extract_panel_locators, merge_panels
 from interfaceai.surface import (
     ActionPolicy,
     NotAllowedError,
@@ -95,6 +98,11 @@ from interfaceai.vocabulary import VOCABULARY, SlotType
 DISCOVERY_ACTIONS = frozenset(
     {ManualActionKind.CLICK, ManualActionKind.ENTER_TEXT, ManualActionKind.SELECT}
 )
+
+# How many times a draft may be refused before the run is. A refusal names what
+# to fix, so one more attempt is worth a model call; a model that cannot fix it
+# in two is not going to.
+_MAX_DRAFT_REFUSALS = 2
 
 _VERB_OF_ACTION = {
     ManualActionKind.CLICK: StepVerb.CLICK,
@@ -147,6 +155,12 @@ class Extracted(Contract):
     value: str
     slot: str
     control_id: str
+    # A TABLE_CONTROL_PANEL only. `row_key` is the value in the panel's key
+    # column that identifies the row; `field` is the column to read from it. The
+    # row is then selected IN CODE at replay -- nothing is ever asked where a row
+    # is, which is what keeps `docs/issues/0009` off this path.
+    row_key: str | None = None
+    field: str | None = None
 
 
 class NextMove(Contract):
@@ -276,7 +290,7 @@ you name, whether you are acting on it or reading a value from it, MUST be one
 of these:
 {controls}
 
-{unusable}
+{unusable}{panels}
 WHAT HAS HAPPENED SO FAR:
 {history}
 
@@ -306,6 +320,11 @@ Choose ONE of:
                     on every future replay. If the goal asks for no value at
                     all, return the single value that shows you arrived (a
                     name, a record id), not a list.
+                    ⛔ If an output's control_id is a `table_control_panel` you
+                    MUST also set `row_key` and `field` on that output. A panel
+                    holds rows; without them there is no way to say WHICH row
+                    and WHICH column the value came from, and the draft is
+                    refused.
   kind="stuck"   -- you cannot proceed safely: the control you need is not
                     listed, the screen is unexpected, or you would be guessing.
                     Say so in `reason`. This is a legitimate answer and is
@@ -316,12 +335,41 @@ not take effect.
 """
 
 
-def _render_controls(control_map: ScreenOutput) -> tuple[str, str]:
+def _describe(control: LocatedControl) -> str:
+    line = f"  {control.id} | {control.role} | {control.label or '(no label)'} -- {control.description}"
+    if control.panel is None:
+        return line
+    spec = control.panel
+    opens = "its rows can be opened" if spec.key_click_dx is not None else "read-only"
+    return (
+        f"{line}\n      columns: {', '.join(spec.columns)}"
+        f" | key column: {spec.key_column} | {opens}"
+        f"\n      to report a value from it, an output needs all three of: "
+        f'control_id="{control.id}", row_key=<the {spec.key_column} of the row you mean>, '
+        f"field=<one of {', '.join(spec.columns)}>"
+    )
+
+
+_PANEL_NOTE = """
+A `table_control_panel` is a REGION OF REPEATED ROWS -- a table, a menu, a
+label/value block -- and not something you click. You cannot act on one. To
+report a value from one, use kind="finish" and give, for that output:
+  control_id  the panel's id
+  row_key     the value in its KEY COLUMN that picks the row you want
+  field       which of that row's columns to read
+The whole region is read in one pass and the row is then selected in code, so no
+row is ever located by eye -- which is the only reason reading a table is safe
+here.
+
+An output that names a panel WITHOUT a row_key and a field is refused, so give
+all three together: control_id, row_key, field.
+"""
+
+
+def _render_controls(control_map: ScreenOutput) -> tuple[str, str, str]:
     ready = [c for c in control_map.controls if c.status == "ready"]
     blocked = [c for c in control_map.controls if c.status != "ready"]
-    listed = "\n".join(
-        f"  {c.id} | {c.role} | {c.label or '(no label)'} -- {c.description}" for c in ready
-    )
+    listed = "\n".join(_describe(c) for c in ready)
     note = ""
     if blocked:
         note = (
@@ -330,7 +378,8 @@ def _render_controls(control_map: ScreenOutput) -> tuple[str, str]:
             + "\n".join(f"  {c.id} -- {c.reason}" for c in blocked)
             + "\n\n"
         )
-    return listed or "  (none)", note
+    panels = _PANEL_NOTE if any(c.panel is not None for c in ready) else ""
+    return listed or "  (none)", note, panels
 
 
 # ---------------------------------------------------------------------------
@@ -368,6 +417,7 @@ def discover(
     param_by_value = {p.value: p for p in params}
     recorded: list[RecordedStep] = []
     history: list[str] = []
+    refusals = 0
 
     with OffLoop() as off:
         caller = _Caller(vision, off)
@@ -419,13 +469,54 @@ def discover(
                         ready=sum(1 for c in control_map.controls if c.status == "ready"),
                     )
 
-                listed, unusable = _render_controls(control_map)
+                # ⛔ **Asked of every map, not only a fresh one.** Panels are
+                # proposed on the SAME screenshot, by the same kind of pass, and
+                # merged into the one map -- a panel IS a control
+                # (`ControlRole.TABLE_CONTROL_PANEL`), so a second store would be a
+                # second source of truth for one screen.
+                #
+                # `panels_scanned` is the fact this reads, and it exists because
+                # `panels == []` cannot answer the question: a screen with no
+                # repeated structure and a screen recorded BEFORE panel discovery
+                # are spelled identically. Running the pass only on a cache MISS
+                # meant every map already on disk stayed panel-less forever, so a
+                # normal session on those screens could not produce a
+                # panel-backed artifact at all (Copilot, #13).
+                if not control_map.panels_scanned:
+                    try:
+                        panels = caller.run(
+                            extract_panel_locators(
+                                ScreenInput(screenshot_png=png),
+                                vision=counted_vision,
+                                config=config,
+                            )
+                        )
+                    except DiscoveryError as exc:
+                        evidence.event("panel_map_failed", step=index, error=str(exc))
+                        return DiscoveryFailure(
+                            f"could not read screen {screen!r} for panels: {exc}",
+                            index,
+                            evidence.dir,
+                            recorded,
+                        )
+                    control_map = merge_panels(control_map, panels)
+                    store.put(key, control_map)
+                    evidence.event(
+                        "panels_scanned",
+                        step=index,
+                        screen=screen,
+                        panels=len(panels),
+                        panels_ready=sum(1 for p in panels if p.status == "ready"),
+                    )
+
+                listed, unusable, panel_note = _render_controls(control_map)
                 prompt = _DECIDE_PROMPT.format(
                     goal=goal,
                     screen=screen,
                     url=url,
                     controls=listed,
                     unusable=unusable,
+                    panels=panel_note,
                     history="\n".join(f"  {h}" for h in history) or "  (nothing yet)",
                     params="\n".join(f"  {p.name} = {p.value}" for p in params) or "  (none)",
                     secrets="\n".join(f"  {s.input_ref}" for s in secrets) or "  (none)",
@@ -463,7 +554,19 @@ def discover(
                         store=store,
                     )
                     if isinstance(outcome, str):
-                        return DiscoveryFailure(outcome, index, evidence.dir, recorded)
+                        # ⚠️ A refusal the model can act on is FEEDBACK, not a
+                        # dead end. Measured twice: the first draft naming a
+                        # panel omitted `row_key` and `field`, which is one line
+                        # for the model to add and four wasted model calls to
+                        # re-run. The refusal itself stays exactly as strict --
+                        # it is handed back rather than relaxed, and a run that
+                        # keeps producing unapprovable drafts still fails.
+                        refusals += 1
+                        evidence.event("draft_refused", step=index, why=outcome, attempt=refusals)
+                        if refusals > _MAX_DRAFT_REFUSALS:
+                            return DiscoveryFailure(outcome, index, evidence.dir, recorded)
+                        history.append(f"finish was REFUSED and must be fixed: {outcome}")
+                        continue
                     return DiscoverySuccess(
                         outcome, recorded, evidence.dir, caller.calls, time.monotonic() - started
                     )
@@ -655,6 +758,7 @@ def _synthesise(
     # decisions only, not another full mapping pass.
     final_key = MapKey(app=target.app, tenant=target.tenant, screen=final_screen)
     ungrounded = []
+    read_from: dict[str, LocatedControl] = {}
     for out in outputs:
         try:
             control = store.control(final_key, out.control_id)
@@ -663,6 +767,7 @@ def _synthesise(
             continue
         if control.status != "ready":
             ungrounded.append(f"{out.name}: {out.control_id} is {control.status}")
+        read_from[out.name] = control
     if ungrounded:
         return "outputs name controls that cannot be read: " + "; ".join(ungrounded)
 
@@ -683,6 +788,35 @@ def _synthesise(
                 f"model tried to extract into {out.slot!r}, which is sensitive; a secret "
                 "can be filled in from an input_ref but never read back out"
             )
+        # Reading from a panel is a different step shape, and refusing a
+        # half-specified one HERE rather than at the approval gate is the same
+        # rule as the sensitive-slot refusal above: a draft nobody can approve
+        # leaves the diagnosis to a reviewer.
+        row_key: Value | None = None
+        control = read_from[out.name]
+        if control.role is ControlRole.TABLE_CONTROL_PANEL:
+            if control.panel is None or out.row_key is None or out.field is None:
+                return (
+                    f"{out.name} reads from the panel {out.control_id!r} without a row_key "
+                    "and a field; a panel is read as rows, so which row and which column "
+                    "have to be named"
+                )
+            if out.field not in control.panel.columns:
+                return (
+                    f"{out.name} reads column {out.field!r} of {out.control_id!r}, which "
+                    f"holds {control.panel.columns}"
+                )
+            row_key = (
+                ParamValue(param=by_value[out.row_key].name)
+                if out.row_key in by_value
+                else LiteralValue(value=out.row_key)
+            )
+        elif out.row_key is not None or out.field is not None:
+            return (
+                f"{out.name} names a row of {out.control_id!r}, which is not a panel; only "
+                "a table_control_panel has rows"
+            )
+
         declared.append(OutputSpec(name=out.name, slot=out.slot))
         steps.append(
             Step(
@@ -690,6 +824,8 @@ def _synthesise(
                 control=ControlRef(screen=final_screen, control_id=out.control_id),
                 slot=out.slot,
                 output=out.name,
+                row_key=row_key,
+                field=out.field if row_key is not None else None,
                 note=f"read {out.name} from the final screen (observed {out.value!r})",
             )
         )
@@ -723,9 +859,16 @@ def _synthesise(
             "unmatched to a parameter, so replay would have nothing to verify"
         )
 
-    used = {
-        s.value.param for s in steps if s.value is not None and isinstance(s.value, ParamValue)
-    } | {c.expected.param for c in checkpoints if isinstance(c.expected, ParamValue)}
+    # ⚠️ **A row_key counts.** A parameter can be used NOWHERE else: read the
+    # balance of the row where account_id = the caller's id, and check a different
+    # output against a literal. Leaving row_keys out dropped that parameter from
+    # `params` and the draft then failed its own validation, since `row_key` named
+    # something undeclared. Found by Copilot on #13.
+    used = (
+        {s.value.param for s in steps if s.value is not None and isinstance(s.value, ParamValue)}
+        | {s.row_key.param for s in steps if isinstance(s.row_key, ParamValue)}
+        | {c.expected.param for c in checkpoints if isinstance(c.expected, ParamValue)}
+    )
 
     # The one precondition discovery can honestly infer: we must be where the
     # recording started. Anything richer would be invented.

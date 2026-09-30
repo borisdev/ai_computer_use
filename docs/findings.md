@@ -263,6 +263,11 @@ asserted — not yet measured.
 | Replay against a reskinned, unadopted tenant | refused at the precondition — no action taken |
 | Row reached by INDEX instead of grounding | **11/11** — panel read + measured pitch (capability 1 v3) |
 | Cross-check, correct pitch | 0 misaligned of 11 |
+| **Panel DISCOVERED, hand-measured pitch reproduced** | 28 / 24 / 23 / 23 px on all four regions; rows 11 / 8 / 4 / 3 (#6) |
+| Discovered panel, alignment cross-check | **0 misaligned of 11**, live, on a panel no hand touched |
+| Chained-gap pitch over 11 rows | drifted **20px by row 10** — every gap within 1px, the fit 2px out |
+| A menu beside a table, containment only | menu measured **722px wide** instead of 170 — 23px rows fit inside 24px bands |
+| Regions the READ pass proposes | accounts ✅, nav ✅, ATM/online ✅; account detail and loan result **named as a neighbour** |
 | Cross-check, forced harmonic (2x pitch) | **11 misaligned of 11** — the guard fires |
 | Discovery run, cold (maps unbuilt) | 2 screens mapped, ~100 calls |
 | Discovery run, warm (maps cached) | 3 actions, **4 calls, 15s** |

@@ -28,9 +28,10 @@ than as a class whose methods raise.
 ```python
 @runtime_checkable
 class JobRunner(Protocol):
-    def run(self, request: JobRequest) -> CapabilityResult: ...   # InProcessRunner
+    def run(self, request: JobRequest) -> CapabilityResult: ...  # InProcessRunner
 
-class JobQueue(Protocol):            # ⛔ nothing implements this
+
+class JobQueue(Protocol):  # ⛔ nothing implements this
     def submit(self, request: JobRequest) -> str: ...
     def status(self, job_id: str) -> JobStatus: ...
     def result(self, job_id: str) -> CapabilityResult | None: ...

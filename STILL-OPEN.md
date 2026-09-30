@@ -28,8 +28,10 @@ SUCCESS read_savings_balance in 7 steps
 - `Step.row_key` + `Step.field` — "the row where key = param, read this column"
 - the executor builds the response schema from the panel's own columns, reads
   the table in ONE call, and selects the row **in code**
-- `scripts/add_accounts_panel.py` — stands in for the discovery step that does
-  not exist yet, committed so the geometry is reviewable
+- `scripts/add_panels.py` — stood in for the discovery step, committed so the
+  geometry is reviewable. ⛔ **No longer the only route: `screenshot2panels`
+  proposes panels and `scripts/discover_panels.py` stores them (#6).** These four
+  ids stay hand-measured because these artifacts name them
 
 **Two things this bought beyond capability 1:** the first real
 `BusinessOutcome` instance we have ever produced (99999), and issue 0009 is now

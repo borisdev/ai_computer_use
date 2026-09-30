@@ -1,23 +1,47 @@
 ---
 
-## ⛔ Only ONE of the five was discovered, and the reason is causal
+## ⛔ TWO were discovered, and the reason the others were not is GONE
 
-`log_in_discovered` came out of a real LLM run. The other four were **written
-by hand** in `capabilities.py`. That is the honest state and worth being precise
-about, because the brief's through-line is *"the model discovers, the artifact
-becomes a reusable capability."*
+`log_in_discovered` and `discovered_balance` came out of real LLM runs. The other
+four were **written by hand** in `capabilities.py`. That is the honest state and
+worth being precise about, because the brief's through-line is *"the model
+discovers, the artifact becomes a reusable capability."*
 
-**They are hand-authored because discovery cannot emit a `TABLE_CONTROL_PANEL`**
-([#6](https://github.com/borisdev/ai_computer_use/issues/6)). A panel is how a
-repeated structure is read safely — one model call for the region, the row
-picked in code — and three of the four need one. The coarse inventory prompt is
-told to *"ignore static text, images and layout"*, so it structurally cannot see
-the thing replay depends on.
+⛔ **This section said "Only ONE of the five, and the reason is causal" until
+2026-09-29,** the reason being that *"discovery cannot emit a
+`TABLE_CONTROL_PANEL`"* — with a coarse prompt told to ignore static text and
+layout, so it *"structurally cannot see the thing replay depends on"*. True when
+written, and **closed** by [#6](https://github.com/borisdev/ai_computer_use/issues/6):
+a second pass reads REPEATED STRUCTURES off the clean screenshot, and pure
+geometry measures them — pitch by ink runs confirmed against
+`find_row_rhythm`, phase and row count from the runs, and not one pixel asked of
+a model.
 
-So this is **one gap, not four**: close #6 and the same flows become
-discoverable. Everything downstream of the artifact — validation, approval,
-replay, composition, the guardrails — already treats both origins identically,
-which is why `log_in_discovered` replays on both tenants alongside the rest.
+`discovered_balance` is the artifact that closes the loop, and it is worth reading
+as one line: **discovered → approved → replayed on both tenants**, reading a named
+row out of an eleven-row table whose shape nobody told it.
+
+⚠️ **What is still hand-measured, and why — because "one gap, not four" was too
+neat.** Geometry measures all four regions correctly; what varies is whether the
+READ pass proposes them at all:
+
+```
+accounts table        11 rows, pitch 28px, autocorrelation 0.899   proposed, measured, USED
+account-services nav   8 rows, pitch 24px, 0.797                  proposed, measured
+ATM / online services  4 and 3 rows, pitch 20px                   proposed, measured
+account detail         4 rows, pitch 23px, 0.686                   MEASURED, not proposed --
+loan result            3 rows, pitch 23px                          the model names a different
+                                                                   region on those two screens
+empty transactions    refused: "no column below the heading repeats"
+```
+
+So the remaining gap is which REGION perception names, not whether geometry can
+measure it — a narrower and more honest statement than the one this paragraph
+made. `read_savings_balance` still needs the hand-measured `account_details_panel`.
+
+Everything downstream of the artifact — validation, approval, replay,
+composition, the guardrails — already treats both origins identically, which is
+why both discovered capabilities replay on both tenants alongside the rest.
 
 ⚠️ **And the comparison favours the machine, precisely.** `interfaceai
 capability check` resolves every control an artifact names against the control

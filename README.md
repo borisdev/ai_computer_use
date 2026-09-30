@@ -25,7 +25,7 @@ artifact, deterministic replay with typed outcomes, human handoff of the live
 session, and one artifact serving two tenants.
 
 ```
-279 tests — 248 offline, 31 live · ruff clean
+320 tests — 285 offline, 35 live · ruff clean
 ```
 
 | Piece | State |
@@ -48,9 +48,11 @@ session, and one artifact serving two tenants.
 | Persistence of runs / interventions | cut — see REPORT §7 |
 
 Artifacts in `artifacts/` come from **both** routes, and which is which
-matters: `log_in_discovered` and `read_savings_balance` were produced by a real
-discovery run against the live app; the earliest `log_in` was hand-authored
-before discovery existed. The contrast is measured and unflattering to the hand
+matters: `log_in_discovered` and `discovered_balance` were produced by real
+discovery runs against the live app — the second one **including its
+`TABLE_CONTROL_PANEL`**, which was the last thing only a hand could add
+([#6](https://github.com/borisdev/ai_computer_use/issues/6)); the earliest
+`log_in` was hand-authored before discovery existed. The contrast is measured and unflattering to the hand
 — the hand-written ones carry **3 and 8** faults against a real control map,
 the discovered one carries **0**, because a hand-written artifact can name
 anything and a discovered one can only name what it recorded. `interfaceai
@@ -702,12 +704,21 @@ generated from the artifact.
 Every remaining item is a GitHub issue with the reasoning in it, rather than a
 TODO list that drifts from the code.
 
+⛔ **[#6](https://github.com/borisdev/ai_computer_use/issues/6) — *"discovery
+cannot produce a `TABLE_CONTROL_PANEL`"* — was the biggest one, and it is
+closed.** `discovered_balance` is the artifact: a panel proposed by a read pass
+and MEASURED by geometry (pitch by ink runs, confirmed against autocorrelation,
+no pixel asked of a model), approved, and replayed on both tenants. What remains
+is narrower and stated in
+[CAPABILITIES.md](CAPABILITIES.md) — on two screens the read pass names a
+different region than the one a capability wants, so `account_details_panel` is
+still measured by hand.
+
 | | why it matters |
 |---|---|
-| [#6](https://github.com/borisdev/ai_computer_use/issues/6) Discovery cannot produce a `TABLE_CONTROL_PANEL` | **the biggest one.** Replay uses panels; discovery cannot emit one, so panels are added by hand — the only seam in the record-once story |
+| [#4](https://github.com/borisdev/ai_computer_use/issues/4) Extraction cannot point at unstructured data | half solved — tables and label/value pairs are panels; a lone value is not |
 | [#7](https://github.com/borisdev/ai_computer_use/issues/7) Screenshots are written unmasked | redaction covers logs and artifacts, not frames. §3.4 names regulated data |
 | [#9](https://github.com/borisdev/ai_computer_use/issues/9) The headless mirror | closes the unlogged-input path by construction; argued, and argued against, in REPORT §5 |
-| [#4](https://github.com/borisdev/ai_computer_use/issues/4) Extraction cannot point at unstructured data | half solved — tables and label/value pairs are panels; a lone value is not |
 | [#8](https://github.com/borisdev/ai_computer_use/issues/8) REPORT is over length | the one failing mechanical check. **Not** to be fixed by moving the threshold |
 | [#1](https://github.com/borisdev/ai_computer_use/issues/1) · [#2](https://github.com/borisdev/ai_computer_use/issues/2) · [#3](https://github.com/borisdev/ai_computer_use/issues/3) | observability and console work, deliberately shelved |
 

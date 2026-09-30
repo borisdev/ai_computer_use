@@ -1000,6 +1000,111 @@
         "sensitive": false
       },
       "panel": null
+    },
+    {
+      "id": "atm_services_table_control_panel",
+      "label": "ATM Services",
+      "role": "table_control_panel",
+      "description": "A vertical list of ATM services such as Withdraw Funds, Transfer Funds, Check Balances, and Make Deposits, located in the center right of the screen under the heading 'ATM Services'. (4 rows, pitch 20px, autocorrelation 0.732)",
+      "status": "ready",
+      "click_point": {
+        "x": 700,
+        "y": 290
+      },
+      "locator": {
+        "kind": "visual",
+        "schema_version": 1,
+        "template_png": "iVBORw0KGgoAAAANSUhEUgAAAFYAAAAPCAIAAADxta-fAAAFYElEQVR4nO1Xa0xTdxQ_9_ZF5VH6fsujFQe0BYVCC46gDibOzQlE3dyyxS1hc1t0mswle-h0I06cOjPj4jKjyXyyOZmP4ZiaBioKA1oYFWixQEuhD0ptBQr2sQ91FdriB76YbP4-nXsev5zzu-f_z72I3--H_zfQJ93Akwc2orf2pGDMqV-46CORbM-4q__3n5JCEjBYYsFL126czwOA_JWXWAkrAcBirKu_-DwALCtvItOzH2X7fV1tXxu0p-47tDHxKVRWXkb-AQyWOLeOG2tLTX2_lb3jmVt5OCJIMGptGXPqqSz54N3zItkeHCF-4eKPAcA-3Gg1KbiC8hiSEEXxgWQExQ71Xw5IMNR3GUGxfl9oc3dadmuav0hOfzc9Z5dtSKlV78fhY8Xyqrl1nCbdKRBtmlttRESQwKg7g8XHiXIrFTVLHTZVPC1TlFsJAF2tlVaTIiHldXbiiwBgN98CABJVMjxwJVBoNlwlUUQOmyqE0DJ4A0EwGUsOoCiek7SGGM2Jpy8GAJ93UtWw2dhbjcFECUSbnsn6xGFru1adlZK5zTJ4g8ld3q3-hp3wQl5JDQB03v60q7WycI2yR1UV3AJdxyGt-uCUe4TGeVYs3xtHTgvnBACT_kKPqsphU5OoksTUjUmpb09vL8JdMKA9zU5YReMU4Ahko-7M4yWkMKTjrn6Xo2vc1edydFOYsvAcMm2x3-9VXCjUa35wjw8vyNhK5xQCQEfjdr3mqFD8gUC0qbPpM4uxDkGwAKC_8-P8lNfYSS_TOYVWkwLADwBD_ZejojlUljxIa9LXqBu2kKjijCUHRy1_tVzfGJHT7_c2X3-TGM2TFZ8jxvA0TTvc40PT2wvdglFLs3vMxBOUASBMfrGxt1ok2zPL-AgAUBi5Az0nTfoaDHYeFhdDYeTc7fw-EAoiVboDQTHa9m_t5lugqCDTszMLvqMwcga0p8j0rDTpTgDo_fuwQXdugWQLANA5hQGDm1xqHbxuM9XHklPvjaiFks3Tafu7TwBARv7-6DgBmZ41OWEGgHBOGrvA53E77Z0ohiArPhc-RqgEBt0ZAGisLQt6HLa2eNqiSBL4AQAQlMErMhvqMNgoBq8IEPRR6F_g8CSxvEosrxp39es1R7Xth5rqNqx4tXvKbZty23458nAT3WOmgBFHTg0YfOFaVf37ZsNVx4gaAPjC9dNpAzNHxwkAgESVAAD4feGcKIYgXX6iRVFRf7EIAKFzl-aV_IrFxc4qgbH3ZyorP036OQD4fd6GK6uMvdWzSPAQ7MRVauWHAJCZfzA86vNOtioqCESGWL53XmxCeu5XI8M3rUP1gCD4KBoxmi3J2_dQKQI5YCAIJmDgo2hUVr7Z8AeOQCHG8CnM3OnMBCITAO7f08WQhAbt6Xv2DlHOlxE5ecJ1XEH5qKW5r-u4XnN08O75hIVvBHlm3AV28-2J-wZO0moGr4jBK2LOX0FhSI26s4-ZHwC4yaWeKadnyslJXhMeRTEE94SlR7Xvdt0rHY3bGy6VWE0KBncZAMJfsN7l6Jlyj3oejGmad01OWCOQC8pGra0jw0qeoDwkFBijXbnVpL_QVv_eyPBNQNBwzjGn_tJxdrtym-eBKzY-BQBQFDedZ8YWBE4Bk18c9DC4y7taK2c_CwAAODwp8H5weFLEhOylx5r-3GDUnUUQTHRcslCyOS17BwBI5FVez0SroiJqHosrKGfNL3HaO0Nq-YK17cqtXs84T7guJMRJWr2o4HB3297G2lIKUxY45-GcAJCeu7vvzrHeziN-nycx9S3uTDWRpx_IM7YgeIv8t0GiZjy3ti34-HQLnv4mAfwD3h9OS1EsdVcAAAAASUVORK5CYII=",
+        "reference_size": {
+          "width": 1280,
+          "height": 900
+        },
+        "reference_crop": {
+          "x": 681,
+          "y": 289,
+          "width": 86,
+          "height": 15
+        },
+        "click_offset": {
+          "x": 19,
+          "y": 1
+        },
+        "match_threshold": 0.95,
+        "ambiguity_margin": 0.05
+      },
+      "reason": null,
+      "policy": {
+        "irreversible": false,
+        "sensitive": false
+      },
+      "panel": {
+        "columns": [
+          "service"
+        ],
+        "key_column": "service",
+        "dx": -39,
+        "dy": 17,
+        "width": 293,
+        "height": 80,
+        "key_dx": -15,
+        "key_dy": 17,
+        "key_width": 106,
+        "key_click_dx": null,
+        "row_pitch": 20
+      }
+    },
+    {
+      "id": "online_services_table_control_panel",
+      "label": "Online Services",
+      "role": "table_control_panel",
+      "description": "A vertical list of online banking services such as Bill Pay, Account History, and Transfer Funds, located in the center right of the screen under the heading 'Online Services'. (3 rows, pitch 20px, autocorrelation 0.667)",
+      "status": "ready",
+      "click_point": {
+        "x": 889,
+        "y": 301
+      },
+      "locator": {
+        "kind": "visual",
+        "schema_version": 1,
+        "template_png": "iVBORw0KGgoAAAANSUhEUgAAAGIAAAAPCAIAAACQrY3dAAAFO0lEQVR4nO1XbUxTVxh-7-13b0sp2Cq00hZqa0HABhWmQkAUMydG0Lj5FXRqSLZhliy6xbgt0-hM3Jb5FaLExI9sM04EYSquA0XwoxUQLeVDKgWhRQoUKaVAW3r3o6RroVXS_ViW8Pw697zv89z3PPc9J_cgOI7DDN4F9L8u4P8BHza11B2786u06Cz15kWeSrHFYTO_ha9VnyrMR3sN98wmTWE-2qj6JuBSDLqie0XLiguwW5cFj8qyLW9eBCylVZ8szEd79XcDVpiEyTapH-1vUB7AcadQtovBEndqr9y9vhTHx98phAUJkzPvCObvCKyOXsO9R2UbCET64vTL4tg8o75CVb49MCkA4ImykzPvBM-SB6wwCUTPhxFLV-vzEyGzE1OzqhGEAAAa5cHmuqNtmrNRCz4pOc-ePTcDJVANuiJWaNzi9MtYkMjNHTa3V5WuliUcjF5yyF_mS_XpF_U_2MZMYcJ1CakFBCLNTXd9ean8Sy5_JQDQGRFOp80VmsoqOc_m8NIAEPuYyW4btFo6M3f2AoCxq7yqdFXMksNEMvNZ9ecp68o5vLT-1w-e3v_MMtgaPCtesnBfuGi9T02DrvhF_fE3fc9YoXFC2cci2W5PZ7y6yaivwJ12oWyXyyMAEMftBQBjlwIAEJRoaC8hU9iRMbn9rx82PP7Kn_c-Mw26G_XVe4M58oXJp3pelTXVHvaksDmLAKCuMre59sibvqd88aYIyTZ_LAQlGvUVZGqIZOG-cFGWbbTfZFQBQHd7CQDMnbfFLTs6bKgqXY3jDnnKGdw5rlRsttsGp2ri-PiTih00jJ-UcZXG4Deqvh21dvu1yWp5BQB0jO-eodC4CEKwDnW4lk_D-PHLf4597ziZEmIeaPRnk8_MjpaLALBk5S8CaQ6Hv0Lfdt2TECbMlKfk28YGNKqvy39PuHVpbkfLJf8shECgJqSemyNYEyHZCgA9r24DQHfHreBZcs8e72q7Nu6wimPzBNKcpNXXlq0pARyfqok7HU7HqNmkQQmUpIyrH-ToqfQwz_K8Nh2NHgYAI1aDe8Y22ofj42QqZyIBC58YMPgO-7B_m3xkjo30AEBxAWPixSTmJEpkTG5kTK7DPtTZeqWx5ruaih1c3gp_LAZLDIAAABYUyWTLejoVEZJtw-aXMYlHPDVHra8BAAuKclVCY_B9VoISKIvTL9ZW5laVrgJAOLy0pe8XeVboZRObuwgAdJpzEZJtKEoGAK36NABwwlPe4sg0QaHNBkCSM8t8RlvqjvX3PE7KuEIkMUXRe0aG9U01hyyDrf5Y7mMBAHiirOa673VN5wEgYt5mzzQqfQ4AWAa1XH66qUdpaL8hnL_TpyZf_CEvauOA8Ul78wVd4zl923WBNMcd9dp0rNB4cWyeyaj687fop_c_rbyR2lRziEQJFkXvCcQYbwik2wFwk_EJAGjVp10Dz3V3t5dUFqc2KA8oFR-1PvuJRGaxuYvewZpY4SYA_KX6DJuTQGcKvUKRGwlEulZ9skt7tb4qr60hn0wNnao5bNb9cSHs-YMvHPYhZrAEAFCU5Kkz-YcgfvmJBYlHEYSgayroM9wPE6xdkf2YQuP-a5cgXJQVt_THNs1ZpWILicwSx-Z5RqXy_SLZ7oHe2pa6Y33d1XMEa9KyHxJJzLezXGCFxtEwnsM-xIvcMClExcKTMxUoSlb9tXXEali-9jaZEjJVEwsSxSQeNhlV1TfXPn-4TyjbxYva6KmDzFxWpgOvs6kwf-bu8g_W7xkiEDHXeKabpoWZ9pkW_gY9MGcMACPCsAAAAABJRU5ErkJggg==",
+        "reference_size": {
+          "width": 1280,
+          "height": 900
+        },
+        "reference_crop": {
+          "x": 844,
+          "y": 289,
+          "width": 98,
+          "height": 15
+        },
+        "click_offset": {
+          "x": 45,
+          "y": 12
+        },
+        "match_threshold": 0.95,
+        "ambiguity_margin": 0.05
+      },
+      "reason": null,
+      "policy": {
+        "irreversible": false,
+        "sensitive": false
+      },
+      "panel": {
+        "columns": [
+          "service"
+        ],
+        "key_column": "service",
+        "dx": -65,
+        "dy": 6,
+        "width": 82,
+        "height": 60,
+        "key_dx": -41,
+        "key_dy": 6,
+        "key_width": 5,
+        "key_click_dx": null,
+        "row_pitch": 20
+      }
     }
-  ]
+  ],
+  "panels_scanned": true
 }

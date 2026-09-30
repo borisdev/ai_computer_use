@@ -79,7 +79,7 @@ class Settings(BaseSettings):
     # empty setting disables the gate. Adding a tenant to the system means
     # adding it here, or its runs will not start.
     interfaceai_allowed_capabilities: str = (
-        "baseline=*;feature=log_in,log_in_discovered,read_savings_balance"
+        "baseline=*;feature=log_in,log_in_discovered,read_savings_balance,discovered_balance"
     )
 
     # --- Demo fixtures ---

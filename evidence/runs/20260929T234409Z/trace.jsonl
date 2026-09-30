@@ -1,0 +1,38 @@
+{"ts": "2026-09-29T23:44:09.233938+00:00", "event": "run_started", "goal": "read the current balance of a member's savings account", "model": "replay/none"}
+{"ts": "2026-09-29T23:44:09.234037+00:00", "event": "replay_started", "capability": "read_savings_balance", "version": 3, "inputs": ["account_id"], "target": {"app": "parabank", "tenant": "baseline", "base_url": "http://localhost:8080/parabank"}}
+{"ts": "2026-09-29T23:44:09.520144+00:00", "event": "run_started", "goal": "read the balance of account 13344", "model": "replay/none"}
+{"ts": "2026-09-29T23:44:09.520277+00:00", "event": "replay_started", "capability": "discovered_balance", "version": 1, "inputs": ["account_id"], "target": {"app": "parabank", "tenant": "feature", "base_url": "http://localhost:8081/parabank"}}
+{"ts": "2026-09-29T23:44:09.950062+00:00", "event": "precondition", "name": "at_the_login_page", "want": "present", "present": true, "when": "entry"}
+{"ts": "2026-09-29T23:44:09.950197+00:00", "event": "invoke_started", "step": 0, "capability": "log_in", "version": 2, "bound": []}
+{"ts": "2026-09-29T23:44:10.111135+00:00", "event": "precondition", "name": "at_the_login_page", "want": "present", "present": true, "when": "entry"}
+{"ts": "2026-09-29T23:44:10.309126+00:00", "event": "precondition", "name": "at_the_recorded_starting_point", "want": "present", "present": true, "when": "entry"}
+{"ts": "2026-09-29T23:44:10.331201+00:00", "event": "acted", "step": 0, "control": "username_textbox", "action": "enter_text", "value_length": 4, "score": 1.0, "url": "http://localhost:8080/parabank/index.htm"}
+{"ts": "2026-09-29T23:44:10.517757+00:00", "event": "acted", "step": 0, "control": "username_textbox", "action": "enter_text", "value_length": 4, "score": 1.0, "url": "http://localhost:8081/parabank/index.htm"}
+{"ts": "2026-09-29T23:44:11.529809+00:00", "event": "acted", "step": 1, "control": "password_textbox", "action": "enter_text", "value_length": 4, "score": 1.0, "url": "http://localhost:8080/parabank/index.htm"}
+{"ts": "2026-09-29T23:44:11.718930+00:00", "event": "acted", "step": 1, "control": "password_textbox", "action": "enter_text", "value_length": 4, "score": 1.0, "url": "http://localhost:8081/parabank/index.htm"}
+{"ts": "2026-09-29T23:44:12.644500+00:00", "event": "acted", "step": 2, "control": "log_in_button", "action": "click", "value_length": null, "score": 0.9997754693031311, "url": "http://localhost:8080/parabank/index.htm"}
+{"ts": "2026-09-29T23:44:12.832708+00:00", "event": "acted", "step": 2, "control": "log_in_button", "action": "click", "value_length": null, "score": 0.9997754693031311, "url": "http://localhost:8081/parabank/index.htm"}
+{"ts": "2026-09-29T23:44:13.740434+00:00", "event": "waited", "step": 3, "control": "accounts_overview_link"}
+{"ts": "2026-09-29T23:44:13.740573+00:00", "event": "replay_succeeded", "capability": "log_in", "outputs": {}}
+{"ts": "2026-09-29T23:44:13.740611+00:00", "event": "invoke_finished", "step": 0, "capability": "log_in", "result": "Success"}
+{"ts": "2026-09-29T23:44:13.854182+00:00", "event": "waited", "step": 1, "control": "accounts_table_panel"}
+{"ts": "2026-09-29T23:44:13.888327+00:00", "event": "observed", "step": 3, "frame": "/tmp/wt-panels/evidence/runs/20260929T234409Z/frames/001-03-observe.png"}
+{"ts": "2026-09-29T23:44:13.905376+00:00", "event": "observed", "step": 2, "frame": "/tmp/wt-panels/evidence/runs/20260929T234409Z/frames/001-02-observe.png"}
+{"ts": "2026-09-29T23:44:17.911706+00:00", "event": "panel_read", "step": 4, "control": "accounts_overview_table_control_panel", "rows": 11, "wanted": "13344"}
+{"ts": "2026-09-29T23:44:17.911833+00:00", "event": "extracted", "step": 4, "output": "account_id", "value": "13344", "via": "panel"}
+{"ts": "2026-09-29T23:44:17.913112+00:00", "event": "panel_reused", "step": 5, "control": "accounts_overview_table_control_panel"}
+{"ts": "2026-09-29T23:44:17.913218+00:00", "event": "extracted", "step": 5, "output": "balance", "value": "<money redacted, 8 chars>", "via": "panel"}
+{"ts": "2026-09-29T23:44:17.913266+00:00", "event": "replay_succeeded", "capability": "discovered_balance", "outputs": {"account_id": "13344", "balance": "<money redacted, 8 chars>"}}
+{"ts": "2026-09-29T23:44:17.913310+00:00", "event": "replay_finished", "outcome": "Success", "capability": "discovered_balance", "recovered": [], "frame": null}
+{"ts": "2026-09-29T23:44:18.944694+00:00", "event": "panel_read", "step": 3, "control": "accounts_table_panel", "rows": 11, "wanted": "13344"}
+{"ts": "2026-09-29T23:44:18.944855+00:00", "event": "extracted", "step": 3, "output": "found_account_id", "value": "13344", "via": "panel"}
+{"ts": "2026-09-29T23:44:18.946391+00:00", "event": "panel_reused", "step": 4, "control": "accounts_table_panel"}
+{"ts": "2026-09-29T23:44:18.946490+00:00", "event": "extracted", "step": 4, "output": "balance", "value": "<money redacted, 8 chars>", "via": "panel"}
+{"ts": "2026-09-29T23:44:18.947267+00:00", "event": "panel_reused", "step": 5, "control": "accounts_table_panel"}
+{"ts": "2026-09-29T23:44:19.030002+00:00", "event": "row_resolved", "step": 5, "control": "accounts_table_panel", "key": "13344", "index": 9, "pitch": 28, "x": 508, "y": 614}
+{"ts": "2026-09-29T23:44:19.036340+00:00", "event": "acted", "step": 5, "control": "accounts_table_panel", "action": "click", "url": "http://localhost:8080/parabank/overview.htm"}
+{"ts": "2026-09-29T23:44:20.126118+00:00", "event": "waited", "step": 6, "control": "account_details_panel"}
+{"ts": "2026-09-29T23:44:22.552683+00:00", "event": "panel_read", "step": 7, "control": "account_details_panel", "rows": 4, "wanted": "Account Type:"}
+{"ts": "2026-09-29T23:44:22.552793+00:00", "event": "extracted", "step": 7, "output": "account_type", "value": "SAVINGS", "via": "panel"}
+{"ts": "2026-09-29T23:44:22.552846+00:00", "event": "replay_succeeded", "capability": "read_savings_balance", "outputs": {"found_account_id": "13344", "balance": "<money redacted, 8 chars>", "account_type": "SAVINGS"}}
+{"ts": "2026-09-29T23:44:22.552877+00:00", "event": "replay_finished", "outcome": "Success", "capability": "read_savings_balance", "recovered": [], "frame": null}

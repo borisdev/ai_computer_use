@@ -2,7 +2,7 @@
 import subprocess
 from pathlib import Path
 
-ROOT = Path("/home/borisdev/workspace/ai_computer_use")
+ROOT = Path(__file__).resolve().parents[1]
 B = "https://github.com/borisdev/ai_computer_use/blob/main"
 T = "https://github.com/borisdev/ai_computer_use/tree/main"
 
@@ -81,6 +81,33 @@ CAPS = [
             ("the discovery run that produced it", "20260926T022551Z"),
             ("a full handoff", "20260930T053709Z"),
         ],
+    },
+    {
+        "origin": "🤖 <b>discovered</b><br/><sub>panel and all</sub>",
+        "name": "discovered_balance",
+        "ver": "v1",
+        "anchor": "discovered_balance-v1",
+        "art": "discovered_balance.v1.approved.json",
+        "sig": "(account_id) → account_id, balance",
+        "run": "--param account_id=13344",
+        "desc": "Read one account's balance out of the accounts table. **Discovered including its `TABLE_CONTROL_PANEL`** — the gap #6 was open on.",
+        "a": ("✅", "`Success` · 6 steps", "20260929T234307Z"),
+        "b": ("✅", "`Success` · 6 steps", "20260929T234409Z"),
+        "demo": [
+            (
+                "A discovered panel",
+                "geometry measured the table — **11 rows, 28px pitch, autocorrelation 0.899** — and no pixel was asked of a model",
+            ),
+            (
+                "The row by arithmetic",
+                "`row_key=account_id`, `field=balance`; the whole table is read in one call and the row picked **in code**",
+            ),
+            (
+                "Cross-tenant, discovered",
+                "the heading it anchored on matches a **different build** of ParaBank, unchanged",
+            ),
+        ],
+        "extra": [("the discovery run that produced it", "20260929T232850Z")],
     },
     {
         "origin": "✍️ hand-authored<br/><sub>needs a panel</sub>",
@@ -177,11 +204,17 @@ L.append("""</table>
 
 ✅ ran · ⚠️ stopped for a policy reason · ⛔ refused before a browser opened.
 
-⚠️ **Why five, and why these five.** The brief (§2) asks for one goal driven end
-to end — *"look up member 12345 and read their current savings balance"* — and
-then for the SYSTEM around it. Each of these earns an outcome type or a
-guardrail an **observed instance**; none was added because a bank needs the
-feature. §7 says feature breadth is not rewarded.
+⚠️ **Why these, and no more.** The brief (§2) asks for one goal driven end to
+end — *"look up member 12345 and read their current savings balance"* — and then
+for the SYSTEM around it. Each one here earns an outcome type or a guardrail an
+**observed instance**; none was added because a bank needs the feature. §7 says
+feature breadth is not rewarded.
+
+⚠️ Two of them answer the SAME goal, and that is the point of the pair:
+`read_savings_balance` was written by a person and `discovered_balance` was
+discovered, panel included. Compare them rather than counting them — the
+authored one checks `account_type` on the detail page, which discovery does not
+reach, and the discovered one names nothing it did not see.
 
 ---
 """)

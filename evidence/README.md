@@ -4,7 +4,7 @@ What §6.3 asks for: *"a saved example artifact plus logs from both a discovery
 run and a replay run. Ideally include one replay that hits an error or
 exceptional state."*
 
-Seven runs, all against the live ParaBank container, all reproducible with the
+Every run below is against the live ParaBank container and reproducible with the
 commands in the [README](../README.md#demo-path). Each directory holds
 `trace.jsonl` (one JSON object per event) and `frames/` (what the model was
 actually shown).
@@ -17,6 +17,9 @@ actually shown).
 | [`runs/20260930T053834Z`](runs/20260930T053834Z) | **Escalation.** A $25,000 loan against a $1,000 tenant threshold stops and asks a person, *even with `--confirm-risky`* |
 | [`runs/20260930T053811Z`](runs/20260930T053811Z) | **Recovery.** The session is destroyed mid-flow; `recovering` → `log_in` re-invoked → `SUCCESS`. A recovered condition is not a terminal state |
 | [`runs/20260930T053709Z`](runs/20260930T053709Z) | **A full handoff.** The run blocks, a person takes the live session, navigates, and hands it back — `handoff_requested` → `human_acted` → `handoff_returned`, a frame and location on each edge, `location_changed: true`. The operator aborts, having established the record genuinely does not exist |
+| [`runs/20260929T232850Z`](runs/20260929T232850Z) | **Discovery, with a panel.** The run that emitted [`artifacts/discovered_balance.v1.draft.json`](../artifacts/discovered_balance.v1.draft.json) — it proposed the accounts table as a `TABLE_CONTROL_PANEL`, measured it (11 rows, 28px), and finished by naming a ROW and a COLUMN of it rather than a coordinate. The overview's `control_map_built` carries `panels=1, panels_ready=1` (the login screen's carries 3), which is the whole of issue #6 in one event |
+| [`runs/20260929T234307Z`](runs/20260929T234307Z) | **Replaying a discovered panel.** `discovered_balance(13344)` → `$1231.10`, 6 steps, the row selected in code from one panel read |
+| [`runs/20260929T234409Z`](runs/20260929T234409Z) | **The same artifact on the other tenant.** A heading template discovery chose, matching a different ParaBank build unchanged |
 | [`runs/20260929T042311Z`](runs/20260929T042311Z) | **A safety refusal, at discovery time.** The model tried to `extract` into the sensitive slot `username`; the run stops rather than emitting an artifact that would leak a credential through `returns` |
 
 ## ⛔ Two older runs are also committed, and they are LOAD-BEARING

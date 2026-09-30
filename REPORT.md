@@ -8,7 +8,7 @@
 > threshold stops and asks a person. Every number here came from a run.
 >
 > ```
-> 279 tests — 248 offline, 31 live · ruff clean
+> 320 tests — 285 offline, 35 live · ruff clean
 > ```
 
 Detail lives elsewhere so this stays short: **[evidence/](evidence/README.md)**
@@ -317,9 +317,13 @@ Reasoning per item in [STILL-OPEN.md](STILL-OPEN.md).
 
 ### If I had another day
 
-1. **A `TABLE_CONTROL_PANEL` producer in discovery** — panels are hand-added by
-   a script today, which is the largest gap between what discovery produces and
-   what replay can use.
+1. **Perception choosing the RIGHT repeated structure.** A panel producer now
+   exists (`screenshot2panels`): a read pass names the repeated structures, pure
+   geometry measures the pitch, phase, row count and extent, and
+   `discovered_balance` is a discovered panel-backed capability that replays on
+   both tenants. What is left is which region the read pass names — on the
+   account-detail and loan-result screens it names a neighbouring one, so those
+   two panels are still hand-measured.
 2. **A restyled tenant** — the cheapest honest test of the decision with the
    most to lose (§4).
 3. **The headless mirror as a second operator mode**, so §5's trade is a
