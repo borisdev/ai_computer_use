@@ -25,7 +25,7 @@ artifact, deterministic replay with typed outcomes, human handoff of the live
 session, and one artifact serving two tenants.
 
 ```
-320 tests — 285 offline, 35 live · ruff clean
+322 tests — 287 offline, 35 live · ruff clean
 ```
 
 | Piece | State |
@@ -107,6 +107,7 @@ before running the suite.
 | **a fair negative answer** | `uv run banking-jobs replay read_savings_balance --params job_params/read_savings_balance.not_found.yaml` |
 | **compose** | `uv run banking-jobs replay log_in` |
 | **discovered by an LLM** | `uv run banking-jobs replay log_in_discovered` |
+| **discovered, panel-backed** | `uv run banking-jobs replay discovered_balance --param account_id=13344` |
 | **stop and ask a person** | `uv run banking-jobs replay request_loan --params job_params/request_loan.yaml --confirm-risky` |
 | **survive a lost session** | `uv run banking-jobs replay session_loss_probe --params job_params/session_loss_probe.yaml` |
 | **a second institution** | `uv run banking-jobs replay read_savings_balance --tenant-config tenant_configs/bank_b.yaml --param account_id=13344` |
@@ -517,6 +518,40 @@ finished so a human can resume rather than restart. Add `--operator` to take
 the live session at that point. Then `uv run interfaceai env reset`.
 
 ### Where the artifacts come from — a real LLM run
+
+⭐ **Try the one that closed [#6](https://github.com/borisdev/ai_computer_use/issues/6).**
+This is the brief's own worked example, discovered rather than written — a
+model names the repeated structure, **geometry** measures it, and the row is
+reached by a parameter:
+
+```bash
+uv run banking-jobs discover \
+  --goal "read the balance of account 13344" \
+  --name my_balance_reader \
+  --param account_id=account_id=13344 \
+  --secret parabank_username=username --secret parabank_demo_password=password
+
+uv run banking-jobs capability approve my_balance_reader --by "your name"
+uv run banking-jobs replay my_balance_reader --param account_id=13344
+uv run banking-jobs diagram my_balance_reader
+```
+
+```
+discovered my_balance_reader in 3 steps, 4 model calls, 22s
+```
+
+It emits six steps — login, an observe, and **two extracts from one
+`accounts_overview_table_control_panel`, each carrying a `row_key`** — plus a
+checkpoint it inferred on `account_id`. ⚠️ **No pixel is asked of a model:**
+the read pass names the region, then ink runs and autocorrelation measure the
+pitch, phase and extent.
+
+⚠️ It will **not** match `read_savings_balance`, and that is the honest
+remaining gap: that capability drills into the account-detail screen, where the
+read pass still names a neighbouring region, so its second panel is hand-
+measured (REPORT §7).
+
+The older, non-panel example, if you want the simplest possible run:
 
 ```bash
 uv run interfaceai discover \

@@ -690,7 +690,7 @@ def _act(
         value_length=acted.value_length,
         x=acted.x,
         y=acted.y,
-        url=acted.url,
+        location=acted.location,
         match_score=resolved.score,
     )
     recorded.append(
