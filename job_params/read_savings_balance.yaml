@@ -1,5 +1,21 @@
-# What `read_savings_balance` was asked for.
+# ═══════════════════════════════════════════════════════════════════════════
+# PROVES   panel extraction, and a checkpoint that can actually fail
+# EXPECT   SUCCESS in 12 steps · balance = $1231.10 · account_type = SAVINGS
+# RUN      uv run banking-jobs replay read_savings_balance \
+#            --params job_params/read_savings_balance.yaml
+# ═══════════════════════════════════════════════════════════════════════════
 #
-# A params file is committable and reviewable; shell history is not. For a
-# regulated run, "which inputs were used" is audit material.
+# The brief's own worked example (§2). Three of the twelve steps are `log_in`,
+# invoked with its version pinned.
+#
+# ⚠️ WHY 13344 AND WHY account_type COMES BACK. ParaBank's CLEAN state keeps
+# this id but turns it into `CHECKING $5,022.93`. A checkpoint that only
+# asserted the row EXISTS would pass there and hand back a stranger's balance,
+# so the capability returns `account_type` and asserts `SAVINGS`. Run
+# `interfaceai env break` and watch it fail on purpose.
+#
+# The row is not grounded. The whole table is read in ONE model call and the
+# row is picked IN CODE — asking a model where a row is lands on the wrong
+# record 3 times in 4, silently.
+
 account_id: "13344"

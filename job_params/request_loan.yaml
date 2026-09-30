@@ -1,8 +1,24 @@
-# A loan LARGE enough to need a person.
+# ═══════════════════════════════════════════════════════════════════════════
+# PROVES   risk that depends on the VALUE, not just on the control
+# EXPECT   NEEDS A HUMAN at step 5 · "at or above the 1000 threshold" · EXIT 1
+# RUN      uv run banking-jobs replay request_loan \
+#            --params job_params/request_loan.yaml --confirm-risky
+# ═══════════════════════════════════════════════════════════════════════════
 #
-# ⚠️ 25000 is over tenant A's $1,000 threshold on purpose: the run stops at the
-# submit button with the form already filled, so the demo never actually
-# submits a loan and the fixtures stay clean. Drop to 500 to see it get past
-# the money rule.
+# ⚠️ 25000 IS OVER TENANT A's $1,000 THRESHOLD ON PURPOSE. The run fills the
+# whole form and stops AT the submit button, so the demo never actually submits
+# a loan and the fixtures stay clean. Drop to 500 to watch it get past the
+# money rule.
+#
+# `--confirm-risky` is the caller saying "this run may do irreversible things".
+# It CANNOT buy past the threshold: that is the bank saying "a person signs off
+# above this amount", a question never addressed to the caller. It was
+# bypassable once — a $25,000 loan submitted with no human — see
+# docs/what-went-wrong.md.
+#
+# ⚠️ Against tenant B this never reaches the form at all: `request_loan` is not
+# in that institution's allowlist, so it fails at PRE-FLIGHT before a browser
+# opens. That exclusion is the demonstration.
+
 amount: "25000"
 down_payment: "5000"

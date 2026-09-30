@@ -39,17 +39,22 @@ class TenantConfig(Contract):
     identity and from there into every artifact's `target.tenant` and every
     control-map directory. Boris caught it reading the config.
 
-    ⚠️ What this repo calls "tenant" throughout is really the CONTROL-MAP KEY.
-    The institution is a level above and has not existed in the model until
-    now. Renaming it everywhere means re-exporting and re-approving all five
-    artifacts, which is issue #13 — this field makes the distinction visible
-    without invalidating a single approval.
+    ⛔ **CORRECTED. This said "tenant is really the control-map key". It is
+    not.** `tenant` keys FIVE things — control maps, base URL, the capability
+    allowlist, the money threshold, and which deployment a run belongs to. It
+    is the DEPLOYMENT IDENTITY, and the field name is right.
+
+    **Only the VALUES are wrong.** `bank_a` belongs where `baseline` is.
+    Renaming them means re-exporting and re-approving all five artifacts, which
+    is issue #15 — `institution` makes the distinction visible without
+    invalidating a single approval.
     """
 
     # Who this is. Free text; it names an institution, not a build.
     institution: str = Field(min_length=1, default="")
-    # Which pixel set their screens match. TODAY this is a vendor image tag,
-    # which is the defect above.
+    # The DEPLOYMENT this run belongs to: control maps, base URL, allowlist and
+    # money threshold are all keyed by it. Today its VALUE is a vendor image
+    # tag, which is the defect above.
     tenant: str = Field(min_length=1)
     app: str = Field(min_length=1)
     base_url: str = Field(min_length=1)
@@ -81,7 +86,7 @@ class TenantConfig(Contract):
 
     @property
     def who(self) -> str:
-        """The institution, falling back to the control-map key.
+        """The institution, falling back to the deployment key.
 
         A fallback rather than a required field, because every existing config
         and every approved artifact still identifies a tenant by its image tag.

@@ -1,2 +1,21 @@
-# The account to read before the capability destroys its own session.
+# ═══════════════════════════════════════════════════════════════════════════
+# PROVES   recovery, and why there is no `Recoverable` outcome type
+# EXPECT   SUCCESS in 8 steps · "recovered accounts_overview_link gone"
+# RUN      uv run banking-jobs replay session_loss_probe \
+#            --params job_params/session_loss_probe.yaml
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# The capability logs ITSELF out halfway through. `log_in` declares what it
+# `establishes` — the authenticated nav — so when a step fails because that ref
+# is gone, the engine knows which capability puts it back and re-invokes
+# exactly that one.
+#
+# ⚠️ BOUNDED TO ONCE PER CONDITION, so a genuinely dead session fails instead
+# of looping.
+#
+# ⛔ AND IT COMES BACK `Success`, NOT `Recovered`. A recovered condition is not
+# a terminal state — a fifth outcome type would make a caller branch on
+# something that is not an answer. `Success.recovered` names what the run
+# survived. A test asserts the type's absence, so adding one is a conscious act.
+
 account_id: "13344"

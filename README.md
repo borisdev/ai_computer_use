@@ -25,7 +25,7 @@ artifact, deterministic replay with typed outcomes, human handoff of the live
 session, and one artifact serving two tenants.
 
 ```
-275 tests — 244 offline, 31 live · ruff clean
+279 tests — 248 offline, 31 live · ruff clean
 ```
 
 | Piece | State |
@@ -60,11 +60,43 @@ Setting up a fresh machine: [`docs/vm-setup.md`](docs/vm-setup.md)
 
 ## Smoke test — every capability, both param forms
 
-Once, then any line below stands alone:
+### Prerequisites
 
 ```bash
-docker compose up -d --wait && uv run interfaceai env reset
+curl -LsSf https://astral.sh/uv/install.sh | sh    # if you do not have it
+uv sync                                            # fetches Python 3.13 too
+uv run playwright install chromium                 # the browser replay drives
 ```
+
+Plus a Docker runtime with `docker compose`. A model key in `.secret` is only
+needed for `discover` and for `extract` steps — see
+[Config](#config); `log_in` and `log_in_discovered` replay with **zero model
+calls**.
+
+### Bring the banks up
+
+**One compose file, two services.** Tenant B sits behind a profile, so it does
+not start unless asked:
+
+```bash
+docker compose up -d --wait                  # tenant A  → localhost:8080
+uv run interfaceai env reset                 # seed it — REQUIRED, see below
+
+docker compose --profile tenant-b up -d --wait   # tenant B → localhost:8081
+uv run interfaceai env reset --tenant-b
+```
+
+⚠️ **`env reset` is not optional.** ParaBank boots with **no database schema**
+and serves HTTP 200 the whole time, so the healthcheck goes green on an app
+that cannot answer a single question. Readiness is not liveness — `env reset`
+is the readiness gate and it blocks until the seed is verified.
+
+⚠️ `docker-compose.reskin.yml` is a **separate, optional** overlay that puts a
+different brand on tenant B. It is for the drift experiment only and it
+deliberately breaks two live tests while on — `scripts/reskin_tenant_b.sh off`
+before running the suite.
+
+### The table
 
 | | |
 |---|---|

@@ -1,3 +1,16 @@
-# An account that is in no seed row. Produces `record_not_found` and EXIT 0 --
-# a fair question with a negative answer is not a crash.
+# ═══════════════════════════════════════════════════════════════════════════
+# PROVES   a fair negative answer is not a failure
+# EXPECT   record_not_found · no row where account_id is '99999' · EXIT 0
+# RUN      uv run banking-jobs replay read_savings_balance \
+#            --params job_params/read_savings_balance.not_found.yaml
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# §3.3 asks that expected business outcomes be distinguished from hard
+# failures. The caller asked a reasonable question and got a real answer, so
+# this is `BusinessOutcome` and the process exits **0**.
+#
+# ⚠️ ParaBank's own not-found is HTTP **200 with plain text**, so a status code
+# cannot detect it. The panel read is what makes this a typed outcome rather
+# than a crash three steps later.
+
 account_id: "99999"

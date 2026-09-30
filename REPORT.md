@@ -8,7 +8,7 @@
 > threshold stops and asks a person. Every number here came from a run.
 >
 > ```
-> 275 tests — 244 offline, 31 live · ruff clean
+> 279 tests — 248 offline, 31 live · ruff clean
 > ```
 
 Detail lives elsewhere so this stays short: **[evidence/](evidence/README.md)**
