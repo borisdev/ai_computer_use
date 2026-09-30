@@ -125,7 +125,7 @@ class _Ctx:
     # The PROTOCOL, not the implementation. REPORT S4 claims "none of them
     # names a browser"; this line named one, which made the claim false and
     # the seam one annotation leakier than advertised. replay only ever calls
-    # screenshot / wait / navigate / current_url, all of which Surface has.
+    # screenshot / wait / navigate / location, all of which Surface has.
     surface: Surface
     evidence: EvidenceWriter
     off: OffLoop | None
@@ -168,6 +168,7 @@ def replay(
     confirm_risky: bool = False,
     headless: bool = True,
     operator: Operator | None = None,
+    requested_by: str = "cli",
     library: Mapping[str, Capability] | None = None,
 ) -> CapabilityResult:
     """Run an APPROVED capability. The production path an agent would trigger."""
@@ -177,7 +178,9 @@ def replay(
         # cyclic is an authoring fault -- catch it before a browser opens.
         validate_invocations(capability, library)
 
-    evidence = EvidenceWriter(evidence_root, goal=capability.goal, model="replay/none")
+    evidence = EvidenceWriter(
+        evidence_root, goal=capability.goal, model="replay/none", requested_by=requested_by
+    )
     evidence.event(
         "replay_started",
         capability=capability.name,
@@ -465,7 +468,7 @@ def _bracket(ctx: _Ctx, label: str) -> tuple[str, str]:
     the step FAILED rather than when control transferred -- and a before/after
     pair sourced from two different moments is not a pair.
     """
-    url = ctx.surface.current_url()
+    url = ctx.surface.location()
     frame = ctx.evidence.frame(ctx.surface.screenshot(), label)
     return url, str(frame)
 
@@ -497,7 +500,7 @@ def _hand_over(ctx: _Ctx, n: int, step: Step, blocked: NeedsOperator) -> str | N
         step=n,
         why=blocked.why,
         owner=str(ctx.owner),
-        url=before_url,
+        location=before_url,
         frame=before_frame,
     )
 
@@ -507,7 +510,7 @@ def _hand_over(ctx: _Ctx, n: int, step: Step, blocked: NeedsOperator) -> str | N
             capability=ctx.capability.name,
             step_index=n,
             screen=blocked.screen,
-            url=ctx.surface.current_url(),
+            location=ctx.surface.location(),
             completed_steps=tuple(ctx.done),
             # ⛔ THIS WAS `blocked.frame`, WHICH IS None FOR 17 OF THE 19 PLACES
             # a NeedsOperator is built -- so the human arrived with no picture
@@ -530,7 +533,7 @@ def _hand_over(ctx: _Ctx, n: int, step: Step, blocked: NeedsOperator) -> str | N
             action=str(action.action),
             x=action.x,
             y=action.y,
-            url=action.url,
+            location=action.location,
             value_length=action.value_length,
         )
     after_url, after_frame = _bracket(ctx, f"handoff-{n}-after")
@@ -541,9 +544,9 @@ def _hand_over(ctx: _Ctx, n: int, step: Step, blocked: NeedsOperator) -> str | N
         resolution=str(resolution.resolution),
         human_actions=len(resolution.actions),
         owner=str(ctx.owner),
-        url=after_url,
+        location=after_url,
         frame=after_frame,
-        url_changed=after_url != before_url,
+        location_changed=after_url != before_url,
     )
 
     if resolution.resolution is Resolution.ABORTED:
@@ -769,7 +772,7 @@ def _step(ctx: _Ctx, n: int, step: Step) -> CapabilityResult | None:
         action=str(acted.action),
         value_length=acted.value_length,
         score=found.score,
-        url=acted.url,
+        location=acted.location,
     )
     ctx.done.append(label)
     ctx.panel_cache.clear()
@@ -1138,7 +1141,9 @@ def _drill_into_row(
             completed_steps=tuple(ctx.done),
         )
 
-    ctx.evidence.event("acted", step=n, control=control.id, action=str(acted.action), url=acted.url)
+    ctx.evidence.event(
+        "acted", step=n, control=control.id, action=str(acted.action), location=acted.location
+    )
     ctx.done.append(label)
     # The page has changed, so any cached panel read is about the old screen.
     ctx.panel_cache.clear()

@@ -40,6 +40,52 @@ vocabulary change cannot silently redefine a term a saved artifact depends on.
 concretely conflicts. These 34 terms are retail banking; a back-office tool
 would need holds and maker-checker. Drifting early gives you a synonym list.
 
+### ⭐ And the seam §2.2 asks for is the LOCATOR, not the Surface
+
+> *"The surface may be a browser, but treat that as one case of a more general
+> 'computer use' problem (accessibility tree, screenshot + coordinates,
+> OS-level automation, etc. are all fair game)."*
+
+The obvious reading is wrong, and being exact about it is the point.
+
+**`Surface` is a PIXEL surface.** Every method takes or returns pixels and
+coordinates — `screenshot() -> bytes`, `left_click(x, y)`, `zoom(...)`. There
+is no `find` and no selector. So:
+
+```
+browser screen → desktop screen    SAME Surface, SAME locator language,
+                                   nothing above changes. This is the real
+                                   portability, and it is why pixels beat DOM.
+
+browser DOM, a11y tree             NOT different surfaces. A Chromium surface
+                                   can screenshot AND query the DOM — they are
+                                   ADDITIVE. What differs is how you FIND it.
+
+a REST API                         ⛔ not a surface. §1: "when a system exposes
+                                   an API, we integrate through the API —
+                                   that's always the preferred path and is out
+                                   of scope here."
+```
+
+So the seam is a **discriminated union on `kind`**, and only `visual` is built
+(`locators.py`). `VisualLocator` carries `kind: Literal["visual"]` *today*,
+with one member — because a discriminator added *with* the second kind is a
+discriminator that cannot read anything written before it.
+
+⚠️ **`DomLocator` is declared with a resolver that refuses**, kept as the
+counter-example rather than as a feature:
+
+| | visual | dom |
+|---|---|---|
+| survives a tenant **rebrand** | ❌ 8 of 25 | ✅ selectors ignore pixels |
+| survives a **DOM refactor** | ✅ | ❌ one renamed class |
+| works on a **desktop app** | ✅ | ❌ no DOM to query |
+| works with **no test ids** | ✅ | ❌ ParaBank has none |
+
+**Neither wins. They fail in opposite directions**, and that is the whole
+argument for ADR 0002 — a DOM recording cannot replay against a desktop app,
+which is the case this design is built for.
+
 ## ② The control language — `ControlRole` + `ACTIONS_BY_ROLE`
 
 What a thing on screen **is**, and what may be done to it:

@@ -1,0 +1,16 @@
+{"ts": "2026-09-30T03:51:46.018519+00:00", "event": "run_started", "goal": "read the account type of account 13344", "model": "replay/none"}
+{"ts": "2026-09-30T03:51:46.018629+00:00", "event": "replay_started", "capability": "discovered_account_type", "version": 1, "inputs": ["account_id"], "target": {"app": "parabank", "tenant": "feature", "base_url": "http://localhost:8081/parabank"}}
+{"ts": "2026-09-30T03:51:46.703770+00:00", "event": "precondition", "name": "at_the_recorded_starting_point", "want": "present", "present": true, "when": "entry"}
+{"ts": "2026-09-30T03:51:46.913605+00:00", "event": "acted", "step": 0, "control": "username_textbox", "action": "enter_text", "value_length": 4, "score": 1.0, "url": "http://localhost:8081/parabank/index.htm"}
+{"ts": "2026-09-30T03:51:48.114437+00:00", "event": "acted", "step": 1, "control": "password_textbox", "action": "enter_text", "value_length": 4, "score": 1.0, "url": "http://localhost:8081/parabank/index.htm"}
+{"ts": "2026-09-30T03:51:49.248005+00:00", "event": "acted", "step": 2, "control": "log_in_button", "action": "click", "value_length": null, "score": 0.9997754693031311, "url": "http://localhost:8081/parabank/index.htm"}
+{"ts": "2026-09-30T03:51:57.609254+00:00", "event": "panel_read", "step": 3, "control": "accounts_overview_table_control_panel", "rows": 11, "wanted": "13344"}
+{"ts": "2026-09-30T03:51:57.728896+00:00", "event": "row_resolved", "step": 3, "control": "accounts_overview_table_control_panel", "key": "13344", "index": 9, "pitch": 28, "x": 508, "y": 610}
+{"ts": "2026-09-30T03:51:57.734294+00:00", "event": "acted", "step": 3, "control": "accounts_overview_table_control_panel", "action": "click", "url": "http://localhost:8081/parabank/overview.htm"}
+{"ts": "2026-09-30T03:51:58.800677+00:00", "event": "observed", "step": 4, "frame": "/tmp/wt-panels/evidence/runs/20260930T035146Z/frames/001-04-observe.png"}
+{"ts": "2026-09-30T03:52:01.794749+00:00", "event": "panel_read", "step": 5, "control": "account_details_table_control_panel", "rows": 4, "wanted": "Account Number:"}
+{"ts": "2026-09-30T03:52:01.794907+00:00", "event": "extracted", "step": 5, "output": "account_id", "value": "13344", "via": "panel"}
+{"ts": "2026-09-30T03:52:05.246948+00:00", "event": "panel_read", "step": 6, "control": "account_details_table_control_panel", "rows": 4, "wanted": "Account Type:"}
+{"ts": "2026-09-30T03:52:05.247097+00:00", "event": "extracted", "step": 6, "output": "account_type", "value": "SAVINGS", "via": "panel"}
+{"ts": "2026-09-30T03:52:05.247162+00:00", "event": "replay_succeeded", "capability": "discovered_account_type", "outputs": {"account_id": "13344", "account_type": "SAVINGS"}}
+{"ts": "2026-09-30T03:52:05.247238+00:00", "event": "replay_finished", "outcome": "Success", "capability": "discovered_account_type", "recovered": [], "frame": null}

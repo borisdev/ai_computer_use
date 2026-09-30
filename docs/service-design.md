@@ -19,6 +19,76 @@ a **name** for the group, not behaviour:
 | `approve()` | `capability.approve` / `assert_replayable` | `interfaceai capability approve` |
 | `check()` | `control_map_store.check_capability` | `interfaceai capability check` |
 
+## ⭐ `JobRunner` is implemented. `JobQueue` is declared and nothing implements it.
+
+`src/interfaceai/jobs.py`. This is the seam §3.7 asks for — *"the core
+abstractions not to paint you into a corner"* — expressed as a **type** rather
+than as a class whose methods raise.
+
+```python
+@runtime_checkable
+class JobRunner(Protocol):
+    def run(self, request: JobRequest) -> CapabilityResult: ...  # InProcessRunner
+
+
+class JobQueue(Protocol):  # ⛔ nothing implements this
+    def submit(self, request: JobRequest) -> str: ...
+    def status(self, job_id: str) -> JobStatus: ...
+    def result(self, job_id: str) -> CapabilityResult | None: ...
+    def cancel(self, job_id: str) -> None: ...
+```
+
+**Why a Protocol and not `raise NotImplementedError`.** Both say "not built."
+A Protocol says it in the type system, where nothing can call it by accident;
+a raising method is a call site waiting to happen. `project.md` has the scar —
+three tuning constants shipped before the code ran once, each with a confident
+docstring nobody could falsify. This repo already does it the right way twice:
+`Surface` is a Protocol with no `DesktopSurface`, and `Operator` is a Protocol
+whose console is mocked by `TerminalOperator` being *minimal*.
+
+**What a queue would change: almost nothing.** `submit` returns a `JobId` that
+later resolves to the same `CapabilityResult` `run` returns today. That is why
+`JobRequest` carries only what a **caller asked for** — capability, params,
+tenant, who asked — and none of the **wiring** a deployment provides. A request
+holding a control-map store or a browser could never go on a wire, which is
+exactly the corner to avoid. A test asserts that split.
+
+⚠️ **`job` is not a new word.** The original schema had it: *a job is requested
+work; a run is an attempt.* That distinction was cut with the SQLite layer and
+is reintroduced as the CLI's noun. `JobStatus` deliberately does **not** reuse
+the outcome words — a job is `queued` or `running`; a run `Succeeds` or
+`NeedsOperator`. Collapsing them is how a caller ends up branching on
+"pending" as though it were an answer.
+
+⚠️ **And the CLI goes through it**, so the Protocol has a real caller. A
+declared interface nothing calls is the speculation this section warns about.
+
+## `banking-jobs`, the same app under a domain name
+
+```toml
+interfaceai  = "interfaceai.cli:app"
+banking-jobs = "interfaceai.cli:app"
+```
+
+⛔ **This first said "the engine is domain-agnostic", and the brief never asks
+for that.** It asks for generality on two axes and names both:
+
+```
+§2.2  surfaces   "the surface may be a browser, but treat that as one case
+                  of a more general 'computer use' problem"
+§2/§7 tenants    "reusing artifacts across many tenants running the same app"
+```
+
+Both are built, and the tenant axis is measured (8/25 locators survive a
+reskin). **Domain portability is a third axis nobody asked for**, and §7
+penalises generality nobody asked for — so claiming it as a design goal was
+scope invented here, not scope requested.
+
+The narrower argument is the real one: the **vocabulary is retail banking** —
+21 qualifiers, `amount`, `balance`, `ssn` — so a second entry point says what
+this instance speaks. Both names ship because `interfaceai` is what 68
+committed commands already say, and renaming them to prove a point is churn.
+
 ⚠️ **So a `CapabilityService` class would be a facade over six functions that
 already have callers.** It adds a place to hang them and a single import for an
 agent. It does not add behaviour, and `project.md` says an abstraction with no
@@ -70,10 +140,14 @@ callers that do not exist.
 **A name is the address. A filename is storage layout.**
 
 ```bash
-# the shape a caller wants
-uv run interfaceai replay -c read_savings_balance --param account_id=13344
-uv run interfaceai replay -c log_in_discovered --tenant feature
-uv run interfaceai replay -c request_loan --version 1 --param amount=500 ...
+# the shape a caller wants -- the capability is the SUBJECT, not a flag
+uv run interfaceai replay read_savings_balance --param account_id=13344
+uv run interfaceai replay log_in_discovered --tenant feature
+uv run interfaceai replay request_loan --version 1 --param amount=500 ...
+
+# a whole institution in one reviewable file
+uv run interfaceai replay read_savings_balance \
+  --tenant-config tenant_configs/bank_b.yaml --param account_id=13344
 
 # what a tenant may run: capabilities(app) ∩ permitted(tenant)
 uv run interfaceai status --tenant feature
@@ -90,6 +164,31 @@ draft** with the command to approve it:
 evidence_discovery has no APPROVED artifact (drafts: [...]).
 Replay refuses a draft -- `interfaceai capability approve evidence_discovery --by <you>`
 ```
+
+### ⚠️ A TENANT CONFIG is a path; a CAPABILITY is a name. Opposite cases.
+
+A capability is an address in a registry, so a filename leaks storage layout.
+A **tenant config carries permissions and a money threshold**, so the command
+line naming the exact file that granted them is the point — auditable in a way
+`--profile bank_b` is not.
+
+```yaml
+# tenant_configs/bank_b.yaml
+tenant: feature
+app: parabank
+base_url: http://localhost:8081/parabank
+confirm_money_above: 1000
+permits: [log_in, log_in_discovered, read_savings_balance]   # request_loan absent ON PURPOSE
+```
+
+It is **additive** — `.env` stays the default, so every command in the README
+still works. And it fails closed: an unparseable threshold stops the run, an
+empty `permits` means *nothing* rather than everything, and `--tenant` that
+contradicts the file is refused rather than silently resolved.
+
+⚠️ `Typer` has `envvar=` but **no profile framework** — AWS's `--profile` is a
+convention on top of exactly that. `INTERFACEAI_TENANT_CONFIG` gives the same
+ergonomics with no dependency.
 
 ### ⚠️ `--app` is not on `replay`, and that is not an oversight
 

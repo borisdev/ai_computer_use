@@ -1,0 +1,10 @@
+{"ts": "2026-09-30T17:45:52.051107+00:00", "event": "run_started", "goal": "Log in to the bank as the seeded customer and reach the accounts overview.", "model": "replay/none", "requested_by": "borisdev"}
+{"ts": "2026-09-30T17:45:52.051239+00:00", "event": "replay_started", "capability": "log_in_discovered", "version": 1, "inputs": [], "target": {"app": "parabank", "tenant": "baseline", "base_url": "http://localhost:8080/parabank"}}
+{"ts": "2026-09-30T17:45:52.694332+00:00", "event": "precondition", "name": "at_the_recorded_starting_point", "want": "present", "present": true, "when": "entry"}
+{"ts": "2026-09-30T17:45:52.894362+00:00", "event": "acted", "step": 0, "control": "username_textbox", "action": "enter_text", "value_length": 4, "score": 1.0, "location": "http://localhost:8080/parabank/index.htm"}
+{"ts": "2026-09-30T17:45:54.089029+00:00", "event": "acted", "step": 1, "control": "password_textbox", "action": "enter_text", "value_length": 4, "score": 1.0, "location": "http://localhost:8080/parabank/index.htm"}
+{"ts": "2026-09-30T17:45:55.200022+00:00", "event": "acted", "step": 2, "control": "log_in_button", "action": "click", "value_length": null, "score": 0.9997754693031311, "location": "http://localhost:8080/parabank/index.htm"}
+{"ts": "2026-09-30T17:45:56.252667+00:00", "event": "observed", "step": 3, "frame": "/tmp/wt-panels/evidence/runs/20260930T174552Z/frames/001-03-observe.png"}
+{"ts": "2026-09-30T17:45:59.445711+00:00", "event": "extracted", "step": 4, "output": "account_id", "value": "12345", "frame": "/tmp/wt-panels/evidence/runs/20260930T174552Z/frames/002-04-read-account_id.png"}
+{"ts": "2026-09-30T17:45:59.445851+00:00", "event": "replay_succeeded", "capability": "log_in_discovered", "outputs": {"account_id": "12345"}}
+{"ts": "2026-09-30T17:45:59.445896+00:00", "event": "replay_finished", "outcome": "Success", "capability": "log_in_discovered", "recovered": [], "frame": null}

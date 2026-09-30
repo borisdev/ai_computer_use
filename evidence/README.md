@@ -12,18 +12,18 @@ actually shown).
 | run | what it shows |
 |---|---|
 | [`runs/20260929T042350Z`](runs/20260929T042350Z) | **Discovery.** A real LLM drives the live app — 3 steps, 4 model calls, 24s — and emits [`artifacts/evidence_discovery.v1.draft.json`](../artifacts/evidence_discovery.v1.draft.json) |
-| [`runs/20260929T071443Z`](runs/20260929T071443Z) | **Success.** `read_savings_balance(13344)` → `$1231.10`, 12 steps, 3 of them `log_in` invoked |
-| [`runs/20260929T071501Z`](runs/20260929T071501Z) | **Business outcome.** `record_not_found` for account 99999 — **exit 0**, because a fair question with a negative answer is not a crash |
-| [`runs/20260929T071538Z`](runs/20260929T071538Z) | **Escalation.** A $25,000 loan against a $1,000 tenant threshold stops and asks a person, *even with `--confirm-risky`* |
-| [`runs/20260929T071516Z`](runs/20260929T071516Z) | **Recovery.** The session is destroyed mid-flow; `recovering` → `log_in` re-invoked → `SUCCESS`. A recovered condition is not a terminal state |
-| [`runs/20260929T051949Z`](runs/20260929T051949Z) | **A full handoff.** The run blocks, a person takes the live session, navigates, and hands it back — `handoff_requested` → `human_acted` → `handoff_returned`, a frame and URL on each edge, `url_changed: true`. The operator aborts, having established the record genuinely does not exist |
-| [`runs/20260929T232850Z`](runs/20260929T232850Z) | **Discovery, with a panel.** The run that emitted [`artifacts/discovered_balance.v1.draft.json`](../artifacts/discovered_balance.v1.draft.json) — it proposed the accounts table as a `TABLE_CONTROL_PANEL`, measured it (11 rows, 28px), and finished by naming a ROW and a COLUMN of it rather than a coordinate. the overview's `control_map_built` carries `panels=1, panels_ready=1` (the login screen's carries 3), which is the whole of issue #6 in one event |
+| [`runs/20260930T053738Z`](runs/20260930T053738Z) | **Success.** `read_savings_balance(13344)` → `$1231.10`, 12 steps, 3 of them `log_in` invoked |
+| [`runs/20260930T053757Z`](runs/20260930T053757Z) | **Business outcome.** `record_not_found` for account 99999 — **exit 0**, because a fair question with a negative answer is not a crash |
+| [`runs/20260930T053834Z`](runs/20260930T053834Z) | **Escalation.** A $25,000 loan against a $1,000 tenant threshold stops and asks a person, *even with `--confirm-risky`* |
+| [`runs/20260930T053811Z`](runs/20260930T053811Z) | **Recovery.** The session is destroyed mid-flow; `recovering` → `log_in` re-invoked → `SUCCESS`. A recovered condition is not a terminal state |
+| [`runs/20260930T053709Z`](runs/20260930T053709Z) | **A full handoff.** The run blocks, a person takes the live session, navigates, and hands it back — `handoff_requested` → `human_acted` → `handoff_returned`, a frame and location on each edge, `location_changed: true`. The operator aborts, having established the record genuinely does not exist |
+| [`runs/20260929T232850Z`](runs/20260929T232850Z) | **Discovery, with a panel.** The run that emitted [`artifacts/discovered_balance.v1.draft.json`](../artifacts/discovered_balance.v1.draft.json) — it proposed the accounts table as a `TABLE_CONTROL_PANEL`, measured it (11 rows, 28px), and finished by naming a ROW and a COLUMN of it rather than a coordinate. The overview's `control_map_built` carries `panels=1, panels_ready=1` (the login screen's carries 3), which is the whole of issue #6 in one event |
+| [`runs/20260929T042311Z`](runs/20260929T042311Z) | **A safety refusal, at discovery time.** The model tried to `extract` into the sensitive slot `username`; the run stops rather than emitting an artifact that would leak a credential through `returns` |
 | [`runs/20260930T035056Z`](runs/20260930T035056Z) | **Replaying a discovered panel.** `discovered_balance(13344)` → `$1231.10`, 6 steps, the row selected in code from one panel read |
 | [`runs/20260930T035110Z`](runs/20260930T035110Z) | **The same artifact on the other tenant.** A heading template discovery chose, matching a different ParaBank build unchanged |
 | [`runs/20260930T033307Z`](runs/20260930T033307Z) | **The brief's own example, discovered.** The run that emitted [`artifacts/discovered_account_type.v1.draft.json`](../artifacts/discovered_account_type.v1.draft.json): it opened account 13344 by `row_key` from one panel and read `Account Type` out of another. `row_resolved` in the trace is the drilldown — a row index and a computed y, never a grounded click |
 | [`runs/20260930T035124Z`](runs/20260930T035124Z) | **Replaying it.** 7 steps, two panels, one drilldown, `account_type = SAVINGS` |
 | [`runs/20260930T035024Z`](runs/20260930T035024Z) | **A discovered checkpoint with teeth.** After `interfaceai env break` the same artifact fails on `account_type`: expected `SAVINGS`, **observed `CHECKING`**. Nothing about the run changed — the record did |
-| [`runs/20260929T042311Z`](runs/20260929T042311Z) | **A safety refusal, at discovery time.** The model tried to `extract` into the sensitive slot `username`; the run stops rather than emitting an artifact that would leak a credential through `returns` |
 
 ## ⛔ Two older runs are also committed, and they are LOAD-BEARING
 
@@ -49,7 +49,7 @@ exists.
 
 ```bash
 jq -r '"\(.event)\t\(.step // "")\t\(.why // .outcome // .capability // "")"' \
-  evidence/runs/20260929T071538Z/trace.jsonl
+  evidence/runs/20260930T053834Z/trace.jsonl
 ```
 
 Two events worth knowing:
@@ -60,7 +60,8 @@ Two events worth knowing:
   a crash.
 - **`handoff_requested` / `handoff_returned`** bracket the window in which a
   human, not the worker, owned the page. Each carries a frame and a URL, plus
-  `url_changed`. The per-action log is complete for actions taken *through* the
+  `location_changed`. The per-action log is complete for actions taken *through*
+  the
   operator surface and blind to a hand on the mouse, so the bracket is the claim
   that holds either way.
 

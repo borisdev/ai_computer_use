@@ -8,7 +8,7 @@
 > threshold stops and asks a person. Every number here came from a run.
 >
 > ```
-> 321 tests — 286 offline, 35 live · ruff clean
+> 336 tests — 301 offline, 35 live · ruff clean
 > ```
 
 Detail lives elsewhere so this stays short: **[evidence/](evidence/README.md)**
@@ -163,7 +163,18 @@ recorded `1231.10`.
 **`Surface` is a protocol** — screenshot, click, type, scroll, navigate. The
 schema, engine and guardrails name the protocol, never a browser, except at the
 composition root where `replay()` constructs a `PlaywrightSurface` because
-something must. `use_control` is surface-independent: *what is permitted* is a
+something must.
+
+⚠️ **It did not used to be true, and §3.7 asks precisely this.** Two of
+`Surface`'s fifteen methods named a browser — `current_url()` and
+`navigate(url)` — and a desktop application has no URL, so the claim above was
+false for them. Documenting the hole was the first instinct and the wrong one:
+the point of the work on this seam is the **hardest** case, and a protocol that
+names a browser throws that away. Both are renamed — `location()` and
+`navigate(target)` — and the evidence records `location` / `location_changed`
+to match. Every caller already treated the value as an **opaque token**: seven
+sites compare it or record it and not one parses it, so a desktop surface
+answering with a window title satisfies all of them. `use_control` is surface-independent: *what is permitted* is a
 property of the bank, *how to click* a property of the surface.
 
 An artifact recorded on tenant A replays on tenant B. **Drift detection is the
@@ -233,7 +244,8 @@ value.
 
 ⚠️ **It is a protocol plus a recorded state, not an interlock** — nothing stops
 a person clicking the visible browser directly, and we would not see it. So the
-handoff window is **bracketed**: a frame, URL and `url_changed` at each edge.
+handoff window is **bracketed**: a frame, a location and `location_changed` at
+each edge.
 Not *"what the human did"* but *"what the page looked like when we handed it
 over and got it back"*. A co-browsing console would not fix this and §3.6 puts
 it out of scope; the design that would is a **headless mirror**, unbuilt because

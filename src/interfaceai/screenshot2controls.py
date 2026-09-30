@@ -288,6 +288,15 @@ class ScreenInput(Contract):
 
 
 class VisualLocator(Contract):
+    """A landmark patch plus a click offset. The ONE locator kind implemented.
+
+    ⚠️ `kind` exists so a serialised locator says what it is. Today every value
+    is `"visual"`, which is the point: a union that can only be one thing still
+    has to say so, or an artifact written now cannot be read back once there
+    are two. See `locators.py` for the seam and the DOM counter-example.
+    """
+
+    kind: Literal["visual"] = "visual"
     schema_version: Literal[1] = 1
     template_png: bytes = Field(repr=False)
     reference_size: ImageSize
