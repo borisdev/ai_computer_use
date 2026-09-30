@@ -31,14 +31,18 @@ dev = [
 
 [project.scripts]
 interfaceai = "interfaceai.cli:app"
-# ⚠️ The SAME app under a domain name. The engine (`src/interfaceai/`) is
-# domain-agnostic -- `Surface` is a protocol, artifacts are tenant-agnostic --
-# but the VOCABULARY is retail banking: 21 qualifiers, `amount`, `balance`,
-# `ssn`. `banking-jobs` names the domain this instance speaks, and a second
-# domain would be a second entry point over the same engine.
+# ⚠️ The SAME app under a second name, and the rationale is smaller than the
+# one first written here. That said the engine was "domain-agnostic" -- which
+# THE BRIEF NEVER ASKS FOR. It asks for generality across SURFACES ("one case
+# of a more general computer use problem") and across TENANTS ("many tenants
+# run the same underlying vendor product"). Both axes are built and measured.
+# Domain portability is a claim nobody requested, and §7 penalises generality
+# nobody asked for.
 #
-# Both names, because `interfaceai` is what every doc and every committed
-# command already says, and renaming 68 references to prove a point is churn.
+# `banking-jobs` earns its place on a narrower argument: the VOCABULARY is
+# retail banking -- 21 qualifiers, `amount`, `balance`, `ssn` -- so the entry
+# point says what this instance speaks. Both names ship because `interfaceai`
+# is what 68 committed commands already say.
 banking-jobs = "interfaceai.cli:app"
 
 [build-system]

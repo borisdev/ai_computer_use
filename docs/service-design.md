@@ -69,12 +69,24 @@ interfaceai  = "interfaceai.cli:app"
 banking-jobs = "interfaceai.cli:app"
 ```
 
-The engine is domain-agnostic — `Surface` is a protocol, artifacts are
-tenant-agnostic — but the **vocabulary is retail banking**: 21 qualifiers,
-`amount`, `balance`, `ssn`. `banking-jobs` names the domain this instance
-speaks; a second domain would be a second entry point over the same engine.
-Both names ship, because renaming 68 committed command references to prove a
-point is churn.
+⛔ **This first said "the engine is domain-agnostic", and the brief never asks
+for that.** It asks for generality on two axes and names both:
+
+```
+§2.2  surfaces   "the surface may be a browser, but treat that as one case
+                  of a more general 'computer use' problem"
+§2/§7 tenants    "reusing artifacts across many tenants running the same app"
+```
+
+Both are built, and the tenant axis is measured (8/25 locators survive a
+reskin). **Domain portability is a third axis nobody asked for**, and §7
+penalises generality nobody asked for — so claiming it as a design goal was
+scope invented here, not scope requested.
+
+The narrower argument is the real one: the **vocabulary is retail banking** —
+21 qualifiers, `amount`, `balance`, `ssn` — so a second entry point says what
+this instance speaks. Both names ship because `interfaceai` is what 68
+committed commands already say, and renaming them to prove a point is churn.
 
 ⚠️ **So a `CapabilityService` class would be a facade over six functions that
 already have callers.** It adds a place to hang them and a single import for an
