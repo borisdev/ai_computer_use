@@ -333,6 +333,35 @@ class Approval(StrEnum):
     APPROVED = "approved"
 
 
+def needs_model(
+    capability: Capability,
+    library: dict[str, Capability] | None = None,
+    _stack: frozenset[str] = frozenset(),
+) -> bool:
+    """Would replaying this capability call the vision model?
+
+    ⛔ THE VERB LIST IS NOT THE ANSWER, and believing it was cost two wrong
+    claims in the README. `request_loan`'s verbs are `click`, `enter`, `invoke`
+    and `wait_for` -- no `extract` anywhere -- and it calls the model anyway,
+    because one step reads a `TABLE_CONTROL_PANEL` and a panel read is a
+    model call that is not spelled as a verb.
+
+    So both routes count, and INVOKED capabilities count too: a keyless
+    `request_loan` dies inside whatever it invokes, one layer below anything
+    its own steps mention.
+    """
+    for step in capability.steps:
+        if step.verb is StepVerb.EXTRACT:
+            return True
+        if step.row_key is not None or step.field is not None:
+            return True
+        if step.invokes and library is not None and step.invokes not in _stack:
+            inner = library.get(step.invokes)
+            if inner is not None and needs_model(inner, library, _stack | {capability.name}):
+                return True
+    return False
+
+
 class UnapprovedError(RuntimeError):
     """Replay was attempted on an artifact no human has approved (S8)."""
 

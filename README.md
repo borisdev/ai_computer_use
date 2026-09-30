@@ -25,7 +25,7 @@ artifact, deterministic replay with typed outcomes, human handoff of the live
 session, and one artifact serving two tenants.
 
 ```
-322 tests — 287 offline, 35 live · ruff clean
+327 tests — 292 offline, 35 live · ruff clean
 ```
 
 | Piece | State |
@@ -70,10 +70,34 @@ uv sync                                            # fetches Python 3.13 too
 uv run playwright install chromium                 # the browser replay drives
 ```
 
-Plus a Docker runtime with `docker compose`. A model key in `.secret` is only
-needed for `discover` and for `extract` steps — see
-[Config](#config); `log_in` and `log_in_discovered` replay with **zero model
-calls**.
+Plus a Docker runtime with `docker compose`, and **a `VISION_API_KEY` in
+`.secret`** — see [Config](#config):
+
+```bash
+cp .secret.example .secret     # then fill in VISION_API_KEY
+```
+
+⛔ **Measured from a cold clone 2026-09-30: almost nothing replays without a
+key.** This paragraph used to say a key was needed "only for `discover` and for
+`extract` steps", and that `log_in_discovered` replays with zero model calls.
+Both claims were false, and a reviewer following them hits a stack trace on
+their first command:
+
+- `log_in_discovered` **has an `extract` step**, so it needs a key like any
+  other. The sentence naming it as the keyless example named the wrong one.
+- **A panel read calls the model and is not a verb.** `request_loan`'s verbs
+  are `click`, `enter`, `invoke`, `wait_for` — no `extract` anywhere — and it
+  still needs a key, because one step reads a `TABLE_CONTROL_PANEL`. Checking
+  the verb list is exactly how this was missed twice.
+
+**Two** of the eleven commands below run without a key, and both stop before
+reaching a model: `log_in` (no `extract`, no panel) and the tenant refusal,
+which fails pre-flight on permissions. Everything else calls the model.
+
+⚠️ That sentence originally read *"one of the eleven"* and pointed at a
+`capability check` flag that does not exist — written into this paragraph while
+fixing the claim above it, and caught by running the command. The count is now
+measured, not reasoned.
 
 ### Bring the banks up
 
@@ -806,3 +830,37 @@ artifacts/             saved capability artifacts (brief deliverable)
 `.env` is committed and holds URLs and flags. `.secret` is gitignored and holds
 credentials; `.secret.example` shows the shape. Nothing that would fail a bank's
 security review belongs in `.env`.
+
+### Bring your own key
+
+Two profiles need no endpoint, so either line is a complete setup for someone
+who is not me:
+
+```bash
+VISION_PROFILE=openai-gpt-4.1   OPENAI_API_KEY=...
+VISION_PROFILE=claude-opus      ANTHROPIC_API_KEY_FOR_VISION=...
+```
+
+⛔ **The default profile is unusable by a reviewer, and this is recorded rather
+than quietly fixed.** `gpt-4.1`, `gpt-4o`, `gpt-5.2-chat` and `gpt-5.2-codex`
+all pin an `api_base` inside my Azure subscription. It stays the default
+because every committed artifact and every number in REPORT was produced on
+it, and re-pointing that at a public endpoint would make the evidence
+unreproducible to prove a portability point the two profiles above already
+make.
+
+⚠️ **How this was found, which is the part worth keeping.** Not by reading the
+config — by cloning the repo into an empty directory and running the README's
+own commands. Nine of eleven died on a key the reader had no way to supply,
+and the tenth and eleventh passed only because they stop before reaching a
+model. A hundred runs in the working tree could not have surfaced it: the key
+was always already there.
+
+A capability that reads from the screen now says so **before the browser
+launches**:
+
+```
+FAILED at pre-flight
+  expected  OPENAI_API_KEY (profile 'openai-gpt-4.1') in .secret -- see .secret.example
+  observed  not set, and request_loan reads from the screen
+```

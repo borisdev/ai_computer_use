@@ -59,7 +59,38 @@ PROFILES: dict[str, dict[str, str]] = {
         "model": "anthropic/claude-opus-4-6",
         "key_field": "anthropic_api_key_for_vision",
     },
+    # ⭐ THE TWO PORTABLE PROFILES ARE THIS ONE AND `claude-opus`. Every profile
+    # above pins an `api_base` to an Azure resource only I can reach, which
+    # made the demo path unrunnable for anyone else -- the defect a cold clone
+    # found and a hundred local runs never could. No `api_base`: litellm routes
+    # to the provider's public endpoint from the key alone.
+    "openai-gpt-4.1": {
+        "model": "openai/gpt-4.1",
+        "key_field": "openai_api_key",
+    },
 }
+
+
+def missing_key(profile: str | None = None) -> str | None:
+    """The env var a model call would need and cannot find, or None if set.
+
+    ⚠️ ASKED BEFORE THE BROWSER STARTS, never after. The same condition used to
+    surface as an unhandled `RuntimeError` forty lines into an asyncio
+    traceback, with a second, misleading `OffLoop must be used as a context
+    manager` on top of it -- raised while unwinding, and the first thing a
+    reader saw. A reviewer with no key hit that on their first command.
+
+    This returns rather than raises because the caller is a pre-flight check,
+    and the whole point is to answer without doing anything.
+    """
+    settings = get_settings()
+    name = profile or settings.vision_profile
+    cfg = PROFILES.get(name)
+    if cfg is None:
+        return f"VISION_PROFILE={name!r} is not a known profile; have {sorted(PROFILES)}"
+    if settings.key_named(cfg["key_field"]):
+        return None
+    return f"{cfg['key_field'].upper()} (profile {name!r})"
 
 
 def _clamp_temperature(model: str, temperature: float) -> float:

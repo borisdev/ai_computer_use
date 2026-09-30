@@ -3,7 +3,7 @@
 Read this first. It says where the project is, what is proven, what is not, and
 what to do next. Everything it claims is measured unless it says otherwise.
 
-**Repo:** `github.com/borisdev/ai_computer_use` · 322 tests (287 offline, 35 live) · ruff clean
+**Repo:** `github.com/borisdev/ai_computer_use` · 327 tests (292 offline, 35 live) · ruff clean
 
 ⚠️ This header said **181** for many commits. It is the first document readers
 are pointed at, which makes a stale count here worse than anywhere else --

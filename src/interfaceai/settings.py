@@ -40,6 +40,13 @@ class Settings(BaseSettings):
     vision_api_key_eastus2: SecretStr | None = None  # eastus2            (their EASTUS2_API_KEY)
     vision_api_key_west: SecretStr | None = None  # west-us            (their WEST_API_KEY)
     anthropic_api_key_for_vision: SecretStr | None = None
+    # ⭐ THE BRING-YOUR-OWN-KEY FIELDS. Every other key above names one of MY
+    # Azure resources, so a reviewer cloning this repo cannot use any of them
+    # -- measured from a cold clone 2026-09-30: 9 of the 11 README commands
+    # died on a missing key they had no way to supply. These two need no
+    # endpoint, so `VISION_PROFILE=openai-gpt-4.1` or `VISION_PROFILE=claude-opus`
+    # plus the matching key is the whole setup for a stranger.
+    openai_api_key: SecretStr | None = None
 
     # --- Model access ---
     # Read from .secret, which is NOT the process environment -- so it has to be

@@ -44,6 +44,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from interfaceai import vision_llm
 from interfaceai.capability import (
     Capability,
     ControlRef,
@@ -54,6 +55,7 @@ from interfaceai.capability import (
     StepVerb,
     Value,
     assert_replayable,
+    needs_model,
     validate_invocations,
 )
 from interfaceai.control_map_store import ControlMapMiss, ControlMapStore, MapKey, check_capability
@@ -222,6 +224,28 @@ def replay(
                 evidence_dir=evidence.dir,
             )
         )
+
+    # ⭐ ASKED BEFORE THE BROWSER LAUNCHES. A capability that reads anything --
+    # an `extract`, or a panel, or either one inside something it invokes --
+    # needs a model, and a reviewer without a key must be told that here
+    # rather than forty lines into a traceback after Playwright has started.
+    #
+    # It is a `Failed` at pre-flight and NOT a `NeedsOperator`: no human at
+    # this machine can unstick it by taking the session. The run was never
+    # runnable, which is a different thing from getting stuck.
+    if needs_model(capability, library):
+        absent = vision_llm.missing_key()
+        if absent is not None:
+            evidence.event("model_key_absent", needs=absent)
+            return early(
+                Failed(
+                    step_index=-1,
+                    step="pre-flight",
+                    expected=f"{absent} in .secret -- see .secret.example",
+                    observed=f"not set, and {capability.name} reads from the screen",
+                    evidence_dir=evidence.dir,
+                )
+            )
 
     missing = [p.name for p in capability.params if p.required and p.name not in inputs]
     if missing:
