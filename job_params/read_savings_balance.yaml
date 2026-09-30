@@ -1,0 +1,5 @@
+# What `read_savings_balance` was asked for.
+#
+# A params file is committable and reviewable; shell history is not. For a
+# regulated run, "which inputs were used" is audit material.
+account_id: "13344"

@@ -1,4 +1,8 @@
 # Tenant A — the institution every capability was recorded against.
+# ⚠️ TWO NAMES. `institution` is who this is; `tenant` is which PIXEL SET
+# their screens match -- and today that is a Docker image tag
+# (`parasoft/parabank:baseline`), which is a defect recorded in #13.
+institution: Bank A
 tenant: baseline
 app: parabank
 base_url: http://localhost:8080/parabank

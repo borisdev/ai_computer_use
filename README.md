@@ -25,7 +25,7 @@ artifact, deterministic replay with typed outcomes, human handoff of the live
 session, and one artifact serving two tenants.
 
 ```
-273 tests — 242 offline, 31 live · ruff clean
+275 tests — 244 offline, 31 live · ruff clean
 ```
 
 | Piece | State |
@@ -57,6 +57,38 @@ anything and a discovered one can only name what it recorded. `interfaceai
 capability check` is that check, and `interfaceai status` prints the counts.
 
 Setting up a fresh machine: [`docs/vm-setup.md`](docs/vm-setup.md)
+
+## Smoke test — every capability, both param forms
+
+Once, then any line below stands alone:
+
+```bash
+docker compose up -d --wait && uv run interfaceai env reset
+```
+
+| | |
+|---|---|
+| **read a balance** | `uv run banking-jobs replay read_savings_balance --params job_params/read_savings_balance.yaml` |
+| | `uv run banking-jobs replay read_savings_balance --param account_id=13344` |
+| **a fair negative answer** | `uv run banking-jobs replay read_savings_balance --params job_params/read_savings_balance.not_found.yaml` |
+| **compose** | `uv run banking-jobs replay log_in` |
+| **discovered by an LLM** | `uv run banking-jobs replay log_in_discovered` |
+| **stop and ask a person** | `uv run banking-jobs replay request_loan --params job_params/request_loan.yaml --confirm-risky` |
+| **survive a lost session** | `uv run banking-jobs replay session_loss_probe --params job_params/session_loss_probe.yaml` |
+| **a second institution** | `uv run banking-jobs replay read_savings_balance --tenant-config tenant_configs/bank_b.yaml --param account_id=13344` |
+| **refused by that tenant** | `uv run banking-jobs replay request_loan --tenant-config tenant_configs/bank_b.yaml --params job_params/request_loan.yaml` |
+| **hand it to a human** | `uv run banking-jobs replay request_loan --params job_params/request_loan.yaml --operator` |
+
+```bash
+uv run banking-jobs status                    # every capability and recent run
+uv run banking-jobs status --tenant feature   # what THAT tenant may run
+uv run banking-jobs language                  # the controlled language, generated
+uv run banking-jobs diagram read_savings_balance
+```
+
+⚠️ **`--param` beats `--params`** when both are given, so a committed file holds
+the real inputs and a flag tweaks one for a single run. `banking-jobs` and
+`interfaceai` are the same command.
 
 ## ▶ Start here — [CAPABILITIES.md](CAPABILITIES.md)
 

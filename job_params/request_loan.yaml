@@ -1,0 +1,8 @@
+# A loan LARGE enough to need a person.
+#
+# ⚠️ 25000 is over tenant A's $1,000 threshold on purpose: the run stops at the
+# submit button with the form already filled, so the demo never actually
+# submits a loan and the fixtures stay clean. Drop to 500 to see it get past
+# the money rule.
+amount: "25000"
+down_payment: "5000"
