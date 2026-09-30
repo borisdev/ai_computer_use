@@ -6,7 +6,7 @@
 Three renderers, one flow:
 
   1  hand-written mermaid          what README uses today
-  2  workflow-workbench            a DECLARED GraphSpec -> diagram() + check_*()
+  2  workflow-workbench            a DECLARED spec -> diagram() + check_*()
   3  pydantic-graph                a BUILT Graph -> mermaid_code()
 
 ⚠️ They are not interchangeable, and the difference is what to decide on:
@@ -55,6 +55,7 @@ def by_workbench() -> tuple[str, list[str]]:
         DecisionSpec,
         EdgeSpec,
         NodeSpec,
+        StepSpec,
         VariableSpec,
         check_names,
         check_reachable,
@@ -71,16 +72,24 @@ def by_workbench() -> tuple[str, list[str]]:
     # ⚠️ `observe` takes EITHER the goal (first pass) or the frame the last
     # action produced (every pass after). check_variables caught this: the
     # loop-back edge delivered `frame` to a node declaring only `goal`.
-    observe = NodeSpec("observe", inputs=(goal, frame), outputs=(frame,))
-    inventory = NodeSpec("inventory", inputs=(frame,), outputs=(controls,))
+    observe = StepSpec("observe", inputs=(goal, frame), outputs=(frame,))
+    inventory = StepSpec("inventory", inputs=(frame,), outputs=(controls,))
     decide = DecisionSpec(
         "next_move", inputs=(controls,), outputs=(move,), note="the ONLY model decision"
     )
-    act = NodeSpec("act", inputs=(move,), outputs=(frame,))
-    draft = NodeSpec("draft_capability", inputs=(controls, move), outputs=(artifact,))
-    escalate = NodeSpec("pass_to_operator", inputs=(move,), outputs=(artifact,))
+    act = StepSpec("act", inputs=(move,), outputs=(frame,))
+    draft = StepSpec("draft_capability", inputs=(controls, move), outputs=(artifact,))
+    escalate = StepSpec("pass_to_operator", inputs=(move,), outputs=(artifact,))
 
-    nodes = (observe, inventory, decide, act, draft, escalate)
+    # ⚠️ `tuple[NodeSpec, ...]` AND NOT `tuple[StepSpec, ...]` -- `decide` is a
+    # `DecisionSpec`. This is the trap in workflow-workbench's 0.2 migration
+    # guide: the blanket sed rewrites every `NodeSpec`, including annotations
+    # that legitimately mean the union of every declared box.
+    #
+    # There was no annotation here before, so the sed would have been harmless
+    # BY LUCK. Stating it makes the union deliberate rather than accidental,
+    # and it is what the three checks below actually receive.
+    nodes: tuple[NodeSpec, ...] = (observe, inventory, decide, act, draft, escalate)
     edges = (
         EdgeSpec(source=START, target=observe, carries=goal),
         EdgeSpec(source=observe, target=inventory, carries=frame),

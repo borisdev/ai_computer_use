@@ -53,6 +53,11 @@ build-backend = "hatchling.build"
 package = true
 
 [tool.uv.sources]
+# ⚠️ `rev = "main"` is an UNPINNED dependency: this repo tracks whatever main
+# happens to be, which is how 0.2.0's breaking rename arrived without anyone
+# choosing it. `uv.lock` pins the commit so a build is reproducible, but `uv
+# sync -U` moves it. Pin a TAG when workflow-workbench publishes one -- there
+# is no v0.2.0 tag on the remote today, only the version in its pyproject.
 workflow-workbench = { git = "https://github.com/borisdev/workflow-workbench", rev = "main" }
 
 [tool.hatch.build.targets.wheel]
