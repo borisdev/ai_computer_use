@@ -85,7 +85,7 @@ def test_the_operator_is_offered_the_live_session_and_can_abort() -> None:
     assert "12345_link" in request.why
     assert request.capability == "log_in_discovered"
     assert "click log_in_button" in request.completed_steps
-    assert request.url.startswith("http://localhost:8080")
+    assert request.location.startswith("http://localhost:8080")
     assert "no longer exists" in result.why
 
 

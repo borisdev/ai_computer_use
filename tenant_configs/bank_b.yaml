@@ -1,0 +1,22 @@
+# Tenant B — the same vendor product at a second institution.
+#
+# ⚠️ `request_loan` and `session_loss_probe` are ABSENT ON PURPOSE. That
+# exclusion is the demonstration: replay refuses them at pre-flight, before a
+# browser opens, and the outcome says "not permitted" rather than reporting a
+# locator that missed. See CAPABILITIES.md.
+# ⚠️ TWO NAMES. `institution` is who this is; `tenant` is which PIXEL SET
+# their screens match -- and today that is a Docker image tag
+# (`parasoft/parabank:baseline`), which is a defect recorded in #13.
+institution: Bank B
+tenant: feature
+app: parabank
+base_url: http://localhost:8081/parabank
+
+confirm_money_above: 1000
+
+permits:
+  - log_in
+  - log_in_discovered
+  - read_savings_balance
+
+control_maps: control_maps

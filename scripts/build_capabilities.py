@@ -16,8 +16,8 @@ CAPS = [
         "sig": "(account_id) → balance, account_type",
         "run": "--param account_id=13344",
         "desc": "Look up an account by id and read its balance. The brief's own worked example.",
-        "a": ("✅", "`Success` · 12 steps", "20260929T071443Z"),
-        "b": ("✅", "`Success` · 12 steps", "20260929T192201Z"),
+        "a": ("✅", "`Success` · 12 steps", "20260930T053738Z"),
+        "b": ("✅", "`Success` · 12 steps", "20260930T053849Z"),
         "demo": [
             (
                 "Panel extraction",
@@ -29,7 +29,7 @@ CAPS = [
             ),
             ("Business outcome", "account 99999 exits **0** — a fair negative answer, not a crash"),
         ],
-        "extra": [("`BusinessOutcome` — account 99999", "20260929T071501Z")],
+        "extra": [("`BusinessOutcome` — account 99999", "20260930T053757Z")],
     },
     {
         "origin": "✍️ hand-authored",
@@ -79,7 +79,7 @@ CAPS = [
         ],
         "extra": [
             ("the discovery run that produced it", "20260926T022551Z"),
-            ("a full handoff", "20260929T051949Z"),
+            ("a full handoff", "20260930T053709Z"),
         ],
     },
     {
@@ -118,7 +118,7 @@ CAPS = [
         "sig": "(amount, down_payment) → nothing",
         "run": "--param amount=25000 --param down_payment=5000 --confirm-risky",
         "desc": "Apply for a loan of a given amount with a given down payment.",
-        "a": ("⚠️", "`NeedsOperator` · over the $1,000 threshold", "20260929T071538Z"),
+        "a": ("⚠️", "`NeedsOperator` · over the $1,000 threshold", "20260930T053834Z"),
         "b": ("⛔", "`Failed` · tenant does not permit it", "20260929T192346Z"),
         "demo": [
             (
@@ -142,7 +142,7 @@ CAPS = [
         "sig": "(account_id) → found_account_id",
         "run": "--param account_id=13344",
         "desc": "Read an account, destroy its own session mid-flow, and carry on.",
-        "a": ("✅", "`Success` + `recovered`", "20260929T071516Z"),
+        "a": ("✅", "`Success` + `recovered`", "20260930T053811Z"),
         "b": ("⛔", "`Failed` · tenant does not permit it", "20260929T192329Z"),
         "demo": [
             (

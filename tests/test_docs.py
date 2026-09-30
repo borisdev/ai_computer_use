@@ -79,3 +79,59 @@ def test_every_CLI_command_the_docs_show_actually_exists() -> None:
 
     missing = sorted(documented - registered)
     assert not missing, f"documented but not a command: {missing} (have: {sorted(registered)})"
+
+
+def _smoke_commands() -> list[str]:
+    import re
+
+    text = (ROOT / "README.md").read_text()
+    block = text[text.index("## Smoke test") : text.index("## ▶ Start here")]
+    return re.findall(r"`(uv run banking-jobs [^`]+)`", block)
+
+
+def test_every_file_the_smoke_table_names_exists() -> None:
+    """The README's headline commands, checked for referential integrity.
+
+    ⚠️ This is the check that was missing when the demo pointed at
+    `read_savings_balance.v2.approved.json` — a DRAFT, so §6.1's "exact
+    command(s) to run" errored on the artifact path. Found by Copilot, not by
+    anything here.
+
+    Offline on purpose: it runs no browser, so it can gate every commit rather
+    than every release.
+    """
+    import re
+
+    commands = _smoke_commands()
+    assert len(commands) >= 8, f"the smoke table shrank to {len(commands)} commands"
+
+    missing: list[str] = []
+    for command in commands:
+        for path in re.findall(r"(?:--params|--tenant-config)\s+(\S+)", command):
+            if not (ROOT / path).exists():
+                missing.append(f"{path}  (in: {command[:60]}…)")
+    assert not missing, "smoke table names files that do not exist:\n  " + "\n  ".join(missing)
+
+
+def test_every_capability_the_smoke_table_replays_resolves() -> None:
+    """A name in the README must resolve to an APPROVED artifact.
+
+    Same failure one level up: a command can name a real file and a capability
+    that was never approved, and replay refuses a draft by design.
+    """
+    import re
+
+    from interfaceai.capability import resolve_artifact
+
+    unresolved: list[str] = []
+    for command in _smoke_commands():
+        match = re.search(r"replay\s+([a-z_]+)", command)
+        if not match:
+            continue
+        try:
+            resolve_artifact(ROOT / "artifacts", match.group(1))
+        except KeyError as exc:
+            unresolved.append(f"{match.group(1)}: {exc}")
+    assert not unresolved, (
+        "smoke table replays capabilities that do not resolve:\n  " + "\n  ".join(unresolved)
+    )

@@ -25,7 +25,7 @@ artifact, deterministic replay with typed outcomes, human handoff of the live
 session, and one artifact serving two tenants.
 
 ```
-303 tests — 268 offline, 35 live · ruff clean
+318 tests — 283 offline, 35 live · ruff clean
 ```
 
 | Piece | State |
@@ -59,6 +59,70 @@ anything and a discovered one can only name what it recorded. `interfaceai
 capability check` is that check, and `interfaceai status` prints the counts.
 
 Setting up a fresh machine: [`docs/vm-setup.md`](docs/vm-setup.md)
+
+## Smoke test — every capability, both param forms
+
+### Prerequisites
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh    # if you do not have it
+uv sync                                            # fetches Python 3.13 too
+uv run playwright install chromium                 # the browser replay drives
+```
+
+Plus a Docker runtime with `docker compose`. A model key in `.secret` is only
+needed for `discover` and for `extract` steps — see
+[Config](#config); `log_in` and `log_in_discovered` replay with **zero model
+calls**.
+
+### Bring the banks up
+
+**One compose file, two services.** Tenant B sits behind a profile, so it does
+not start unless asked:
+
+```bash
+docker compose up -d --wait                  # tenant A  → localhost:8080
+uv run interfaceai env reset                 # seed it — REQUIRED, see below
+
+docker compose --profile tenant-b up -d --wait   # tenant B → localhost:8081
+uv run interfaceai env reset --tenant-b
+```
+
+⚠️ **`env reset` is not optional.** ParaBank boots with **no database schema**
+and serves HTTP 200 the whole time, so the healthcheck goes green on an app
+that cannot answer a single question. Readiness is not liveness — `env reset`
+is the readiness gate and it blocks until the seed is verified.
+
+⚠️ `docker-compose.reskin.yml` is a **separate, optional** overlay that puts a
+different brand on tenant B. It is for the drift experiment only and it
+deliberately breaks two live tests while on — `scripts/reskin_tenant_b.sh off`
+before running the suite.
+
+### The table
+
+| | |
+|---|---|
+| **read a balance** | `uv run banking-jobs replay read_savings_balance --params job_params/read_savings_balance.yaml` |
+| | `uv run banking-jobs replay read_savings_balance --param account_id=13344` |
+| **a fair negative answer** | `uv run banking-jobs replay read_savings_balance --params job_params/read_savings_balance.not_found.yaml` |
+| **compose** | `uv run banking-jobs replay log_in` |
+| **discovered by an LLM** | `uv run banking-jobs replay log_in_discovered` |
+| **stop and ask a person** | `uv run banking-jobs replay request_loan --params job_params/request_loan.yaml --confirm-risky` |
+| **survive a lost session** | `uv run banking-jobs replay session_loss_probe --params job_params/session_loss_probe.yaml` |
+| **a second institution** | `uv run banking-jobs replay read_savings_balance --tenant-config tenant_configs/bank_b.yaml --param account_id=13344` |
+| **refused by that tenant** | `uv run banking-jobs replay request_loan --tenant-config tenant_configs/bank_b.yaml --params job_params/request_loan.yaml` |
+| **hand it to a human** | `uv run banking-jobs replay request_loan --params job_params/request_loan.yaml --operator` |
+
+```bash
+uv run banking-jobs status                    # every capability and recent run
+uv run banking-jobs status --tenant feature   # what THAT tenant may run
+uv run banking-jobs language                  # the controlled language, generated
+uv run banking-jobs diagram read_savings_balance
+```
+
+⚠️ **`--param` beats `--params`** when both are given, so a committed file holds
+the real inputs and a flag tweaks one for a single run. `banking-jobs` and
+`interfaceai` are the same command.
 
 ## ▶ Start here — [CAPABILITIES.md](CAPABILITIES.md)
 
