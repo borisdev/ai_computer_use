@@ -267,7 +267,10 @@ asserted — not yet measured.
 | Discovered panel, alignment cross-check | **0 misaligned of 11**, live, on a panel no hand touched |
 | Chained-gap pitch over 11 rows | drifted **20px by row 10** — every gap within 1px, the fit 2px out |
 | A menu beside a table, containment only | menu measured **722px wide** instead of 170 — 23px rows fit inside 24px bands |
-| Regions the READ pass proposes | accounts ✅, nav ✅, ATM/online ✅; account detail and loan result **named as a neighbour** |
+| Label/value block found, one sentence naming four examples | **0 / 3** runs, both screens |
+| Label/value block found, the three SHAPES enumerated | **3 / 3** runs, both screens, nothing else lost |
+| A crop sized to `SAVINGS`, reading `CHECKING` | returned **`CHECKIN`** — silently, until a checkpoint two steps later |
+| The hand-measured accounts panel, 310px | cut the third column it DECLARES (data runs 11px past the crop) |
 | Cross-check, forced harmonic (2x pitch) | **11 misaligned of 11** — the guard fires |
 | Discovery run, cold (maps unbuilt) | 2 screens mapped, ~100 calls |
 | Discovery run, warm (maps cached) | 3 actions, **4 calls, 15s** |

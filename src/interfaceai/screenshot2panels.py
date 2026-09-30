@@ -38,6 +38,25 @@ Measured on the four regions `scripts/add_panels.py` measured by hand:
     account detail     3 runs, every gap 23px
     loan result        3 runs, every gap 23px
 
+## ⛔ Naming the three SHAPES is what finds a label/value block
+
+The prompt asked for *"a region of three or more near-identical rows -- a results
+table, an account list, a label/value block, a menu of links"*, which reads as
+complete and is not. Measured on the two screens whose panels this repo had
+measured by hand, three runs each:
+
+    prompt                      account detail     loan result
+    one sentence, four examples       0 / 3             0 / 3
+    the three shapes enumerated       3 / 3             3 / 3
+
+Both were named on every run once the LABEL/VALUE shape was described in its own
+right -- *"one record's own fields, one per row, each row reading `Field Name:
+value` ... easy to overlook because it is not a grid"* -- and nothing that was
+found before was lost. Same lesson as `DiscoveryConfig`'s tiled inventory (one
+broad call gave 24/19/24 controls, narrow ones 27/27/26): the model was not
+failing to SEE these regions, it was answering a question that did not ask for
+them.
+
 ⚠️ **Ink is measured against the region's OWN background, never against white.**
 The loan result sits on a shaded table and the accounts table is zebra-striped:
 `pixel < 250` reads both as solid content and finds ONE run where there are
@@ -84,12 +103,11 @@ from interfaceai.screenshot2controls import (
     _unique,
     locate_control,
 )
-from interfaceai.table import MAX_PITCH_PX, MIN_PITCH_PX, find_row_rhythm
+from interfaceai.table import INK_DELTA, MAX_PITCH_PX, MIN_PITCH_PX, find_row_rhythm
 
-# A pixel this far from its region's median is content, not background. 40
-# separates ParaBank's glyphs (~100) from white (255), from the zebra stripes
-# (230/235/238) and from a column header's own bar.
-_INK_DELTA = 40
+# `table.INK_DELTA` — the proposer and the reader ask the same question of the
+# same pixels, so the threshold has one home and it is the one they share.
+_INK_DELTA = INK_DELTA
 
 # Vertical gap that ends a line of text. Rows of glyphs within one line are
 # contiguous or a pixel apart; 4 keeps a link and its underline together.
@@ -122,6 +140,11 @@ _PROBE_PX = 420
 
 # Padding around the anchor's text, and around the region's content.
 _PAD_PX = 4
+
+# Ink within this many pixels of the crop's right edge is content being cut, not
+# content that happens to end there. Two is enough: the right edge is derived
+# from where ink STOPS, so a clean panel has `_PAD_PX` of clear space.
+_EDGE_GUARD_PX = 2
 
 # Narrower than this is a table border or a rule, not a column. ParaBank's are
 # 2px; its narrowest real column is 34px wide.
@@ -169,9 +192,16 @@ class _PanelPlacements(BaseModel):
 _PANEL_READ_PROMPT = """\
 This is a screenshot of a business application. Nothing has been drawn on it.
 
-Find every REPEATED STRUCTURE: a region of three or more near-identical rows --
-a results table, an account list, a label/value block, a menu of links. A single
-row is not one, and neither is a paragraph of prose.
+Find every REPEATED STRUCTURE. There are three shapes and all of them count:
+
+1. a TABLE: a header row of column names, with rows of data under it
+2. a LABEL/VALUE BLOCK: one record's own fields, one per row, each row reading
+   `Field Name: value` -- an account detail box, a result summary. This shape is
+   easy to overlook because it is not a grid; it still counts, and its two
+   columns are the field names and the values.
+3. a MENU or LIST: several links or items, one per row
+
+A single row is not a repeated structure, and neither is a paragraph of prose.
 
 For each one give:
 - heading: the text of the column header or heading DIRECTLY ABOVE the rows,
@@ -529,20 +559,47 @@ def derive_panel(
             f"{MARKER_MARGIN_PX}px marker margin the alignment check needs"
         )
 
-    # The right edge: every column right of the key column that FOLLOWS THE SAME
-    # ROWS. Gathered row by row, because a profile over the whole region reads as
-    # one run, and a column whose values grow wider further down still has to be
-    # inside the crop.
+    # The right edge, row by row -- a profile over the whole region reads as one
+    # run, and the widest row is not the first one.
+    #
+    # ⛔ **A row's OWN span counts, and leaving it out truncated a value.** The
+    # account-detail block's label and value are 2px apart, so they merge into one
+    # span whose width was measured on row one -- `Account Number: 13344`. Row two
+    # is `Account Type: SAVINGS`, which is wider, and the crop cut it: the model
+    # read `SAVIN`, reported it without complaint, and the only thing that caught
+    # it was a checkpoint two steps later.
+    #
+    # A span to the RIGHT of the key column still has to prove it belongs (a
+    # neighbouring structure is not this panel). A span that OVERLAPS the key
+    # column is this panel's own content by construction.
     right = key_span[1]
     seen: set[tuple[int, int]] = set()
     for index in range(count):
         top = row_top + index * pitch
         for span in _spans(grey, top, min(int(height) - 1, top + pitch - 1)):
-            if span[0] <= key_span[1] or span[1] <= right or span in seen:
+            if span[1] <= right or span in seen:
                 continue
             seen.add(span)
-            if _follows_the_rows(grey, span, row_top, pitch, count):
+            overlaps_key = span[0] <= key_span[1] and span[1] >= key_span[0]
+            if overlaps_key or _follows_the_rows(grey, span, row_top, pitch, count):
                 right = max(right, span[1])
+
+    # ⛔ **Ink is where the values END TODAY, and a panel outlives today's data.**
+    # `SAVINGS` became `CHECKING` when the database changed, one character wider,
+    # and the crop sized to the first read it back as `CHECKIN`. So the right edge
+    # gets SLACK: up to one row height, which is a few characters at any font
+    # size that produced this pitch -- and never into the next column, because
+    # swallowing a neighbour's first digits would be the same defect mirrored.
+    #
+    # It is slack, not a fix: a value that grows past it is caught at READ time by
+    # `table._reaches_the_right_edge`, loudly, rather than truncated in silence.
+    limit = int(width)
+    for index in range(count):
+        top = row_top + index * pitch
+        for span in _spans(grey, top, min(int(height) - 1, top + pitch - 1)):
+            if span[0] > right:
+                limit = min(limit, span[0])
+    right += max(0, min(pitch, limit - right - _PAD_PX))
 
     key_box = _rect(key_span[0], row_top, key_span[1] - key_span[0] + 1, region_height, size)
     rhythm = find_row_rhythm(screenshot_png, key_box)
@@ -627,6 +684,55 @@ def derive_panel(
         note=note,
     )
     return proposal, None
+
+
+def geometry_faults(screenshot_png: bytes, proposal: PanelProposal) -> tuple[str, ...]:
+    """Everything a measured panel can be wrong about, checked against the pixels.
+
+    Two questions, and they fail in different directions:
+
+    - **vertically**, does each row sit inside the band we would mark for it?
+      A pitch or phase error puts a click on the wrong record.
+    - **horizontally**, does any row's content run into the crop's edge? A crop
+      that cuts a value does not fail -- the model reads what is there and
+      returns `SAVIN` for `SAVINGS`, which is the quietest possible wrong answer.
+
+    The second one exists because the first one passed while a value was being
+    truncated, and the fault surfaced two steps later as a checkpoint violation.
+    """
+    return marker_bands_contain_every_row(screenshot_png, proposal) + _content_reaches_the_edge(
+        screenshot_png, proposal
+    )
+
+
+def _content_reaches_the_edge(screenshot_png: bytes, proposal: PanelProposal) -> tuple[str, ...]:
+    """Ink touching the crop's right edge means a value is cut off."""
+    grey = _grey(screenshot_png)
+    spec = proposal.spec
+    left = proposal.point.x + spec.dx
+    right = min(int(grey.shape[1]), left + spec.width)
+    top = proposal.point.y + spec.dy
+    pitch = spec.row_pitch or spec.height
+
+    faults: list[str] = []
+    for index in range(max(1, spec.height // max(1, pitch))):
+        y0 = top + index * pitch
+        band = grey[y0 : min(y0 + pitch, int(grey.shape[0])), left:right]
+        if band.size == 0:
+            continue
+        # Ink spanning the boundary, not merely touching it: a value that ENDS at
+        # the edge is read correctly, and treating that as a fault refuses a good
+        # panel. `table._is_cut_off` makes the same distinction at read time.
+        wider = grey[y0 : min(y0 + pitch, int(grey.shape[0])), left : right + _EDGE_GUARD_PX]
+        if wider.shape[1] <= band.shape[1]:
+            continue
+        ink = _ink(wider)
+        if (ink[:, band.shape[1] - 1] & ink[:, band.shape[1] :].any(axis=1)).any():
+            faults.append(
+                f"row {index} has content running past the crop's right edge (x={right}), "
+                "so a value is cut off rather than read"
+            )
+    return tuple(faults)
 
 
 def marker_bands_contain_every_row(
@@ -760,7 +866,7 @@ async def extract_panel_locators(
             out.append(refused(why or "could not anchor on the heading"))
             continue
 
-        faults = marker_bands_contain_every_row(inp.screenshot_png, proposal)
+        faults = geometry_faults(inp.screenshot_png, proposal)
         if faults:
             out.append(
                 refused("the measured geometry does not contain its own rows: " + "; ".join(faults))

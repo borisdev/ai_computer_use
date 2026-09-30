@@ -8,7 +8,8 @@ claim.
 <tr><td><code>read_savings_balance</code> <b>v3</b><br/><sub><code>(account_id) → balance, account_type</code></sub><p>Look up an account by id and read its balance. The brief's own worked example.</p></td><td>✍️ hand-authored<br/><sub>needs a panel</sub></td><td><ul><li><a href="https://github.com/borisdev/ai_computer_use/blob/main/artifacts/read_savings_balance.v3.approved.json">exported workflow</a></li><li><a href="https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260929T071443Z">evidence · A</a></li><li><a href="https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260929T192201Z">evidence · B</a></li><li><a href="#read_savings_balance-v3">mermaid diagram</a></li></ul></td><td><ul><li>✅ <b>A</b> baseline<br/><sub><code>Success</code> · 12 steps</sub></li><li>✅ <b>B</b> feature<br/><sub><code>Success</code> · 12 steps</sub></li></ul></td><td><ul><li><b>Panel extraction</b> — one model call for the whole table; the row is picked <b>in code</b></li><li><b>A checkpoint with teeth</b> — asserts <code>account_type = SAVINGS</code>, so CLEAN state fails instead of returning a stranger's balance</li><li><b>Business outcome</b> — account 99999 exits <b>0</b> — a fair negative answer, not a crash</li></ul></td></tr>
 <tr><td><code>log_in</code> <b>v2</b><br/><sub><code>() → nothing</code></sub><p>Authenticate and reach the authenticated nav.</p></td><td>✍️ hand-authored</td><td><ul><li><a href="https://github.com/borisdev/ai_computer_use/blob/main/artifacts/log_in.v2.approved.json">exported workflow</a></li><li><a href="https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260929T192254Z">evidence · A</a></li><li><a href="https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260929T192301Z">evidence · B</a></li><li><a href="#log_in-v2">mermaid diagram</a></li></ul></td><td><ul><li>✅ <b>A</b> baseline<br/><sub><code>Success</code> · 4 steps</sub></li><li>✅ <b>B</b> feature<br/><sub><code>Success</code> · 4 steps</sub></li></ul></td><td><ul><li><b>Compositional capabilities</b> — invoked by three others in the <b>same browser session</b></li><li><b>Pinned versions</b> — a newer <code>log_in</code> is a validation error, never a silent substitution</li><li><b>Postconditions</b> — <code>establishes</code> is what recovery reads to know what restores a session</li></ul></td></tr>
 <tr><td><code>log_in_discovered</code> <b>v1</b><br/><sub><code>() → account_id</code></sub><p>Authenticate and read back the account id. <b>The only artifact an LLM wrote.</b></p></td><td>🤖 <b>discovered</b><br/><sub>by a real LLM run</sub></td><td><ul><li><a href="https://github.com/borisdev/ai_computer_use/blob/main/artifacts/log_in_discovered.v1.approved.json">exported workflow</a></li><li><a href="https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260929T192220Z">evidence · A</a></li><li><a href="https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260929T192231Z">evidence · B</a></li><li><a href="#log_in_discovered-v1">mermaid diagram</a></li></ul></td><td><ul><li>✅ <b>A</b> baseline<br/><sub><code>Success</code> · 5 steps</sub></li><li>✅ <b>B</b> feature<br/><sub><code>Success</code> · 5 steps</sub></li></ul></td><td><ul><li><b>Discovery works</b> — a real LLM run — 3 steps, 4 model calls, 24s</li><li><b>Discovered beats authored</b> — <b>0 faults on first emission</b>; the first hand-written drafts had 3 and 8, naming a screen that does not exist</li><li><b>Human handoff</b> — <code>requested → human_acted → returned</code>, on the same live session</li></ul></td></tr>
-<tr><td><code>discovered_balance</code> <b>v1</b><br/><sub><code>(account_id) → account_id, balance</code></sub><p>Read one account's balance out of the accounts table. <b>Discovered including its <code>TABLE_CONTROL_PANEL</code></b> — the gap #6 was open on.</p></td><td>🤖 <b>discovered</b><br/><sub>panel and all</sub></td><td><ul><li><a href="https://github.com/borisdev/ai_computer_use/blob/main/artifacts/discovered_balance.v1.approved.json">exported workflow</a></li><li><a href="https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260929T234307Z">evidence · A</a></li><li><a href="https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260929T234409Z">evidence · B</a></li><li><a href="#discovered_balance-v1">mermaid diagram</a></li></ul></td><td><ul><li>✅ <b>A</b> baseline<br/><sub><code>Success</code> · 6 steps</sub></li><li>✅ <b>B</b> feature<br/><sub><code>Success</code> · 6 steps</sub></li></ul></td><td><ul><li><b>A discovered panel</b> — geometry measured the table — <b>11 rows, 28px pitch, autocorrelation 0.899</b> — and no pixel was asked of a model</li><li><b>The row by arithmetic</b> — <code>row_key=account_id</code>, <code>field=balance</code>; the whole table is read in one call and the row picked <b>in code</b></li><li><b>Cross-tenant, discovered</b> — the heading it anchored on matches a <b>different build</b> of ParaBank, unchanged</li></ul></td></tr>
+<tr><td><code>discovered_balance</code> <b>v1</b><br/><sub><code>(account_id) → account_id, balance</code></sub><p>Read one account's balance out of the accounts table. <b>Discovered including its <code>TABLE_CONTROL_PANEL</code></b> — the gap #6 was open on.</p></td><td>🤖 <b>discovered</b><br/><sub>panel and all</sub></td><td><ul><li><a href="https://github.com/borisdev/ai_computer_use/blob/main/artifacts/discovered_balance.v1.approved.json">exported workflow</a></li><li><a href="https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260930T035056Z">evidence · A</a></li><li><a href="https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260930T035110Z">evidence · B</a></li><li><a href="#discovered_balance-v1">mermaid diagram</a></li></ul></td><td><ul><li>✅ <b>A</b> baseline<br/><sub><code>Success</code> · 6 steps</sub></li><li>✅ <b>B</b> feature<br/><sub><code>Success</code> · 6 steps</sub></li></ul></td><td><ul><li><b>A discovered panel</b> — geometry measured the table — <b>11 rows, 28px pitch, autocorrelation 0.899</b> — and no pixel was asked of a model</li><li><b>The row by arithmetic</b> — <code>row_key=account_id</code>, <code>field=balance</code>; the whole table is read in one call and the row picked <b>in code</b></li><li><b>Cross-tenant, discovered</b> — the heading it anchored on matches a <b>different build</b> of ParaBank, unchanged</li></ul></td></tr>
+<tr><td><code>discovered_account_type</code> <b>v1</b><br/><sub><code>(account_id) → account_id, account_type</code></sub><p>Open an account from the table and read its TYPE off the detail page. <b>The same shape as <code>read_savings_balance</code>, discovered</b> — two panels and a drilldown between them.</p></td><td>🤖 <b>discovered</b><br/><sub>the brief's own example</sub></td><td><ul><li><a href="https://github.com/borisdev/ai_computer_use/blob/main/artifacts/discovered_account_type.v1.approved.json">exported workflow</a></li><li><a href="https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260930T035124Z">evidence · A</a></li><li><a href="https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260930T035146Z">evidence · B</a></li><li><a href="#discovered_account_type-v1">mermaid diagram</a></li></ul></td><td><ul><li>✅ <b>A</b> baseline<br/><sub><code>Success</code> · 7 steps</sub></li><li>✅ <b>B</b> feature<br/><sub><code>Success</code> · 7 steps</sub></li></ul></td><td><ul><li><b>A drilldown, discovered</b> — <code>click</code> on a panel with <code>row_key=account_id</code> — the row's position comes from the panel read and the measured pitch, never from pointing at it</li><li><b>Two discovered panels</b> — a TABLE on the overview and a LABEL/VALUE block on the detail page; the second shape was invisible to the read pass until it was named</li><li><b>A checkpoint with teeth, derived</b> — <code>account_type == SAVINGS</code> was inferred from the run, and <code>interfaceai env break</code> makes it fail with <b>observed CHECKING</b></li></ul></td></tr>
 <tr><td><code>request_loan</code> <b>v2</b><br/><sub><code>(amount, down_payment) → nothing</code></sub><p>Apply for a loan of a given amount with a given down payment.</p></td><td>✍️ hand-authored<br/><sub>needs a panel</sub></td><td><ul><li><a href="https://github.com/borisdev/ai_computer_use/blob/main/artifacts/request_loan.v2.approved.json">exported workflow</a></li><li><a href="https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260929T071538Z">evidence · A</a></li><li><a href="https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260929T192346Z">evidence · B</a></li><li><a href="#request_loan-v2">mermaid diagram</a></li></ul></td><td><ul><li>⚠️ <b>A</b> baseline<br/><sub><code>NeedsOperator</code> · over the $1,000 threshold</sub></li><li>⛔ <b>B</b> feature<br/><sub><code>Failed</code> · tenant does not permit it</sub></li></ul></td><td><ul><li><b>Value-dependent risk</b> — $25,000 stops, $500 does not, and <code>--confirm-risky</code> cannot buy past it</li><li><b>Irreversible means observed</b> — a schema rule: a <code>risky</code> step must be followed by a look</li><li><b>Tenant permissions</b> — refused <b>before a browser opens</b></li></ul></td></tr>
 <tr><td><code>session_loss_probe</code> <b>v1</b><br/><sub><code>(account_id) → found_account_id</code></sub><p>Read an account, destroy its own session mid-flow, and carry on.</p></td><td>✍️ hand-authored<br/><sub>needs a panel</sub></td><td><ul><li><a href="https://github.com/borisdev/ai_computer_use/blob/main/artifacts/session_loss_probe.v1.approved.json">exported workflow</a></li><li><a href="https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260929T071516Z">evidence · A</a></li><li><a href="https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260929T192329Z">evidence · B</a></li><li><a href="#session_loss_probe-v1">mermaid diagram</a></li></ul></td><td><ul><li>✅ <b>A</b> baseline<br/><sub><code>Success</code> + <code>recovered</code></sub></li><li>⛔ <b>B</b> feature<br/><sub><code>Failed</code> · tenant does not permit it</sub></li></ul></td><td><ul><li><b>Bounded recovery</b> — re-establishes a lost session <b>once per condition</b>, never in a loop</li><li><b>No `Recoverable` type</b> — a recovered condition is not a terminal state; <code>Success.recovered</code> names it</li></ul></td></tr>
 </table>
@@ -173,8 +174,8 @@ Read one account's balance out of the accounts table. **Discovered including its
 
 | tenant | outcome | evidence |
 |---|---|---|
-| `baseline` | ✅ `Success` · 6 steps | [trace](https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260929T234307Z) |
-| `feature` | ✅ `Success` · 6 steps | [trace](https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260929T234409Z) |
+| `baseline` | ✅ `Success` · 6 steps | [trace](https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260930T035056Z) |
+| `feature` | ✅ `Success` · 6 steps | [trace](https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260930T035110Z) |
 
 **Run it:**
 
@@ -207,6 +208,59 @@ flowchart TD
     chk0 -- holds --> ok
     bad(["Failed"]):::stop
     chk0 -- violated --> bad
+    classDef write fill:#fef3c7,stroke:#d97706,color:#92400e;
+    classDef act fill:#fde68a,stroke:#d97706,stroke-width:2px,color:#92400e;
+    classDef look fill:#f1f5f9,stroke:#94a3b8,color:#334155;
+    classDef read fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#065f46;
+    classDef check fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#4c1d95;
+    classDef good fill:#16a34a,stroke:#15803d,color:#ffffff;
+    classDef stop fill:#f1f5f9,stroke:#94a3b8,color:#334155;
+```
+
+## `discovered_account_type` v1
+
+Open an account from the table and read its TYPE off the detail page. **The same shape as `read_savings_balance`, discovered** — two panels and a drilldown between them.  `(account_id) → account_id, account_type`
+
+| tenant | outcome | evidence |
+|---|---|---|
+| `baseline` | ✅ `Success` · 7 steps | [trace](https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260930T035124Z) |
+| `feature` | ✅ `Success` · 7 steps | [trace](https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260930T035146Z) |
+
+**Run it:**
+
+```bash
+uv run interfaceai replay -c discovered_account_type --param account_id=13344
+```
+
+[**exported workflow**](https://github.com/borisdev/ai_computer_use/blob/main/artifacts/discovered_account_type.v1.approved.json) — approved, version-pinned.
+
+**Also:** [the discovery run that produced it](https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260930T033307Z) · [the checkpoint firing on a changed record](https://github.com/borisdev/ai_computer_use/tree/main/evidence/runs/20260930T035024Z)
+
+```mermaid
+flowchart TD
+    start(["<b>discovered_account_type</b> v1"]):::good
+    n0["<b>enter</b> username_textbox<br/><i>secret, input_ref only</i>"]:::write
+    start --> n0
+    n1["<b>enter</b> password_textbox<br/><i>secret, input_ref only</i>"]:::write
+    n0 --> n1
+    n2("<b>click</b> log_in_button"):::act
+    n1 --> n2
+    n3("<b>click</b> accounts_overview_table_control_panel<br/><i>row picked in code</i>"):::act
+    n2 --> n3
+    n4>"<b>observe</b> "]:::look
+    n3 --> n4
+    n5[/"<b>extract</b> account_id<br/>account_details_table_control_panel<br/><i>row picked in code</i>"/]:::read
+    n4 --> n5
+    n6[/"<b>extract</b> account_type<br/>account_details_table_control_panel<br/><i>row picked in code</i>"/]:::read
+    n5 --> n6
+    chk0{{"<b>checkpoint</b><br/>account_id"}}:::check
+    n6 --> chk0
+    chk1{{"<b>checkpoint</b><br/>account_type"}}:::check
+    chk0 --> chk1
+    ok(["<b>Success</b>"]):::good
+    chk1 -- holds --> ok
+    bad(["Failed"]):::stop
+    chk1 -- violated --> bad
     classDef write fill:#fef3c7,stroke:#d97706,color:#92400e;
     classDef act fill:#fde68a,stroke:#d97706,stroke-width:2px,color:#92400e;
     classDef look fill:#f1f5f9,stroke:#94a3b8,color:#334155;
@@ -302,10 +356,18 @@ flowchart TD
 
 ---
 
-## ⛔ TWO were discovered, and the reason the others were not is GONE
+## ⛔ THREE were discovered, and the reason the others were not is GONE
 
-`log_in_discovered` and `discovered_balance` came out of real LLM runs. The other
-four were **written by hand** in `capabilities.py`. That is the honest state and
+`log_in_discovered`, `discovered_balance` and `discovered_account_type` came out
+of real LLM runs. The other four were **written by hand** in `capabilities.py`.
+
+⭐ **`discovered_account_type` is the brief's own worked example, discovered.**
+Two panels and a drilldown between them: open account 13344 from the accounts
+table by `row_key`, then read `Account Type` out of a label/value block on the
+detail page. It is the same shape as the hand-written `read_savings_balance` v3,
+including the `account_type == SAVINGS` checkpoint — which discovery inferred from
+the run, and which fails with **observed `CHECKING`** after `interfaceai env
+break`. That is the honest state and
 worth being precise about, because the brief's through-line is *"the model
 discovers, the artifact becomes a reusable capability."*
 
@@ -323,23 +385,30 @@ a model.
 as one line: **discovered → approved → replayed on both tenants**, reading a named
 row out of an eleven-row table whose shape nobody told it.
 
-⚠️ **What is still hand-measured, and why — because "one gap, not four" was too
-neat.** Geometry measures all four regions correctly; what varies is whether the
-READ pass proposes them at all:
+⚠️ **Every region this repo measured by hand is now proposed AND measured**,
+including the two that were missed at first:
 
 ```
 accounts table        11 rows, pitch 28px, autocorrelation 0.899   proposed, measured, USED
+account detail         4 rows, pitch 23px, 0.686                   proposed, measured, USED
 account-services nav   8 rows, pitch 24px, 0.797                  proposed, measured
+loan result            3 rows, pitch 23px                          proposed, measured
 ATM / online services  4 and 3 rows, pitch 20px                   proposed, measured
-account detail         4 rows, pitch 23px, 0.686                   MEASURED, not proposed --
-loan result            3 rows, pitch 23px                          the model names a different
-                                                                   region on those two screens
 empty transactions    refused: "no column below the heading repeats"
 ```
 
-So the remaining gap is which REGION perception names, not whether geometry can
-measure it — a narrower and more honest statement than the one this paragraph
-made. `read_savings_balance` still needs the hand-measured `account_details_panel`.
+⛔ **And the reason the last two were missed is worth more than the fix.** The
+prompt asked for *"a region of three or more near-identical rows — a results
+table, an account list, a label/value block, a menu of links"*, which reads as
+complete. Measured, three runs each: it found the account-detail block **0 of 3**
+times and the loan result **0 of 3**. Describing the LABEL/VALUE shape in its own
+right — *"one record's own fields, one per row, each row reading `Field Name:
+value` … easy to overlook because it is not a grid"* — found both **3 of 3**, and
+lost nothing. The model was not failing to see them; it was answering a question
+that did not ask for them.
+
+The four hand-measured panels stay in the store beside the discovered ones because
+four artifacts name their ids, not because a hand is still required.
 
 Everything downstream of the artifact — validation, approval, replay,
 composition, the guardrails — already treats both origins identically, which is

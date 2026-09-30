@@ -15,6 +15,7 @@ from interfaceai.screenshot2controls import (
     CropBox,
     ImageSize,
     LocatedControl,
+    PanelSpec,
     ScreenOutput,
     VisualLocator,
 )
@@ -62,15 +63,52 @@ def _map() -> ScreenOutput:
                 status="unresolved",
                 reason="refinement exhausted",
             ),
+            LocatedControl(
+                id="p001",
+                label="Account",
+                role=ControlRole.TABLE_CONTROL_PANEL,
+                description="the accounts table; its rows are links",
+                status="ready",
+                click_point=ClickPoint(x=490, y=320),
+                locator=_locator(),
+                panel=_panel(key_click_dx=18),
+            ),
+            LocatedControl(
+                id="p002",
+                label="Account Details",
+                role=ControlRole.TABLE_CONTROL_PANEL,
+                description="a label/value block; its rows are text",
+                status="ready",
+                click_point=ClickPoint(x=495, y=290),
+                locator=_locator(),
+                panel=_panel(key_click_dx=None),
+            ),
         ],
     )
 
 
-def _decide(control_id, action, value=None) -> AgentDecision:
+def _panel(*, key_click_dx: int | None) -> PanelSpec:
+    return PanelSpec(
+        columns=("account_id", "balance"),
+        key_column="account_id",
+        dx=-22,
+        dy=24,
+        width=327,
+        height=308,
+        key_dx=2,
+        key_dy=24,
+        key_width=33,
+        key_click_dx=key_click_dx,
+        row_pitch=28,
+    )
+
+
+def _decide(control_id, action, value=None, row_key=None) -> AgentDecision:
     return AgentDecision(
         action=action,
         control_id=control_id,
         value=value,
+        row_key=row_key,
         reason="test",
         post_action_expectation="test",
         confidence=1.0,
@@ -112,3 +150,39 @@ def test_action_not_supported_by_role_is_refused() -> None:
 def test_enter_text_without_a_value_is_refused() -> None:
     with pytest.raises(ValueError, match="requires a value"):
         validate_decision(_decide("c001", ManualActionKind.ENTER_TEXT), _map())
+
+
+# --------------------------------------------------------------------------
+# A panel is read, or a ROW of it is opened by key. Nothing else.
+# --------------------------------------------------------------------------
+
+
+class TestPanel:
+    def test_a_bare_click_on_a_panel_is_refused(self) -> None:
+        """The anchor is a HEADING. Clicking it acts on nothing, and clicking a
+        row by eye is `docs/issues/0009` — wrong record 3 times in 4."""
+        with pytest.raises(ValueError, match="row_key"):
+            validate_decision(_decide("p001", ManualActionKind.CLICK), _map())
+
+    def test_typing_into_a_panel_is_refused(self) -> None:
+        with pytest.raises(ValueError, match="never enter_text on the region"):
+            validate_decision(_decide("p001", ManualActionKind.ENTER_TEXT, "x"), _map())
+
+    def test_a_click_with_a_row_key_is_allowed(self) -> None:
+        control = validate_decision(
+            _decide("p001", ManualActionKind.CLICK, row_key="13344"), _map()
+        )
+        assert control.id == "p001"
+
+    def test_a_read_only_panel_cannot_be_opened(self) -> None:
+        """No `key_click_dx` means the cells are text, not links. Refusing here
+        beats clicking a label and reporting success."""
+        with pytest.raises(ValueError, match="read-only"):
+            validate_decision(
+                _decide("p002", ManualActionKind.CLICK, row_key="Account Type:"), _map()
+            )
+
+    def test_the_role_table_still_grants_a_panel_nothing(self) -> None:
+        """The exception lives in `validate_decision`, not in `ACTIONS_BY_ROLE` —
+        a panel supports no action on the REGION, and the table says so."""
+        assert supported_actions(ControlRole.TABLE_CONTROL_PANEL) == []

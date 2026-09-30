@@ -980,10 +980,10 @@
       "id": "atm_services_table_control_panel",
       "label": "ATM Services",
       "role": "table_control_panel",
-      "description": "A vertical list under 'ATM Services' with items like Withdraw Funds, Transfer Funds, Check Balances, Make Deposits. (4 rows, pitch 20px, autocorrelation 0.732)",
+      "description": "A list of ATM services with their descriptions, located in the center right of the screen under the heading 'ATM Services'. Each row is a service such as 'Withdraw Funds' or 'Transfer Funds'. (4 rows, pitch 20px, autocorrelation 0.732)",
       "status": "ready",
       "click_point": {
-        "x": 700,
+        "x": 719,
         "y": 290
       },
       "locator": {
@@ -1000,7 +1000,7 @@
           "height": 15
         },
         "click_offset": {
-          "x": 19,
+          "x": 38,
           "y": 1
         },
         "match_threshold": 0.95,
@@ -1013,14 +1013,15 @@
       },
       "panel": {
         "columns": [
-          "service"
+          "service",
+          "description"
         ],
         "key_column": "service",
-        "dx": -39,
+        "dx": -58,
         "dy": 17,
-        "width": 293,
+        "width": 313,
         "height": 80,
-        "key_dx": -15,
+        "key_dx": -34,
         "key_dy": 17,
         "key_width": 106,
         "key_click_dx": null,
@@ -1031,11 +1032,11 @@
       "id": "online_services_table_control_panel",
       "label": "Online Services",
       "role": "table_control_panel",
-      "description": "A vertical list under 'Online Services' with items like Bill Pay, Account History, Transfer Funds. (3 rows, pitch 20px, autocorrelation 0.667)",
+      "description": "A list of online banking services with their descriptions, located in the center right of the screen under the heading 'Online Services'. Each row is a service such as 'Bill Pay' or 'Account History'. (3 rows, pitch 20px, autocorrelation 0.667)",
       "status": "ready",
       "click_point": {
-        "x": 869,
-        "y": 290
+        "x": 889,
+        "y": 301
       },
       "locator": {
         "schema_version": 1,
@@ -1051,8 +1052,8 @@
           "height": 15
         },
         "click_offset": {
-          "x": 25,
-          "y": 1
+          "x": 45,
+          "y": 12
         },
         "match_threshold": 0.95,
         "ambiguity_margin": 0.05
@@ -1064,68 +1065,18 @@
       },
       "panel": {
         "columns": [
-          "service"
+          "service",
+          "description"
         ],
         "key_column": "service",
-        "dx": -45,
-        "dy": 17,
-        "width": 82,
+        "dx": -65,
+        "dy": 6,
+        "width": 150,
         "height": 60,
-        "key_dx": -21,
-        "key_dy": 17,
+        "key_dx": -41,
+        "key_dy": 6,
         "key_width": 5,
         "key_click_dx": null,
-        "row_pitch": 20
-      }
-    },
-    {
-      "id": "09_26_2026_table_control_panel",
-      "label": "09/26/2026",
-      "role": "table_control_panel",
-      "description": "A list of news items under the date 09/26/2026, with each item being a link, such as 'ParaBank Is Now Re-Opened', 'New! Online Bill Pay', 'New! Online Account Transfers'. (3 rows, pitch 20px, too short for autocorrelation to confirm)",
-      "status": "ready",
-      "click_point": {
-        "x": 690,
-        "y": 469
-      },
-      "locator": {
-        "schema_version": 1,
-        "template_png": "iVBORw0KGgoAAAANSUhEUgAAAEQAAAANCAIAAACfJl9BAAAE90lEQVR4nO2Wa2xTZRjH_6en1_XetWwruxS6W7exsQsM3QYT4pwIKAJTvyj6SSGGhZiJSEYkaEaiwgfRhCEYEBGJIhfDRsJlbtCNsQvs2patpWMdW7v1ftl2TuuHxQZo5ycTjfH5dpLz_n7_5zzvkxwiFArhv1KMfzrA31nMp57HTBf03V_YrR2x8c8-U_kLkyWgKd_dluqxB5doejpRvTm_7DDBYNKU99d6UV7pwdQl7_fdrjUNHqcp_8JFG_NKDzFZApryt16pslmahJJMdc62lMytAMZMF29dfvn513pCIaq7ZcfU-G2xLDtr-b745BejeoFQJBlAj7bGNPgdiy1MVFdlF-8nCDIc_onJzM44WxurfB5zUurrVktTj7YGgK6zzjhwlMNbIJSkG_vrB7vqANitXUBIIi8w3D002PGpSJqtUK4yDR7rbd0FoKt5-_hIY4JqfcA_fuf6O37vKACHrYtBcgVidfPFSrd9MCXjTb_XcuvyKwHfo6jeqOQHuhP67s8l8nwOV6HrOjBiOD3vZMZHrgSDM0tWHEhMrZoO2B7e_yl_5WGrpYnJEqze1EYQ5IXj8tGhs5rCPQ5bJ0BIFfle15CmcE_W8n0Azn8rmZpop2bdI4bTGUtrsov3B3xjNOXj8ZUAHLZukSxrOjCp0rwdn_SCXLlKL07t0dY4rJ0U5Y30srmyp8gAhvu-iY0vKVvfSFN-j1MvlGrmbcbt0AEQxeYAEEk1Y6YL0_4JatbN5sgYJAcAX6jyey1zyfiixSSTn5LxVvhDUDMugTjN7dAF6WmP09BwSk3NelNzd2QWfATAOdkjV5bx-Atzij8DEApSFuN5AEKpxmw4FemNJANwTfVLFQVXzxZ6nPcTVOsLy4-AwY5-zagZNwCS5ACYSx_wTQglmT6P2WI8N25u8DgNNOUD4Jy8J45dEj5os_yubXiVw1uQtWxvwDsGYGL0elreTh5f2df2sd3aQVNer2tYIl86934oRLde2TL56GZabjVftCiqN5JMU35q1m0da1Yu2hCXVDFi-GGo9_Dj-Z9ohs2VAQjSMwBoyg-Aw43NKNhFMnnahk23GjZyeHHcmDiEgq6p_nCycXND86VKkSx79aY2gTiNxRYBUOdsU-dszys5CMA6eiO8Y3MzablUaTGez1_5dW7Jl_N5I8kkk0sQpCKhTFO0t7jiRwaDbbM0z3vNYoQpAFxTfUKpxm0fYLIE3Jh4Ll-5Zkun32MWyXJunCuVxa1w2QeCdEAizwfgcRq0jZsl8ryVG66SzBgAAkk6gJnpKQAEgwmAxRGHdwxAZ9O7Ew-vFVecSVRv-QtvJBkg-GL1dGASAAECBIPJFs3bTELKOgbJ6WvfOzne-mikQZ39HgiGrrOut213Wm61ceCY12UsLD9qt3YAkCoKAdxtqaYpn0CcPtCxHwBJcjVFtQplubHvCEnybJYmEIyE5LW9t_fM7Zjd2mEaPBYjVDlsXQ5bF4D45LVRvVHJyWlv9Ld_cufaVoryBelAgmrdvM0wWYIVFWfuaWvM-pOZBbuzimoBpC_9wO3UP9B_LxAtLnnpN8XC5-7d3Mnmyrl8JQCvaxiAWX_yT4JQU1S7bM2J9mtbh3q_ihGqCsvruXxleMc8Dh0An9uk66ybO8JiS-QJpZHeqOSM_A_9ntGHwz-TJDcttzpJXfV4fuL_35l_af0B0zSmsuzdgFsAAAAASUVORK5CYII=",
-        "reference_size": {
-          "width": 1280,
-          "height": 900
-        },
-        "reference_crop": {
-          "x": 681,
-          "y": 462,
-          "width": 68,
-          "height": 13
-        },
-        "click_offset": {
-          "x": 9,
-          "y": 7
-        },
-        "match_threshold": 0.95,
-        "ambiguity_margin": 0.05
-      },
-      "reason": null,
-      "policy": {
-        "irreversible": false,
-        "sensitive": false
-      },
-      "panel": {
-        "columns": [
-          "news_item"
-        ],
-        "key_column": "news_item",
-        "dx": -29,
-        "dy": 12,
-        "width": 210,
-        "height": 60,
-        "key_dx": -5,
-        "key_dy": 12,
-        "key_width": 183,
-        "key_click_dx": 86,
         "row_pitch": 20
       }
     }

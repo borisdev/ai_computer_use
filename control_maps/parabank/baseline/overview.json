@@ -1117,7 +1117,7 @@
         "key_column": "account_id",
         "dx": -20,
         "dy": 28,
-        "width": 310,
+        "width": 340,
         "height": 320,
         "key_dx": 0,
         "key_dy": 28,
@@ -1181,7 +1181,7 @@
       "id": "accounts_overview_table_control_panel",
       "label": "Accounts Overview",
       "role": "table_control_panel",
-      "description": "A table listing multiple bank accounts with their balances and available amounts. The first column contains account numbers as clickable links. (11 rows, pitch 28px, autocorrelation 0.899)",
+      "description": "A table listing account numbers, balances, and available amounts. The account numbers are links. The table is headed by 'Accounts Overview'. (11 rows, pitch 28px, autocorrelation 0.899)",
       "status": "ready",
       "click_point": {
         "x": 599,
@@ -1221,13 +1221,64 @@
         "key_column": "account_id",
         "dx": -131,
         "dy": 55,
-        "width": 327,
+        "width": 355,
         "height": 308,
         "key_dx": -107,
         "key_dy": 55,
         "key_width": 47,
         "key_click_dx": -91,
         "row_pitch": 28
+      }
+    },
+    {
+      "id": "account_services_table_control_panel",
+      "label": "Account Services",
+      "role": "table_control_panel",
+      "description": "A vertical menu of account service options such as 'Open New Account', 'Accounts Overview', and 'Transfer Funds'. Each item is a link. The menu is headed by 'Account Services'. (8 rows, pitch 24px, autocorrelation 0.797)",
+      "status": "ready",
+      "click_point": {
+        "x": 370,
+        "y": 289
+      },
+      "locator": {
+        "schema_version": 1,
+        "template_png": "iVBORw0KGgoAAAANSUhEUgAAAI0AAAAQCAIAAACkxGtvAAAJVUlEQVR4nO1Yf2wb5Rl-iH2Xi2Onjt2j51S2k1Y2bVzc1BWO1SopU5NRNUgNYiNsSgQSMFEoYkQKqhiCf9jEqJQRFVSJFqmI_lECSKm0RHQ4EziK5bSqQ1ySdD7VqX1K7NTxD3oX53z-wf6I0_xok2Zb2IbUR_fH6Xvve7_3nvd7n--9e-DHH3_Effzfo-h_HcB9rAvyu4xlkp-d6e_i8gBR19L4592l__WoNgb8VKjHFXAGkqyQAQhGp3bYdrTZGR2xgYuIX3_61dvjGcZW98mvGNUGOl6Ou9RTOhpxhvMAgMywLxr7ydb-j5ELD33zyzd63w9Id9rSUf9bZ4ZO-aKskFEqFRoqEwlHe3oHXrswubFvpKU1Ft0m04Ym_07cWU-5yMQkmwXkBJnNCBMhb6KysfwnjeHfRWbW44sJoO5mywXHbgyJgFrfedThUAHIhUc8L3w2FfJdc-5jWipkGxQEZTtUf_rQBjlbHXfkKcN7fEkJRRZ7tXFspC8Zd4ZmG8sXpS8dDZ3querkUvFsEaNnnjjw8FPVZcX3MvEhf1cv6-JSAqBUa-oP1Lxaq1UByNz67MzFLg6Wxxo_OKAuBmJjg785NyUo9Z2vOByYfOeku09QNLc6HKFrH3sjbJaqte998yCjTPrbT44MZwGkus9c6NY9dPZFq3nJnpb4eUkgyMIrynTVj5w-JkJVqlPJACAjet1XugYjrJAnKcUeW83rj23VEQC_sGiLRXnJ1x0t--322bMjKSwukQsODTxzISop9Z2v1PA9y3RvLRKmbpzqHXVyKSFbpNFtfe6I7QkDOR9scOzax99yHi4lyAmDTuOwW5_bq16qoit1Lx2NOLk85OoG29aGbYoV0pdO3Pjj6aHuiZRE03V6IsJNnTo30DUmrm3iA98dOzPSx6VI3ZYG0yYyGe-78E37Vzf5e-8iGSkHkHL9dfB9NsfQFCmmhlye93y3oNQettMMABSZdm5rtTPa5VO1NEUCSAaOnex_56vrrkAyBlJXUVZIEqTvL7qOXZxiRWrPzi1GpIbc7td6I_zioqK3_7tzXF5JUUYLYwAQjQ5Hc_MJ_n4sJgGMudKy_ERam593zl7umUiR9JY6PSWEuRNnPb3RHIDwiPflc_9whmHaqT9sUkncdPeXri6_uIyJ5W-Xi7CTLEDqtjroUo2VZrzByKL0SezgNacA6Eydz9fsKhE9Pf3tl1J9g5NtJn1sNVMl7em_zmahsdZ-8qRBS-TCVwaf-XJ69NKYq1bbpLxnrgBAKt_x4bNmIyG6zv_tuC897IvHrZVN-ytd3mhEpPbsf_ilbeTyGTKdtaZjwnPCx0vJeJ8r3ucCUGSyWo4-ZnKUy9IJ7mPvD4DiqWcbf7-NTEf97SdHhn3XPQeYxoKO5kOo7OzY61ABczfHNwdCM0kXN9tcUVYsRF1cHlA4rOrlaboHPwMClCbb6dbtOkL0fNHf7p3uvpJsOFQaZG_GAYP9kXcff1AFxEI3XGEYy5eV0PI8ZXjPWFICLNU0Q6BYZ3Cogz23pS_DD0_wABh9hbEEAOVobnI3z0-MOVcxpRPXXVweIGw7tVoCgEy3zWChpofEpCskNlWvJ01FpmqGIQAQjI6CLy0I4l06hxUoUTc93ejYN9l36YbLPz0qAMizvqvtU7c6X7CbQpFREaBUlnISQLFSa1FjeCY5nJAadQUHpurKPaqCqwazqnuGZ8eicVsZGZocFQE13aCngCW7fh38aGi1hgBAGatUSm8qyMXiGbVGSQLpkNt9LFHZbKWNNN1QW7qidVyWp4LoAezg5d_5gEwulkRB-naXarO52BwAqCjZit2LNUxzs_EsgCJlycLpISe0cgA5Qcil70k3AMiUStm8xBfLZSQgQVrnRK3B0GYwtCHHJ5LDvtH3L05HZrhPfdtfl2ckAOL02yc-f3vx-UwskUEhTwRDU8WFcdJYTRvcfIiLfC8wqvFYHDCYDaaSdZOwYAq5__4L95JxPhXLynbtt70avdw1nmLH2RPjLACot3S0Op6oWHSzNE-5IBsaBQBIAs8Ki4ZC16eUaUuAJHgxJwHFS2ZCvrqJKFXKgWxemMsvBJ2JZbHAfq4QMD9_kxMS66iVeyIj-tnIaELSmivraRKQqcq19ftqYmNfn-Dy4WgOVQQJSPJNrU9aHbfplhdpaQpYODeXcKPS6R2bA6GZ2FAgilAaUDismpVfS2uQsGDS7Nz9Zm3ZIv2UylgC4MGWtqZm_hbLRVw-zuWPh5LTp_qn6tsqbx-6S0Qwww-P8QAM9rqLf_q1e_7qqK2jADHuDM2CKDXSxQAi3FRwDkDO_23_o298vu-kz49VTcFitUUNIOMdvxkDgFw4EBoVAbnCRlOATEkRACJcNJIBMrPeseS_mKeclM2vHMvODvVfPtE78tb5q67ogj8xOZrIA0U6mtLQWqMcyOYllcZmZmxVCilxK8znIV-lXy9RN5hVQNrj9nuSwGamQbeyZtbDj5SVGasYm5kxUmIwMStARkL0j1x774srTr50V7X5pacPfnhkixKQxJyUWfS9uGcWPm8VtqU7pVzbUEUMjM9LX2Vt_Y5a_8hQmG0_ldxTMjvEpSQUN9RvNxOUcTVTGaU6ZHSdC4Z8Q88kbtiolIflBRRZ7NaGChlAmbapSDYucVdfPnPTkuVH5wgS6XWliqK0FCCmnRevwL-1-WCl-XZllGgPHzT2nguGwoHjfwmAUhiUEGZScYDUVT5nLVNRsjbr9eNevvu8WzBTfDgyEM6Quoc-MDOrLEYarYzBzYfCPwAwmfXGkjufodbgR1dv3uO_Osx-d_x8zALew8Yj2eKGFqbeIIuz13u8qZ4AP2xWKSGOjk0LIOpstGbJZ8btesoF2dBoFlDTy3dK6S4rrSxIH4orzO8erX2qSoFkdIBLSZTq8JH9HbtLgTVMMl21_fSLuw_rFRI37WRnSbWm-cmDnY_Pd9Iys73mqIkAEI-mUGV5t3krAwC5dXQKdPN-WgkI4am-iZVVqK3e--GLj7RaNYwcEFOhGRHqTXV220fP77WpAKK0_sjBj1oeaqBnXV5ueE5Ra3u481nLrruwX4CK1tdvLtzWruz0CliDH1XFjs6jdR12GhzXw_KkrqK1pb5jdylAOZr2_8G2SZmM9l0KdF-KxsorWlsefXNv2VLlfOD-__KfBe7_L_954J8cbu9hM_DvpQAAAABJRU5ErkJggg==",
+        "reference_size": {
+          "width": 1280,
+          "height": 900
+        },
+        "reference_crop": {
+          "x": 290,
+          "y": 278,
+          "width": 141,
+          "height": 16
+        },
+        "click_offset": {
+          "x": 80,
+          "y": 11
+        },
+        "match_threshold": 0.95,
+        "ambiguity_margin": 0.05
+      },
+      "reason": null,
+      "policy": {
+        "irreversible": false,
+        "sensitive": false
+      },
+      "panel": {
+        "columns": [
+          "field"
+        ],
+        "key_column": "field",
+        "dx": -101,
+        "dy": 16,
+        "width": 179,
+        "height": 192,
+        "key_dx": -77,
+        "key_dy": 16,
+        "key_width": 124,
+        "key_click_dx": -16,
+        "row_pitch": 24
       }
     }
   ]

@@ -1,0 +1,13 @@
+{"ts": "2026-09-30T03:50:56.556971+00:00", "event": "run_started", "goal": "read the balance of account 13344", "model": "replay/none"}
+{"ts": "2026-09-30T03:50:56.557083+00:00", "event": "replay_started", "capability": "discovered_balance", "version": 1, "inputs": ["account_id"], "target": {"app": "parabank", "tenant": "baseline", "base_url": "http://localhost:8080/parabank"}}
+{"ts": "2026-09-30T03:50:57.257235+00:00", "event": "precondition", "name": "at_the_recorded_starting_point", "want": "present", "present": true, "when": "entry"}
+{"ts": "2026-09-30T03:50:57.469017+00:00", "event": "acted", "step": 0, "control": "username_textbox", "action": "enter_text", "value_length": 4, "score": 1.0, "url": "http://localhost:8080/parabank/index.htm"}
+{"ts": "2026-09-30T03:50:58.684288+00:00", "event": "acted", "step": 1, "control": "password_textbox", "action": "enter_text", "value_length": 4, "score": 1.0, "url": "http://localhost:8080/parabank/index.htm"}
+{"ts": "2026-09-30T03:50:59.818944+00:00", "event": "acted", "step": 2, "control": "log_in_button", "action": "click", "value_length": null, "score": 0.9997754693031311, "url": "http://localhost:8080/parabank/index.htm"}
+{"ts": "2026-09-30T03:51:00.874881+00:00", "event": "observed", "step": 3, "frame": "/tmp/wt-panels/evidence/runs/20260930T035056Z/frames/001-03-observe.png"}
+{"ts": "2026-09-30T03:51:06.965672+00:00", "event": "panel_read", "step": 4, "control": "accounts_overview_table_control_panel", "rows": 11, "wanted": "13344"}
+{"ts": "2026-09-30T03:51:06.965848+00:00", "event": "extracted", "step": 4, "output": "account_id", "value": "13344", "via": "panel"}
+{"ts": "2026-09-30T03:51:06.966750+00:00", "event": "panel_reused", "step": 5, "control": "accounts_overview_table_control_panel"}
+{"ts": "2026-09-30T03:51:06.966860+00:00", "event": "extracted", "step": 5, "output": "balance", "value": "<money redacted, 8 chars>", "via": "panel"}
+{"ts": "2026-09-30T03:51:06.966910+00:00", "event": "replay_succeeded", "capability": "discovered_balance", "outputs": {"account_id": "13344", "balance": "<money redacted, 8 chars>"}}
+{"ts": "2026-09-30T03:51:06.966943+00:00", "event": "replay_finished", "outcome": "Success", "capability": "discovered_balance", "recovered": [], "frame": null}

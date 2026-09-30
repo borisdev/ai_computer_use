@@ -7,6 +7,43 @@
   },
   "controls": [
     {
+      "id": "from_account_select",
+      "label": "From account #:",
+      "role": "select",
+      "description": "Dropdown for selecting the account number in the 'Apply for a Loan' section.",
+      "status": "ready",
+      "click_point": {
+        "x": 938,
+        "y": 316
+      },
+      "locator": {
+        "schema_version": 1,
+        "template_png": "iVBORw0KGgoAAAANSUhEUgAAAPAAAABgCAIAAACsUWiGAAABrElEQVR4nO3bMYoUURRA0R75oFFDIyoI5o2ByWxB6MCNGPdq3IiZWzBxCQaC0xgIE8wgWK5BaesPt8_ZwHvBrUcFVVfLsmyg4tHsBeCcBE2KoEkRNCmCJkXQpAiaFEGTImhSBE2KoEkRNCmCJkXQpAiaFEGTImhSBE2KoEkRNCmCJkXQpAiaFEGTImhSBE2KoEkRNCmCJkXQpAiaFEGTImhSBE2KoEkRNCnjdH83ewcme_b4yewVzsaFJkXQpAiaFEGTImhSBE2KoEkRNCmCJuVqWZbZO8DZuNCkCJoUQZMiaFIETYqgSRE0KYImRdCkCJoUQZMiaFIETYqgSRmfPs9egQfs7fXsDf6SC03KePl89go8SN9uZm_wT1xoUgRNiqBJETQpgiZF0KSMFx_frDzy-7svK0_kcoyn71fN68eHtZ8fLopXDlIETYqgSRE0KYImRdCkCJoUQZMiaFIETYqgSRE0KYImRdCkCJqU4QNlSob_RyjxykGKoEkRNCmCJmW8frXSpN_L5v7X5vRzc3u30kQu0NjtdiuM2W63-_3-eDweDoevJ03zv_wBbwcmPVc2oKcAAAAASUVORK5CYII=",
+        "reference_size": {
+          "width": 1280,
+          "height": 900
+        },
+        "reference_crop": {
+          "x": 818,
+          "y": 252,
+          "width": 240,
+          "height": 96
+        },
+        "click_offset": {
+          "x": 120,
+          "y": 64
+        },
+        "match_threshold": 0.95,
+        "ambiguity_margin": 0.05
+      },
+      "reason": null,
+      "policy": {
+        "irreversible": false,
+        "sensitive": false
+      },
+      "panel": null
+    },
+    {
       "id": "loan_result_panel",
       "label": "Loan Request Processed",
       "role": "table_control_panel",
@@ -59,47 +96,10 @@
       }
     },
     {
-      "id": "from_account_select",
-      "label": "From account #:",
-      "role": "select",
-      "description": "Dropdown for selecting the account number in the 'Apply for a Loan' section.",
-      "status": "ready",
-      "click_point": {
-        "x": 938,
-        "y": 316
-      },
-      "locator": {
-        "schema_version": 1,
-        "template_png": "iVBORw0KGgoAAAANSUhEUgAAAPAAAABgCAIAAACsUWiGAAABrElEQVR4nO3bMYoUURRA0R75oFFDIyoI5o2ByWxB6MCNGPdq3IiZWzBxCQaC0xgIE8wgWK5BaesPt8_ZwHvBrUcFVVfLsmyg4tHsBeCcBE2KoEkRNCmCJkXQpAiaFEGTImhSBE2KoEkRNCmCJkXQpAiaFEGTImhSBE2KoEkRNCmCJkXQpAiaFEGTImhSBE2KoEkRNCmCJkXQpAiaFEGTImhSBE2KoEkRNCnjdH83ewcme_b4yewVzsaFJkXQpAiaFEGTImhSBE2KoEkRNCmCJuVqWZbZO8DZuNCkCJoUQZMiaFIETYqgSRE0KYImRdCkCJoUQZMiaFIETYqgSRmfPs9egQfs7fXsDf6SC03KePl89go8SN9uZm_wT1xoUgRNiqBJETQpgiZF0KSMFx_frDzy-7svK0_kcoyn71fN68eHtZ8fLopXDlIETYqgSRE0KYImRdCkCJoUQZMiaFIETYqgSRE0KYImRdCkCJqU4QNlSob_RyjxykGKoEkRNCmCJmW8frXSpN_L5v7X5vRzc3u30kQu0NjtdiuM2W63-_3-eDweDoevJ03zv_wBbwcmPVc2oKcAAAAASUVORK5CYII=",
-        "reference_size": {
-          "width": 1280,
-          "height": 900
-        },
-        "reference_crop": {
-          "x": 818,
-          "y": 252,
-          "width": 240,
-          "height": 96
-        },
-        "click_offset": {
-          "x": 120,
-          "y": 64
-        },
-        "match_threshold": 0.95,
-        "ambiguity_margin": 0.05
-      },
-      "reason": null,
-      "policy": {
-        "irreversible": false,
-        "sensitive": false
-      },
-      "panel": null
-    },
-    {
       "id": "account_services_table_control_panel",
       "label": "Account Services",
       "role": "table_control_panel",
-      "description": "A vertical menu of account service options on the left side, each item is a link such as 'Open New Account', 'Accounts Overview', etc. (8 rows, pitch 24px, autocorrelation 0.797)",
+      "description": "A vertical menu on the left side under 'Account Services' with links for account actions such as Open New Account, Accounts Overview, Transfer Funds, etc. (8 rows, pitch 24px, autocorrelation 0.797)",
       "status": "ready",
       "click_point": {
         "x": 339,
@@ -132,18 +132,70 @@
       },
       "panel": {
         "columns": [
-          "link"
+          "label"
         ],
-        "key_column": "link",
+        "key_column": "label",
         "dx": -70,
         "dy": 16,
-        "width": 151,
+        "width": 179,
         "height": 192,
         "key_dx": -46,
         "key_dy": 16,
         "key_width": 124,
         "key_click_dx": 15,
         "row_pitch": 24
+      }
+    },
+    {
+      "id": "loan_request_processed_table_control_panel",
+      "label": "Loan Request Processed",
+      "role": "table_control_panel",
+      "description": "A label/value block in the main content area showing details of a processed loan request, including provider, date, and status. (3 rows, pitch 23px, too short for autocorrelation to confirm)",
+      "status": "ready",
+      "click_point": {
+        "x": 579,
+        "y": 289
+      },
+      "locator": {
+        "schema_version": 1,
+        "template_png": "iVBORw0KGgoAAAANSUhEUgAAAN0AAAAVCAIAAABNHXyUAAAKo0lEQVR4nO1bf1ATZxp-THaTSBJJCIQNPwwgRIsIGE5x1KpX6OhUe7W159kpWmeqc7Xt1LlOx-nNda7T3nn26J2VmZ70pnUOKzdXO-Oc1urIFWylwoCt2FqwCpYYfiUQEjbNBjb7i_sjAZHSJKB30pbnL8j3fu8-z_e8vN-3u2HW8PAwZjCDaQbZ3SYwgxlMAOLmj7z7yFtnyx2AaX7FU7kW8u6RGsfnVihUSrPJ-MDqRRstauXd4DVJsM0XW2tZw8NLk03fXdKJNZJUvDanYMGu5RNN-ZGB__boOx-VdUqK1LzDOyzmEb0_vH7JsYE2W2dZRc3rX_rvNpcoMOA8cupaZV23Q4h-Du_s91RX1e9874aD_98xm9YgIofcdYzp34EBd-PlqwerejoQOF37zebsadDXw8Ld0d3CAqpIcaMaeX9zW-f7Z1qq-yXP11f_7Uh6eq7i_0F0mmHSdenruVF-6mqtw-dhAUI5N5XaujZ3_dzRhedaL145dKH7UucgAxllSiguyn8ye44SAE8feeujcgficgv3L-WPn2urtfk8hLZ4tXX3aqMhuqsr9YZVy_N97a69bTwGaDsLCwlAdLe2lVV90-AYZACNLm7V6vzdhQZtcA7PNtVfKD3n6mDlc9Oph1dkaC7W7_2ah2n-v57KNbPO0vJPj9OIy11-eEuyARPuLOHz-xsutBxtdLb0BxiQlCmuePnCrQUG7YheAKDtz_7BrsmyHi6ZF2FrJtU52QtMvLvhaA8Df5uDhWlwZN2WvJTuLK_qtCeEiEXyQnS3j9AWZHHxhuKi_CfzdNrR0SmIimY0YuaaiwcujNqRNuEyTK4u3a0Xn6lo7wAAaDQkwwQ6bPa9b7laSor2ZKsAsbWu_tlTLgaAShknBJyO3srKT5ntRXssKkCmIACA6Wn7fYXHSZAQAMFXXVUf0N3_5zx11CxEThABgJArAUB0fPnZM0c7nYDGlHivarDR5jl9oo5TFb2apwa41vq656s8HACAcXSXVTrjCB4AiCj7UPj8bMOpT56_MAgAKiUF3unorTzW29h575vrYyhTHOXyOAUAMipea05QK6Lr7iGBgIKQA1KQKNPRWnrZ6wSCv0b0YpQ2INMQkqff9f7RmpbOFfs3UNopi9pIaSOMRrbjxVrvrXZI312BydTlUN-RD9s7AGiSfrdz2foEecB1Y-_bn1Uzg8fPtDyQXpAD1_E6FwNo0q2Ht88zCe6D5Wcr-wer67q3ps8zjS56v8-0_r63VxjQcfXFd766JPCNF5yO7EiNJATRceXKUZsEQGOislSAz3WkqtMJaNLz3t5uMZNc67lPtld5q6uubrQUWAXX-3UeDoAu9bWdS1bpYb_Y8MyxHgCKKM_WEfK7T18ZBGSL1xftX6FTAu72y2XnaAXBekDd_-gKLf7zfFMAutSXdi21zo7qgoGB7iPnehkAhDbHpALEoEsc7VVYl1SsTbVo5RjqOxDJiyBtxJv371y6TMs2fVj7bL23pf7ycWvCVu1URfHQsuFHI9rh5QDozK_tLBhrxzhMoi59rp6GfgDIsi4oTpADUCYkbbZqq2t96HfVuricudSePb_cc3OGyqyXoV9iGL8PGK1L6Khf5Rq0AEypD6S3XGqTOB_tFvC9dem4tv3la-M_1CXt3pBmIuFzOJtoALKsXIoiASjMWXMX1nzVQjtrXVwWXM0MAGTlZhXq5QDM2fNW1fQcp6NWPRAuv1Uf7F7SpbrLh1SW9ZYEc0buqxnRJg-rkSxcW7A5SY7RWx9V0pNFaRYtEIUXZgRpIyt73mItAJV17YqKbB8DmUF7e6LYcKNR2zEvvB2TqEuOYRkAkMUlqEYe0MgNCTEa-BiwHkYCRHf7N4fOtdfafJ4wt5-zdabgEYiUa2eTQACCyEXPA6Byl7zxUJp59lhW0qUTVT8_MTaKd7h4aEc468kQZyLGrAXoaK8VIf9canNRYsOJXg_dW3mstxJQ6OJWZc8rWR0qoClCE7d5_ZJdeXNueRCm15o141h9rxccQgHUaACptmSEDkvuztsQpQ03eqfsuFmXLo7zBzd6SRzgWNd3Nv0BXgx-xgkBV0AOABDdgjQMAMMsz3bb21_5R0uzCNJAPbIsaZFOaqq-fLJXCiVEgJEAgJRJHo6NkQCwQ7MAAMMizbGucfuqMMInMfONHfdkEADTd7CiscoNp91xdZCKkd3CymhOKqTGtlxyfrzUz4zlzAKAEKIxLAkejo3huKHhoGjOHWClUIA0GhAIm98V4PX5Bft19mOfO691eVu9Akd7qus95-y-0pKsDBXrFb9f4IQax-DbWwmTMsI_4ktEL9wIBTA3AyawckqiEGZUf5t2jFTdJPqlWjfHiB4aEt0f4BATbOZ0_5AfAGLSdbK-653NIoDZ6zbkP5FGQvDaMMGRdurQGDetoRqPOWlv17vnUy3r4jUAqVGqARrQLcjctix23L0M1xWjB2hINC1wwTsGYaiLGRNByIJTeFYI9Wwh0DcmIHx-AIBcn5axIy0DAMd4G89fLm-k_d32M860p9PulPLxiOQFqcaI8NEAdqDm824bI0_PSS-8LVFkmNFtt2nHCCbxXF0RH78sEQBszdcb-0UAXH_3B18wAMhEY068HIRszB-I2Nvc-kEvAEDg-Uk8VQ6HxAWWx8wyALbPW6q6eAAanXF-LAC0NrQ30SIA5kbb65UNrx9v-4oRFTpDemyQc3BU7L1ub_SOyUgojRoA8Dv7bAwAvv2L62fHBITPzzlvHKz4-IkD9R84eQAKTWxhPpV8c_ZIo2IDNHtnViCIiF4odAmLDQBgu3qjmQHAXjvfXF5jO9nYbRPktyMq_GjUdtyY2I4RTNQve6__Zu_1cZ9ZilbtXam_r9hc8097t9f5l7-dLlcTfr8AAHLNuuL0DELOpMSngLZh6GTlx0060Ay5uCCh-aKLdtv_VMFv25g5FQfG841dWWw-c8hmE789Vt1ZWJKRojFsWUM1nXDS3q59ZT3GWHLAG-ABtdn4mEoOQr9ugeZsIwNvz74ypzFWybE8lEBgNGGMNcfwXrfb7-_Z9-aAkQj0sTE5BlmzW-IhAkDY_AqQ_n6G9jOH_l590qBSQ-xzD_kBMjG5iCIB0UjNJr8M8AFX2Tsfn8nMfG5DauIdeZVBhPcCIPTr1iSdP9bT5-565a89arnkFwEgOW_hphQSxNRFKYSwklVR2tG1r8xpNJAcIymUQACh1R7B5N5D6jNzS3-9aG2yEoDfLwAyo9n8wo6VOzJVADQpmS9sMi-OJSDyvEq_aWPh7uJ7HluoUQM0c8deqGlSMrflzQbgt197t9nHQZ6Yby19PHNxrAyQ-rwBHoQlb-Eft2SkEADI-cWFLxcajEoAUh80v9hYsCl-rGp5ys-svy2i0pVAgFdTSc-VWB8MHoyE4M4eNr8meVdJ_oNmJSD0uRmbe8ivnlNYuGhviWW-CoA8JSfzPoMMAO9nuhjxDr5WDO8FIE_MyS99fEGhQQZIfpFITqYeeWhl6UaTnrg9UZEkR22H0CdoNj26ZEsaMWa1Q5g1-j230Dn0Rw_Bd6aitrxbIpMXHtgeXKwZTDv88L63MYOfAmbqcgbTETN1OYPpiJ_e-XIGPwTMmvn_nhlMQ_wXSFnIJaKeX7sAAAAASUVORK5CYII=",
+        "reference_size": {
+          "width": 1280,
+          "height": 900
+        },
+        "reference_crop": {
+          "x": 485,
+          "y": 279,
+          "width": 221,
+          "height": 21
+        },
+        "click_offset": {
+          "x": 94,
+          "y": 10
+        },
+        "match_threshold": 0.95,
+        "ambiguity_margin": 0.05
+      },
+      "reason": null,
+      "policy": {
+        "irreversible": false,
+        "sensitive": false
+      },
+      "panel": {
+        "columns": [
+          "field",
+          "value"
+        ],
+        "key_column": "field",
+        "dx": -75,
+        "dy": 40,
+        "width": 388,
+        "height": 69,
+        "key_dx": -51,
+        "key_dy": 40,
+        "key_width": 338,
+        "key_click_dx": null,
+        "row_pitch": 23
       }
     }
   ]

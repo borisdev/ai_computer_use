@@ -91,8 +91,8 @@ CAPS = [
         "sig": "(account_id) → account_id, balance",
         "run": "--param account_id=13344",
         "desc": "Read one account's balance out of the accounts table. **Discovered including its `TABLE_CONTROL_PANEL`** — the gap #6 was open on.",
-        "a": ("✅", "`Success` · 6 steps", "20260929T234307Z"),
-        "b": ("✅", "`Success` · 6 steps", "20260929T234409Z"),
+        "a": ("✅", "`Success` · 6 steps", "20260930T035056Z"),
+        "b": ("✅", "`Success` · 6 steps", "20260930T035110Z"),
         "demo": [
             (
                 "A discovered panel",
@@ -108,6 +108,36 @@ CAPS = [
             ),
         ],
         "extra": [("the discovery run that produced it", "20260929T232850Z")],
+    },
+    {
+        "origin": "🤖 <b>discovered</b><br/><sub>the brief's own example</sub>",
+        "name": "discovered_account_type",
+        "ver": "v1",
+        "anchor": "discovered_account_type-v1",
+        "art": "discovered_account_type.v1.approved.json",
+        "sig": "(account_id) → account_id, account_type",
+        "run": "--param account_id=13344",
+        "desc": "Open an account from the table and read its TYPE off the detail page. **The same shape as `read_savings_balance`, discovered** — two panels and a drilldown between them.",
+        "a": ("✅", "`Success` · 7 steps", "20260930T035124Z"),
+        "b": ("✅", "`Success` · 7 steps", "20260930T035146Z"),
+        "demo": [
+            (
+                "A drilldown, discovered",
+                "`click` on a panel with `row_key=account_id` — the row's position comes from the panel read and the measured pitch, never from pointing at it",
+            ),
+            (
+                "Two discovered panels",
+                "a TABLE on the overview and a LABEL/VALUE block on the detail page; the second shape was invisible to the read pass until it was named",
+            ),
+            (
+                "A checkpoint with teeth, derived",
+                "`account_type == SAVINGS` was inferred from the run, and `interfaceai env break` makes it fail with **observed CHECKING**",
+            ),
+        ],
+        "extra": [
+            ("the discovery run that produced it", "20260930T033307Z"),
+            ("the checkpoint firing on a changed record", "20260930T035024Z"),
+        ],
     },
     {
         "origin": "✍️ hand-authored<br/><sub>needs a panel</sub>",

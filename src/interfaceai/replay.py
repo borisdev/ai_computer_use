@@ -95,7 +95,7 @@ from interfaceai.surface import (
     Surface,
     use_control,
 )
-from interfaceai.table import Offset, PanelNotFound, extract_panel
+from interfaceai.table import Offset, PanelNotFound, extract_panel, match_row, normalise_value
 from interfaceai.vocabulary import VOCABULARY, SlotType
 
 _VERB_ACTION = {
@@ -1079,24 +1079,23 @@ def _drill_into_row(
             completed_steps=tuple(ctx.done),
         )
 
-    keys = [_normalise(getattr(r, spec.key_column)) for r in read.data.rows]
-    target = _normalise(str(wanted))
-    if target not in keys:
+    match = match_row(read.data.rows, spec.key_column, wanted)
+    if match.matched == 0:
         return not_found_outcome(
-            f"no row where {spec.key_column} is {wanted!r}; the table holds {len(keys)}",
+            f"no row where {spec.key_column} is {wanted!r}; the table holds {match.total}",
             len(ctx.done),
             ctx.evidence.dir,
         )
-    if keys.count(target) > 1:
+    if match.index is None:
         return Failed(
             step_index=n,
             step=label,
             expected=f"one row where {spec.key_column} is {wanted!r}",
-            observed=f"{keys.count(target)} rows matched",
+            observed=f"{match.matched} rows matched",
             evidence_dir=ctx.evidence.dir,
         )
 
-    index = keys.index(target)
+    index = match.index
     anchor = _find(ctx, control)
     if anchor.status != "matched" or anchor.point is None:
         return NeedsOperator(
@@ -1235,29 +1234,40 @@ def _extract_from_panel(
         return found
     read, wanted = found
 
+    if read.clipped:
+        # ⛔ Reading is exactly what a clipped crop compromises, which is the
+        # opposite of `misaligned`: there, the values are trustworthy and the
+        # POSITIONS are in dispute. Returning `SAVIN` for `SAVINGS` would be a
+        # wrong answer wearing a correct one's clothes.
+        ctx.evidence.event("panel_clipped", step=n, control=control.id, faults=list(read.clipped))
+        return Failed(
+            step_index=n,
+            step=label,
+            expected=f"{control.id} to be wide enough for the values it holds",
+            observed=read.clipped[0],
+            evidence_dir=ctx.evidence.dir,
+        )
+
     rows = read.data.rows
 
-    matches = [
-        r for r in rows if _normalise(getattr(r, spec.key_column)) == _normalise(str(wanted))
-    ]
-    if not matches:
-        seen = [getattr(r, spec.key_column) for r in rows]
-        ctx.evidence.event("row_not_found", step=n, wanted=wanted, seen=seen)
+    match = match_row(rows, spec.key_column, wanted)
+    if match.matched == 0:
+        ctx.evidence.event("row_not_found", step=n, wanted=wanted, seen=list(match.keys))
         return not_found_outcome(
-            f"no row where {spec.key_column} is {wanted!r}; the table holds {len(rows)}",
+            f"no row where {spec.key_column} is {wanted!r}; the table holds {match.total}",
             len(ctx.done),
             ctx.evidence.dir,
         )
-    if len(matches) > 1:
+    if match.index is None:
         return Failed(
             step_index=n,
             step=label,
             expected=f"one row where {spec.key_column} is {wanted!r}",
-            observed=f"{len(matches)} rows matched",
+            observed=f"{match.matched} rows matched",
             evidence_dir=ctx.evidence.dir,
         )
 
-    ctx.outputs[step.output] = getattr(matches[0], step.field)
+    ctx.outputs[step.output] = getattr(rows[match.index], step.field)
     ctx.evidence.event(
         "extracted",
         step=n,
@@ -1293,7 +1303,7 @@ def _checkpoints(ctx: _Ctx) -> CapabilityResult:
                 observed="the output was never extracted",
                 evidence_dir=ctx.evidence.dir,
             )
-        if _normalise(observed) != _normalise(str(expected)):
+        if normalise_value(observed) != normalise_value(str(expected)):
             ctx.evidence.event(
                 "checkpoint_violated",
                 output=checkpoint.output,
@@ -1323,22 +1333,6 @@ def _checkpoints(ctx: _Ctx) -> CapabilityResult:
         evidence_dir=ctx.evidence.dir,
         recovered=tuple(ctx.recovered),
     )
-
-
-def _normalise(text: str) -> str:
-    """Compare what a person would call the same value.
-
-    A screen prints `$1,231.10` where an artifact recorded `1231.10`, and a
-    field label printed `Account Type:` reads back as `Account Type`. Comparing
-    raw strings would report a violated checkpoint -- or a missing row -- for a
-    correct read, which is the loudest possible false alarm.
-
-    Deliberately narrow: currency symbols, thousands separators, and trailing
-    punctuation that is typography rather than content. It does NOT fold
-    whitespace inside the value or strip letters, because two labels that
-    differ by a word are two labels.
-    """
-    return text.strip().lstrip("$").replace(",", "").rstrip(".:").strip().casefold()
 
 
 def not_found_outcome(detail: str, steps: int, evidence_dir: Path | None) -> BusinessOutcome:

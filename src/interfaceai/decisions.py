@@ -44,9 +44,12 @@ ACTIONS_BY_ROLE: dict[ControlRole, list[ManualActionKind]] = {
     ControlRole.CHECKBOX: [ManualActionKind.TOGGLE],
     ControlRole.RADIO: [ManualActionKind.TOGGLE],
     ControlRole.UNKNOWN: [],
-    # A panel is read, not clicked. Extraction is a StepVerb, not a
-    # ManualActionKind, because it has no side effect -- so `validate_decision`
-    # refuses every manual action on a panel for free.
+    # A panel is read, not clicked -- there is no action you perform on the
+    # REGION. Extraction is a StepVerb, not a ManualActionKind, because it has no
+    # side effect. ⚠️ One exception, and it is not expressible in this table:
+    # opening a ROW of a panel is a CLICK, legal only with a `row_key`, because
+    # the position is computed from a panel read rather than pointed at. See
+    # `validate_decision`.
     ControlRole.TABLE_CONTROL_PANEL: [],
 }
 
@@ -63,6 +66,12 @@ class AgentDecision(BaseModel):
 
     # Used by ENTER_TEXT or SELECT.
     value: str | None = None
+
+    # A TABLE_CONTROL_PANEL only: which ROW to open, named by the value in the
+    # panel's key column. The position is then computed from a panel read and the
+    # measured row pitch -- never pointed at, which is the whole of
+    # `docs/issues/0009`.
+    row_key: str | None = None
 
     reason: str
     post_action_expectation: str
@@ -101,7 +110,23 @@ def validate_decision(
     if control.status != "ready":
         raise ValueError(f"Control is not ready: {control.id} ({control.reason})")
 
-    if decision.action not in supported_actions(control.role):
+    if control.role is ControlRole.TABLE_CONTROL_PANEL:
+        # ⛔ A panel is not clickable AT ITS ANCHOR: that point is a heading. The
+        # one legal action on it is opening a ROW BY KEY, which the caller
+        # resolves through a panel read and the measured pitch. Same rule
+        # `control_map_store.check_ref` applies to an authored artifact, applied
+        # here to a live decision, so the two cannot disagree.
+        if decision.action is not ManualActionKind.CLICK or decision.row_key is None:
+            raise ValueError(
+                f"{control.id} is a panel: it is read, or a row of it is opened with a "
+                f"row_key -- never {decision.action} on the region itself"
+            )
+        if control.panel is None or control.panel.key_click_dx is None:
+            raise ValueError(
+                f"{control.id} is read-only: it declares no key_click_dx, so its rows "
+                "cannot be opened"
+            )
+    elif decision.action not in supported_actions(control.role):
         raise ValueError(f"{decision.action} is not supported by {control.id} ({control.role})")
 
     needs_value = {ManualActionKind.ENTER_TEXT, ManualActionKind.SELECT}

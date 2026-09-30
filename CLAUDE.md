@@ -73,10 +73,12 @@ container is down is not — it would be asserting nothing.
 the escalation path and DISCOVERY were "not written yet". All of them exist and
 are central — discovery emits artifacts, and since
 [#6](https://github.com/borisdev/ai_computer_use/issues/6) closed it emits
-PANEL-BACKED ones (`artifacts/discovered_balance.v1.approved.json`). The
-remaining limitation is narrower: on two screens the read pass names a different
-repeated structure than the one a capability wants, so `account_details_panel` is
-still measured by hand — `docs/_parts/capabilities-tail.md` has the table.
+PANEL-BACKED ones. `artifacts/discovered_account_type.v1.approved.json` is the
+brief's own worked example, discovered: two panels and a drilldown between them,
+with a checkpoint discovery inferred. Every region `scripts/add_panels.py`
+measured by hand is now proposed and measured —
+`docs/_parts/capabilities-tail.md` has the table, and `docs/what-went-wrong.md`
+has what it cost.
 The sentence outlived the work by many commits** — the exact failure this repo
 keeps hitting, now four times over (`findings.md`, the issues index, ADR 0005,
 here). Found by Copilot on PR #5.

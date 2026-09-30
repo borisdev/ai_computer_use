@@ -82,6 +82,16 @@ MAX_PITCH_PX = 60
 # Refusing it is a correctness guard, not hygiene.
 _MIN_SIGNAL_STD = 0.5
 
+# A pixel this far from its region's median is CONTENT. Measured on ParaBank:
+# glyphs ~100, white 255, zebra stripes 230/235/238, a shaded header bar 194.
+# Lives here rather than in `screenshot2panels` because both the proposer and the
+# reader ask the same question of the same pixels.
+INK_DELTA = 40
+
+# Ink within this many pixels of a crop's right edge is content being CUT, not
+# content that happens to end there.
+_EDGE_PX = 2
+
 
 @dataclass(frozen=True)
 class RowRhythm:
@@ -269,6 +279,58 @@ class Offset:
         return CropBox(x=x, y=y, width=self.width, height=self.height)
 
 
+def _is_cut_off(
+    image: Image.Image, box: CropBox, *, first_row_y: int, pitch: int | None, rows: int
+) -> bool:
+    """Does content CROSS the crop's right edge? Then a value is truncated.
+
+    ⛔ **The quietest wrong answer this system can produce.** A crop two pixels
+    too narrow does not fail: the model reads what is inside it and returns
+    `SAVIN` for `SAVINGS`, `CHECKIN` for `CHECKING`, `$1231.1` for `$1231.10`.
+    Measured on a real replay -- a panel's geometry was derived from a screenshot
+    whose value read `SAVINGS`, and the same column held `CHECKING` after the
+    database changed. Nothing about the ROWS was wrong, so the alignment
+    cross-check passed and the fault surfaced two steps later.
+
+    A panel's geometry is recorded once and its DATA changes afterwards, so this
+    cannot be settled when the panel is proposed. It is asked of every read.
+
+    ⚠️ **Ink AT the edge is not ink CUT BY it**, and the first version of this
+    conflated them -- it went red on a hand-measured panel whose value ends
+    exactly at its boundary, correctly read. From the crop alone the two are
+    indistinguishable; from the SCREENSHOT they are not. So the question is
+    whether a run of ink spans the boundary: present on the last column inside
+    AND on the first columns outside.
+
+    ⚠️ **And only over the rows that were READ.** A panel records the height it had
+    when it was authored -- eleven rows for the accounts table -- and ParaBank's
+    CLEAN state leaves ONE. The rest of that box is whatever the page puts below
+    the table, and asking about it reported a menu 200px lower as a truncated
+    value. Second false positive from the same check, same cause: a question asked
+    of pixels that are not the panel's.
+    """
+    right = box.x + box.width
+    bands = (
+        [(first_row_y + n * pitch, pitch) for n in range(max(1, rows))]
+        if pitch
+        else [(box.y, box.height)]
+    )
+    for top, height in bands:
+        top = max(box.y, min(top, box.y + box.height))
+        bottom = min(top + height, box.y + box.height, image.height)
+        if bottom <= top:
+            continue
+        band = np.asarray(
+            image.crop((box.x, top, min(image.width, right + _EDGE_PX), bottom)).convert("L")
+        ).astype(float)
+        if band.size == 0 or band.shape[1] <= box.width:
+            continue  # the crop already reaches the screenshot's edge
+        ink = np.abs(band - np.median(band)) > INK_DELTA
+        if (ink[:, box.width - 1] & ink[:, box.width :].any(axis=1)).any():
+            return True
+    return False
+
+
 @dataclass(frozen=True)
 class PanelRead[T]:
     """What a panel read returned, the geometry to act on it, and its disagreements.
@@ -287,6 +349,10 @@ class PanelRead[T]:
     # Rows where the marker WE drew did not line up with the row the model saw.
     # Empty when the cross-check passed or could not run.
     misaligned: tuple[str, ...] = ()
+    # Set when content runs into the crop's right edge, so at least one value was
+    # read TRUNCATED. Distinct from `misaligned` because it fails the other way
+    # round: the positions are fine and the CONTENT is not.
+    clipped: tuple[str, ...] = ()
 
     @property
     def cross_checked(self) -> bool:
@@ -306,6 +372,58 @@ class PanelRead[T]:
 # The marker column the cross-check adds to every panel schema. Named here so
 # the schema, the instruction and the verification cannot disagree about it.
 MARKER_FIELD = "row_marker"
+
+
+def normalise_value(text: str) -> str:
+    """Compare what a person would call the same value.
+
+    A screen prints `$1,231.10` where an artifact recorded `1231.10`, and a field
+    label printed `Account Type:` reads back as `Account Type`. Comparing raw
+    strings would report a violated checkpoint -- or a missing row -- for a
+    correct read, which is the loudest possible false alarm.
+
+    Deliberately narrow: currency symbols, thousands separators, and trailing
+    punctuation that is typography rather than content. It does NOT fold
+    whitespace inside the value or strip letters, because two labels that differ
+    by a word are two labels.
+
+    >>> normalise_value("$1,231.10") == normalise_value("1231.10")
+    True
+    >>> normalise_value("Account Type:") == normalise_value("account type")
+    True
+    """
+    return text.strip().lstrip("$").replace(",", "").rstrip(".:").strip().casefold()
+
+
+@dataclass(frozen=True)
+class RowMatch:
+    """Which row a key names. `index` is set only when exactly one row matched.
+
+    ⚠️ **One implementation, two callers, on purpose.** Replay drills into a row
+    and discovery now does too, and both have to answer "which row is 13344" the
+    same way -- including the near-misses: a key that names NO row is a fair
+    negative answer about the data, and one that names TWO is a defect in the
+    read. Callers map those to their own outcome types; what they must not do is
+    each decide what "matches" means.
+    """
+
+    index: int | None
+    matched: int
+    total: int
+    keys: tuple[str, ...]
+
+
+def match_row(rows: list, key_column: str, wanted: object) -> RowMatch:
+    """The single row whose key column equals `wanted`, compared as a person would."""
+    keys = tuple(str(getattr(row, key_column)) for row in rows)
+    target = normalise_value(str(wanted))
+    hits = [n for n, key in enumerate(keys) if normalise_value(key) == target]
+    return RowMatch(
+        index=hits[0] if len(hits) == 1 else None,
+        matched=len(hits),
+        total=len(keys),
+        keys=keys,
+    )
 
 
 async def extract_panel(
@@ -389,8 +507,31 @@ async def extract_panel(
     crop.save(buffer, "PNG")
     data = await vision(prompt=instruction, image_png=buffer.getvalue(), response_model=table_model)
 
+    # Asked of the SCREENSHOT, not the crop, and only over the rows that came
+    # back -- see `_is_cut_off` for why each of those matters.
+    clipped: tuple[str, ...] = ()
+    if _is_cut_off(
+        image,
+        box,
+        first_row_y=absolute.y,
+        pitch=rhythm.pitch if rhythm is not None else None,
+        rows=len(data.rows),
+    ):
+        clipped = (
+            (
+                f"content runs past the right edge of the {box.width}px crop, so at "
+                f"least one value is truncated rather than read"
+            ),
+        )
+
     misaligned = _check_alignment(data.rows, marker_of_index, key_column_name)
-    return PanelRead(data=data, first_row_y=absolute.y, rhythm=rhythm, misaligned=misaligned)
+    return PanelRead(
+        data=data,
+        first_row_y=absolute.y,
+        rhythm=rhythm,
+        misaligned=misaligned,
+        clipped=clipped,
+    )
 
 
 def _mark_rows(

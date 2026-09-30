@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "name": "discovered_account_type",
+  "version": 1,
+  "goal": "read the account type of account 13344",
+  "vocabulary_version": 1,
+  "target": {
+    "app": "parabank",
+    "tenant": "baseline",
+    "base_url": "http://localhost:8080/parabank"
+  },
+  "viewport_width": 1280,
+  "viewport_height": 900,
+  "params": [
+    {
+      "name": "account_id",
+      "slot": "account_id",
+      "required": true
+    }
+  ],
+  "returns": [
+    {
+      "name": "account_id",
+      "slot": "account_id"
+    },
+    {
+      "name": "account_type",
+      "slot": "account_type"
+    }
+  ],
+  "requires": [
+    {
+      "name": "at_the_recorded_starting_point",
+      "control": {
+        "screen": "index",
+        "control_id": "username_textbox",
+        "discriminator": null
+      },
+      "must": "present",
+      "why": "The first control the run acted on. If it is not on screen we are not where this recording began -- re-checked on resume after a human handoff, since the operator may have navigated away."
+    }
+  ],
+  "steps": [
+    {
+      "verb": "enter",
+      "control": {
+        "screen": "index",
+        "control_id": "username_textbox",
+        "discriminator": null
+      },
+      "value": {
+        "kind": "secret",
+        "input_ref": "parabank_username"
+      },
+      "slot": "username",
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "To read the account type for account 13344, I need to log in first. The login form is present, so I will enter the username."
+    },
+    {
+      "verb": "enter",
+      "control": {
+        "screen": "index",
+        "control_id": "password_textbox",
+        "discriminator": null
+      },
+      "value": {
+        "kind": "secret",
+        "input_ref": "parabank_demo_password"
+      },
+      "slot": "password",
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "To log in, I need to enter the password after entering the username. The password field is present."
+    },
+    {
+      "verb": "click",
+      "control": {
+        "screen": "index",
+        "control_id": "log_in_button",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "The username and password have been entered. The next step is to click the LOG IN button to proceed with authentication and access account information."
+    },
+    {
+      "verb": "click",
+      "control": {
+        "screen": "overview",
+        "control_id": "accounts_overview_table_control_panel",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": {
+        "kind": "param",
+        "param": "account_id"
+      },
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "To read the account type for account 13344, I need to open its row in the Accounts Overview table, as the overview only shows balances and not account type."
+    },
+    {
+      "verb": "observe",
+      "control": null,
+      "value": null,
+      "slot": null,
+      "output": null,
+      "row_key": null,
+      "field": null,
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "evidence frame of the final screen"
+    },
+    {
+      "verb": "extract",
+      "control": {
+        "screen": "activity",
+        "control_id": "account_details_table_control_panel",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": "account_id",
+      "output": "account_id",
+      "row_key": {
+        "kind": "literal",
+        "value": "Account Number:"
+      },
+      "field": "value",
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "read account_id from the final screen (observed '13344')"
+    },
+    {
+      "verb": "extract",
+      "control": {
+        "screen": "activity",
+        "control_id": "account_details_table_control_panel",
+        "discriminator": null
+      },
+      "value": null,
+      "slot": "account_type",
+      "output": "account_type",
+      "row_key": {
+        "kind": "literal",
+        "value": "Account Type:"
+      },
+      "field": "value",
+      "invokes": null,
+      "invokes_version": null,
+      "bind": [],
+      "risky": false,
+      "note": "read account_type from the final screen (observed 'SAVINGS')"
+    }
+  ],
+  "checkpoints": [
+    {
+      "output": "account_id",
+      "op": "equals",
+      "expected": {
+        "kind": "param",
+        "param": "account_id"
+      },
+      "why": "the record the caller asked for, re-read from the screen"
+    },
+    {
+      "output": "account_type",
+      "op": "equals",
+      "expected": {
+        "kind": "literal",
+        "value": "SAVINGS"
+      },
+      "why": "observed 'SAVINGS' at discovery; REVIEW whether it is invariant"
+    }
+  ],
+  "establishes": null,
+  "approval": "approved",
+  "approved_by": "panel-discovery session"
+}
