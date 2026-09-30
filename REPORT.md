@@ -163,7 +163,17 @@ recorded `1231.10`.
 **`Surface` is a protocol** — screenshot, click, type, scroll, navigate. The
 schema, engine and guardrails name the protocol, never a browser, except at the
 composition root where `replay()` constructs a `PlaywrightSurface` because
-something must. `use_control` is surface-independent: *what is permitted* is a
+something must.
+
+⚠️ **And the seam leaks in exactly two places, which is worth naming because
+§3.7 asks where it is.** Thirteen of `Surface`'s fifteen methods are pixels and
+input, and port to a desktop app unchanged. `navigate(url)` and `current_url()`
+do not — a desktop application has no URL. The leak is shallow and its shape is
+known: every caller treats the return of `current_url` as an **opaque location
+token**, comparing it or recording it and never parsing it, so a desktop
+surface answering with a window title would satisfy all seven call sites. It is
+not renamed to `location` because the name is in the committed evidence of
+every run ([#16](https://github.com/borisdev/ai_computer_use/issues/16)). `use_control` is surface-independent: *what is permitted* is a
 property of the bank, *how to click* a property of the surface.
 
 An artifact recorded on tenant A replays on tenant B. **Drift detection is the

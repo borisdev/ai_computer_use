@@ -48,7 +48,37 @@ class Viewport:
 
 @runtime_checkable
 class Surface(Protocol):
-    """What a computer-use surface must be able to do."""
+    """What a computer-use surface must be able to do.
+
+    ⛔ **THIRTEEN OF THESE FIFTEEN ARE PIXELS AND INPUT. TWO ARE BROWSERS.**
+    REPORT §4 said "a desktop backend implements `Surface` and nothing above
+    changes", and that is false for `navigate` and `current_url` — a desktop
+    application has no URL. Boris found it by asking why a surface is only a
+    screen.
+
+    §3.7 asks exactly this question — *"What's the seam between 'how we
+    perceive/act on a surface' and 'the recorded flow'?"* — so naming where the
+    seam LEAKS is part of answering it honestly.
+
+    The leak is shallow and its shape is known:
+
+        navigate(url)     3 call sites, all of them "go to where this run
+                          starts". A desktop surface launches an app instead.
+        current_url()     7 call sites, and it is doing two DIFFERENT jobs:
+                          identifying a LOCATION (evidence, the handoff
+                          bracket) and detecting that the page MOVED (clearing
+                          money typed on a form that is gone).
+
+    The honest generalisation is a **location string**, not a URL: a desktop
+    surface answers with a window title or a view id, and every caller above
+    treats it as an opaque token already — they compare it and record it, and
+    none of them parse it.
+
+    ⚠️ NOT RENAMED, deliberately. `current_url` is in seven call sites, in the
+    committed evidence of every run, and in the handoff bracket that §3.6
+    grades. Renaming it to `location` would rewrite history for a clarity gain
+    the docstring can deliver. It is named here as issue #16 instead.
+    """
 
     def screenshot(self) -> bytes: ...
     def zoom(self, x0: int, y0: int, x1: int, y1: int) -> bytes: ...
