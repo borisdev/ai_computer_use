@@ -18,9 +18,12 @@ actually shown).
 | [`runs/20260930T053811Z`](runs/20260930T053811Z) | **Recovery.** The session is destroyed mid-flow; `recovering` → `log_in` re-invoked → `SUCCESS`. A recovered condition is not a terminal state |
 | [`runs/20260930T053709Z`](runs/20260930T053709Z) | **A full handoff.** The run blocks, a person takes the live session, navigates, and hands it back — `handoff_requested` → `human_acted` → `handoff_returned`, a frame and location on each edge, `location_changed: true`. The operator aborts, having established the record genuinely does not exist |
 | [`runs/20260929T232850Z`](runs/20260929T232850Z) | **Discovery, with a panel.** The run that emitted [`artifacts/discovered_balance.v1.draft.json`](../artifacts/discovered_balance.v1.draft.json) — it proposed the accounts table as a `TABLE_CONTROL_PANEL`, measured it (11 rows, 28px), and finished by naming a ROW and a COLUMN of it rather than a coordinate. The overview's `control_map_built` carries `panels=1, panels_ready=1` (the login screen's carries 3), which is the whole of issue #6 in one event |
-| [`runs/20260929T234307Z`](runs/20260929T234307Z) | **Replaying a discovered panel.** `discovered_balance(13344)` → `$1231.10`, 6 steps, the row selected in code from one panel read |
-| [`runs/20260929T234409Z`](runs/20260929T234409Z) | **The same artifact on the other tenant.** A heading template discovery chose, matching a different ParaBank build unchanged |
 | [`runs/20260929T042311Z`](runs/20260929T042311Z) | **A safety refusal, at discovery time.** The model tried to `extract` into the sensitive slot `username`; the run stops rather than emitting an artifact that would leak a credential through `returns` |
+| [`runs/20260930T035056Z`](runs/20260930T035056Z) | **Replaying a discovered panel.** `discovered_balance(13344)` → `$1231.10`, 6 steps, the row selected in code from one panel read |
+| [`runs/20260930T035110Z`](runs/20260930T035110Z) | **The same artifact on the other tenant.** A heading template discovery chose, matching a different ParaBank build unchanged |
+| [`runs/20260930T182155Z`](runs/20260930T182155Z) | **The brief's own example, discovered.** The run that emitted [`artifacts/discovered_savings_check.v1.draft.json`](../artifacts/discovered_savings_check.v1.draft.json): it opened account 13344 by `row_key` from one panel and read `Account Type` out of another. `row_resolved` in the trace is the drilldown — a row index and a computed y, never a grounded click |
+| [`runs/20260930T182723Z`](runs/20260930T182723Z) | **Replaying it.** 7 steps, two panels, one drilldown, `account_type = SAVINGS` |
+| [`runs/20260930T182806Z`](runs/20260930T182806Z) | **A discovered checkpoint with teeth.** After `interfaceai env break` the same artifact fails on `account_type`: expected `SAVINGS`, **observed `CHECKING`**. Nothing about the run changed — the record did |
 
 ## ⛔ Two older runs are also committed, and they are LOAD-BEARING
 

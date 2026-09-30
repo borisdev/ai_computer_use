@@ -8,7 +8,7 @@ T = "https://github.com/borisdev/ai_computer_use/tree/main"
 
 CAPS = [
     {
-        "origin": "✍️ hand-authored<br/><sub>needs a panel</sub>",
+        "origin": "✍️ hand-authored<br/><sub>predates panel discovery</sub>",
         "name": "read_savings_balance",
         "ver": "v3",
         "anchor": "read_savings_balance-v3",
@@ -40,7 +40,7 @@ CAPS = [
         "sig": "() → nothing",
         "run": "",
         "desc": "Authenticate and reach the authenticated nav.",
-        "a": ("✅", "`Success` · 4 steps", "20260929T192254Z"),
+        "a": ("✅", "`Success` · 4 steps", "20260930T174544Z"),
         "b": ("✅", "`Success` · 4 steps", "20260929T192301Z"),
         "demo": [
             (
@@ -67,7 +67,7 @@ CAPS = [
         "sig": "() → account_id",
         "run": "",
         "desc": "Authenticate and read back the account id. **The only artifact an LLM wrote.**",
-        "a": ("✅", "`Success` · 5 steps", "20260929T192220Z"),
+        "a": ("✅", "`Success` · 5 steps", "20260930T174552Z"),
         "b": ("✅", "`Success` · 5 steps", "20260929T192231Z"),
         "demo": [
             ("Discovery works", "a real LLM run — 3 steps, 4 model calls, 24s"),
@@ -91,8 +91,8 @@ CAPS = [
         "sig": "(account_id) → account_id, balance",
         "run": "--param account_id=13344",
         "desc": "Read one account's balance out of the accounts table. **Discovered including its `TABLE_CONTROL_PANEL`** — the gap #6 was open on.",
-        "a": ("✅", "`Success` · 6 steps", "20260929T234307Z"),
-        "b": ("✅", "`Success` · 6 steps", "20260929T234409Z"),
+        "a": ("✅", "`Success` · 6 steps", "20260930T035056Z"),
+        "b": ("✅", "`Success` · 6 steps", "20260930T035110Z"),
         "demo": [
             (
                 "A discovered panel",
@@ -110,7 +110,37 @@ CAPS = [
         "extra": [("the discovery run that produced it", "20260929T232850Z")],
     },
     {
-        "origin": "✍️ hand-authored<br/><sub>needs a panel</sub>",
+        "origin": "🤖 <b>discovered</b><br/><sub>the brief's own example</sub>",
+        "name": "discovered_savings_check",
+        "ver": "v1",
+        "anchor": "discovered_savings_check-v1",
+        "art": "discovered_savings_check.v1.approved.json",
+        "sig": "(account_id) → account_id, account_type",
+        "run": "--param account_id=13344",
+        "desc": "Confirm an account IS a savings account, by opening it from the table and reading its type off the detail page. **The same shape as `read_savings_balance`, discovered** — two panels and a drilldown between them.",
+        "a": ("✅", "`Success` · 7 steps", "20260930T182723Z"),
+        "b": ("✅", "`Success` · 7 steps", "20260930T182743Z"),
+        "demo": [
+            (
+                "A drilldown, discovered",
+                "`click` on a panel with `row_key=account_id` — the row's position comes from the panel read and the measured pitch, never from pointing at it",
+            ),
+            (
+                "Two discovered panels",
+                "a TABLE on the overview and a LABEL/VALUE block on the detail page; the second shape was invisible to the read pass until it was named",
+            ),
+            (
+                "A checkpoint with teeth, derived",
+                "`account_type == SAVINGS` was inferred from the run. It is an assertion, so the NAME says so — a capability promising to read any type must not fail on a checking account (Copilot, #14). `interfaceai env break` makes it fail with **observed CHECKING**",
+            ),
+        ],
+        "extra": [
+            ("the discovery run that produced it", "20260930T182155Z"),
+            ("the checkpoint firing on a changed record", "20260930T182806Z"),
+        ],
+    },
+    {
+        "origin": "✍️ hand-authored<br/><sub>predates panel discovery</sub>",
         "name": "request_loan",
         "ver": "v2",
         "anchor": "request_loan-v2",
@@ -134,7 +164,7 @@ CAPS = [
         "extra": [],
     },
     {
-        "origin": "✍️ hand-authored<br/><sub>needs a panel</sub>",
+        "origin": "✍️ hand-authored<br/><sub>predates panel discovery</sub>",
         "name": "session_loss_probe",
         "ver": "v1",
         "anchor": "session_loss_probe-v1",

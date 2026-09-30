@@ -225,6 +225,61 @@ enough either: an 11px row inside a 24px band leaves 12px of slack, which absorb
 sits. A real column of this table puts its glyphs the same distance below every
 row boundary; a foreign rhythm creeps — 5px, then 4, then 3.
 
+## A crop two pixels too narrow returns `CHECKIN` and no complaint
+
+The quietest wrong answer this system has produced. A discovered panel's width was
+derived from the screenshot it was proposed on, where the account type read
+`SAVINGS`. `interfaceai env break` changes that record to `CHECKING` — one
+character wider — and the model, shown a crop that cut it, returned **`CHECKIN`**.
+
+Nothing was misaligned. The rows were in the right places, the cross-check passed,
+the read "succeeded". What noticed was a **checkpoint two steps later**, comparing
+`account_type` against `SAVINGS` — and that checkpoint only existed because
+discovery happened to derive one. A `balance` has none. It is simply returned.
+
+Three changes, and the order matters:
+
+    the widest ROW sets the width    the label and value merge into one span, and
+                                     that span was measured on row one
+    one row-height of SLACK          a value one character longer still reads,
+                                     bounded so it cannot reach the next column
+    the READ reports clipping        ink against the crop's right edge, checked on
+                                     every read, because geometry is recorded once
+                                     and the DATA changes afterwards
+
+⚠️ **The third is the only one that is a guarantee**; the first two just make the
+common case work. A value that outgrows the slack now fails at the extract step,
+naming the panel and the crop width, instead of being returned as if correct.
+
+⛔ **And that check went red twice on correct behaviour before it was right.**
+Both times because it asked about pixels that were not the panel's:
+
+    ink AT the edge read as ink CUT BY it     a hand-measured panel whose value
+                                             ends exactly at its boundary, read
+                                             correctly for as long as it has
+                                             existed. From the crop the two are
+                                             indistinguishable; from the
+                                             SCREENSHOT they are not -- the
+                                             question is whether a run SPANS the
+                                             boundary
+    every band of the recorded box           the accounts panel records ELEVEN
+                                             rows and the CLEAN state leaves one,
+                                             so eight of its bands hold whatever
+                                             the page puts below the table. A
+                                             menu 200px lower was reported as a
+                                             truncated value. Only the rows the
+                                             model actually READ are the panel's
+
+A false alarm here is not cheap: it fails a run whose read was fine, and
+`.claude/rules/checks.md` already records that the three false alarms in this
+repo cost more time than the outages did.
+
+⛔ **And it was already happening.** The hand-measured `accounts_table_panel` is
+310px wide; the Available Amount column it DECLARES runs 11px past that. Every
+read of that panel had been returning its third column truncated, invisibly, for
+as long as it has existed — nothing reads that column, so nothing ever said so.
+The check found it on the first run.
+
 ## The approval gate could not see the artifacts it exists for
 
 `interfaceai capability approve discovered_balance` answered *"no capability

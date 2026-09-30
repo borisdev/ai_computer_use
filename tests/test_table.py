@@ -34,6 +34,8 @@ from interfaceai.table import (
     annotate_rows,
     extract_panel,
     find_row_rhythm,
+    match_row,
+    normalise_value,
 )
 
 RUN = Path(__file__).resolve().parents[1] / "evidence" / "runs" / "20260926T022551Z" / "frames"
@@ -333,6 +335,37 @@ def _read(**overrides) -> PanelRead:
     return asyncio.run(extract_panel(shot(OVERVIEW), _anchor(), **kwargs))
 
 
+class TestClippedCrop:
+    """A crop two pixels too narrow returns a truncated value and no complaint.
+
+    ⛔ Measured on a real replay: the account-detail panel was measured from a
+    screenshot whose value read `SAVINGS`, and after the database changed the same
+    column held `CHECKING`. The model returned **`CHECKIN`**, and what noticed was
+    a checkpoint two steps later — which only existed because that capability
+    happened to have one. A `balance` has none; it is simply returned.
+
+    Geometry cannot settle this when a panel is proposed, because the geometry is
+    recorded once and the DATA changes afterwards. So it is asked of every read.
+    """
+
+    def test_a_crop_that_cuts_the_last_column_says_so(self) -> None:
+        # 310px is where the hand-measured accounts panel ends, and the Available
+        # Amount column runs to 791 — 11px past it.
+        read = _read(panel=Offset(dx=-10, dy=20, width=310, height=320))
+        assert read.clipped
+        assert "truncated" in read.clipped[0]
+
+    def test_a_crop_wide_enough_for_its_columns_is_clean(self) -> None:
+        read = _read(panel=Offset(dx=-10, dy=20, width=330, height=320))
+        assert read.clipped == ()
+
+    def test_clipping_is_not_the_alignment_fault(self) -> None:
+        """They fail in opposite directions: `misaligned` means the positions are
+        wrong and the values fine, `clipped` means the reverse."""
+        read = _read(panel=Offset(dx=-10, dy=20, width=310, height=320))
+        assert read.clipped and read.misaligned == ()
+
+
 def test_a_panel_read_carries_the_rhythm_it_measured() -> None:
     read = _read()
     assert read.rhythm.pitch == TRUE_PITCH
@@ -384,3 +417,48 @@ def test_a_panel_with_no_rhythm_still_READS_but_cannot_be_drilled() -> None:
 def test_a_table_panel_accepts_no_manual_action() -> None:
     """You read a panel; you never click it. Enforced by the role table."""
     assert supported_actions(ControlRole.TABLE_CONTROL_PANEL) == []
+
+
+# --------------------------------------------------------------------------
+# Which row a key names -- the one answer discovery and replay must share
+# --------------------------------------------------------------------------
+
+
+class _Row:
+    def __init__(self, account_id: str, balance: str = "") -> None:
+        self.account_id = account_id
+        self.balance = balance
+
+
+class TestMatchRow:
+    def rows(self, *ids: str) -> list[_Row]:
+        return [_Row(i) for i in ids]
+
+    def test_the_row_is_found_by_index(self) -> None:
+        match = match_row(self.rows("13344", "13455", "13566"), "account_id", "13455")
+        assert (match.index, match.matched, match.total) == (1, 1, 3)
+
+    def test_currency_and_separators_do_not_break_the_comparison(self) -> None:
+        """A screen prints `$1,231.10` where a caller passed `1231.10`."""
+        assert match_row([_Row("$1,231.10")], "account_id", "1231.10").index == 0
+
+    def test_a_label_printed_with_a_colon_still_matches(self) -> None:
+        """`Account Type:` on screen, `Account Type` in the artifact."""
+        assert match_row([_Row("Account Type:")], "account_id", "account type").index == 0
+
+    def test_a_key_that_names_no_row_is_reported_not_guessed(self) -> None:
+        match = match_row(self.rows("13344", "13455"), "account_id", "99999")
+        assert match.index is None
+        assert (match.matched, match.total) == (0, 2)
+        assert match.keys == ("13344", "13455")
+
+    def test_two_rows_with_the_same_key_name_no_row(self) -> None:
+        """Ambiguity is not a coin toss. On an account list the two candidates
+        are two different records."""
+        match = match_row(self.rows("13344", "13344"), "account_id", "13344")
+        assert match.index is None
+        assert match.matched == 2
+
+    def test_two_words_are_not_one_word(self) -> None:
+        """`normalise_value` folds typography, never content."""
+        assert normalise_value("Account Type") != normalise_value("Account")

@@ -25,7 +25,7 @@ artifact, deterministic replay with typed outcomes, human handoff of the live
 session, and one artifact serving two tenants.
 
 ```
-320 tests — 285 offline, 35 live · ruff clean
+338 tests — 303 offline, 35 live · ruff clean
 ```
 
 | Piece | State |
@@ -48,9 +48,10 @@ session, and one artifact serving two tenants.
 | Persistence of runs / interventions | cut — see REPORT §7 |
 
 Artifacts in `artifacts/` come from **both** routes, and which is which
-matters: `log_in_discovered` and `discovered_balance` were produced by real
-discovery runs against the live app — the second one **including its
-`TABLE_CONTROL_PANEL`**, which was the last thing only a hand could add
+matters: `log_in_discovered`, `discovered_balance` and `discovered_savings_check`
+were produced by real discovery runs against the live app — the last two
+**including their `TABLE_CONTROL_PANEL`s**, which was the last thing only a hand
+could add
 ([#6](https://github.com/borisdev/ai_computer_use/issues/6)); the earliest
 `log_in` was hand-authored before discovery existed. The contrast is measured and unflattering to the hand
 — the hand-written ones carry **3 and 8** faults against a real control map,
@@ -706,13 +707,13 @@ TODO list that drifts from the code.
 
 ⛔ **[#6](https://github.com/borisdev/ai_computer_use/issues/6) — *"discovery
 cannot produce a `TABLE_CONTROL_PANEL`"* — was the biggest one, and it is
-closed.** `discovered_balance` is the artifact: a panel proposed by a read pass
-and MEASURED by geometry (pitch by ink runs, confirmed against autocorrelation,
-no pixel asked of a model), approved, and replayed on both tenants. What remains
-is narrower and stated in
-[CAPABILITIES.md](CAPABILITIES.md) — on two screens the read pass names a
-different region than the one a capability wants, so `account_details_panel` is
-still measured by hand.
+closed.** `discovered_savings_check` is the artifact that settles it: the brief's
+own worked example, discovered — two panels, a drilldown between them by
+`row_key`, and a `account_type == SAVINGS` checkpoint discovery inferred from the
+run. Every region this repo had measured by hand is now proposed by a read pass
+and MEASURED by geometry (pitch from ink runs, confirmed against autocorrelation,
+no pixel asked of a model). The panels in `scripts/add_panels.py` stay because
+four artifacts name their ids, not because a hand is still required.
 
 | | why it matters |
 |---|---|

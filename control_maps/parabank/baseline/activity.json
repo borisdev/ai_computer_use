@@ -60,10 +60,63 @@
       }
     },
     {
+      "id": "account_details_table_control_panel",
+      "label": "Account Details",
+      "role": "table_control_panel",
+      "description": "A label/value block showing details for a single account, including account number, type, balance, and available balance. (4 rows, pitch 23px, autocorrelation 0.686)",
+      "status": "ready",
+      "click_point": {
+        "x": 579,
+        "y": 289
+      },
+      "locator": {
+        "kind": "visual",
+        "schema_version": 1,
+        "template_png": "iVBORw0KGgoAAAANSUhEUgAAAI4AAAARCAIAAACErwPJAAAJUUlEQVR4nO1ZfWxb1RX_YfvZrj8SJ06c53wnJGlp0sRxN1IBbVka1gpaltFBQYQPiaDBQFQgVKkb6gQbQ0s3oBJb2KBaqmYSIHVKCa0IJHRNaZUU6kJqV20S7LhuHMeOnZe9Z-d9Z384Sd181EYwGFJ_en-8e3_3vHPOvfece957N8zMzOA6fghQfN8GXEeqUC3ZSw-efqTNGwAAXeOjd-yqUH-nRn1TsM4zg72s-ec351mJRaQQPvjmJ61jCT1aXaXVVF6R12gvqDAqvx0tC5X-5923u_b5oC6oOdBcUYSrm0nFASwTVbxrIBSYvY_1DUTolM3_v8Bk4OCRi-0nR8fE1MazMZfH39H12aN7e14_H-X-R1q-MZaKKjrS647NtwLuS0M0aTd-RwZ9c4QvjbpYQJtsnHVl2xPVFYRET1KugQstXf6AOPXeO33W5vU7CpNnkVS1xEGk7Xjy3h3zTSE1qauxxFKFfSO9FABNwwbLYK_vEhU4OsbajYlGSWH30L6ur_rGYoyoyMwyN2yyPVZjMqbEgvaPtB650DtGR1hApSksIB_aXH1XoRYA6EBL64kOCpnVtxy4P8-MeOr4eJ9Pnksd1ME3P24dQ2Z13as3Cx3Hh3o9dERlbNho37nRYhZmWQCgvE__zmsotx9ouvGaCUppzDCv23jrW9YzT7W5L4mR_T2-DbMiUnhwzhHAYMrcsNG2s85sXFYLP3jm_P7To2d9MQYK0prdsMn22Oo0DRYnwEUQon2nXe_2B1wTHAOCtGY23FL50FpzYoAsToCsayAYAWAi71xbbDcB4Poc4XDCOo19-dnjb5_r9sUYUWFQyZGJ0Hvv9jz3QYBOziI8eObxNz7r8NARFgYDAZG75PG-_GZPy3n2GtOZaLBaBQCMf2hPm-Ooj2VEgKW7u061fBkFFKQ1k5zdfgoyK70yW69O7SQwl6x67CYCAOPzORhp1pG2c91jMVhz1pcYeSpy9PDJvctqkQZPnnr60NAJX4zRajJVcmBsvL39xL7BVPxi-478-7kj3v4JjtFqSK0UGBtvP_TJ0x2BxKNn0VLRwW43B4AsLaw0ZTZU6ABE3COueaHp0MEuXwBAVtGru7d_9NK2N25JB2TXqYEOv5SMDR78wH0JgCH3N8_e89GvG489--MGA4BYx4cu53RKcxoHP0FbN9d37mnsfGJNrQqA0H86MIa0O35x665qDQCYCl548qevbSXNKT6R0BYV6gCAjQ5NSqBnHTGU1Lz1xIY_Pl7_983pANfddcEhLqVlOtRxMsQAhhL7od13f7C7vikLQKz75OhY0nRHh4-ejwGK2rvuOLbn7n_t2d7ZvLKhPKdcxUYSZBcmwLDb52AAaOzVJiOhLl-dTZ72BphQtzu6oUYPgA4FHBQAlK--sdYIQGvffGvbapqBwmxMyvr7JgCg3L6qIVsJQJOde5_d2N1LYyLUG-KrMlKcV8BE7qg2GwFYC-4scZ0dknmaCotIXowtD41WrQZ4SLwIejLuiKK8miQJAOqi8sLKnnMuKtAb4u2Fi4RXkLt23bvrSltblKHAhMwwURqwJlOtBgD57MmB_dqKuyqyi0qrXypdOGbBUkUdA6F49muwagEYCwrXmbwdlOAYCIdr9GaAZ1gGABRktlYTFyL0FaX6-G3YlxKbOc9Cac7WGUAzYCOMjNSXaoXJGj89CaVxBQFwECU-ZeklwbE8DwBqg3beTfns4a6fHE4cJYyFBBQurumlsPur_cfdvR468nVrQiN536acvsPjEWq8_dB4O6A2ZW5YfWPTxuKKhMPqylKFOBaU_6hbAADK-9wr3sSnRdzu4-OW9SZMCpIMAGBELsQttDhFlr_CSmFRngGAGVZgQzw_PQMAssSHOVYGIHKMLAOYkcUIz-rAMTIAEAo5wrM6GQA7fQMAYEaieDakYKekxOaieRH5aNwIWZrk2ZA83x9zDNMAoFRnaoTw5KyplqLcOjIxVImVWXKIExZo4QPuF__hckogzOQ963LXmGRH90DnuDyrZc7sBV7MNmVk2Na-avIe-jxw8fLU4JTIU5HuU5HjXrqlqbx0rp67KqrGR0ady71WcJMnRmLrbTq9SZcBUJCpCY6HTg2Anez5fNTDKEuqStYnYdMs8F_FQqYmpqMAoCsxEVAp4mWywIqzISJyQWYZk75VMJfdnSMyAH1xbpVBSRg0eoACTKvKHl6Xvqh4lxY0g8M-pwRgxZattkeKCYhTHsgLha4FZUZxaXNxKQCemer_dKC1n4qOej8MFP-qeHajJOw6MeZ0TkYBaMjnd247_Nu5a6e9TgNAdDrD4yLUpuxaMwB4Low4GQDsxU-drT2ezv5Rj6hMwmZlrcsBAI9zuH9CAsBPjL7_BQOAyLFUZSmh0lgMABANBD0MAMH9xfAnU1_HZcyFMstRqRWVPENf_PzsC-0ejwQo07bfnpejgsFkWZkOAIN9bgclAWBGhva29-3tGDrHSEtoUSkSQk8adw6-Px6fVUFIlg_5wMhf24498vqp9wMCALUhvc5G5i0adiWqeCp4YkQEYCrLrzIlDDGZ68s0_S4uetnnZHJzTBlbbs_99JA_GL784p_9eqUclQAgr6Zyez4BVRK2vqGo55_e0anAn_5ytFWvikZFAFAatjSUlKoA6OxV5ndGw9Go_5U3Ji0qLsjqqswKZ1gWFm7k5aCwkCuILzmBC-17-9iHZWXPbC3IWfLz2fjwsy8PX921on6rfVs-AQAG8_23k47DAWrq8iv7_JZ0YnKKEwB9keUBrRLAAi3NtVn5oDyY7mw_5jCBYojatdnOMyEq7P1Dm_BwY9k1LFYbiOgEQ0WZ_X_r7jRr9ZCC4ekoQOTkbUrIvfNRJQVH_E4JgKbOlnH16a5dacu2AOAmTwzHAGVOla3lwVV1ZgUgRyVVXh55z89ua2m0ZqiQjEVGWXXLL9dsztMAiEZFQGEpKnq--bbmsnhKVub_yL57E1miAThBT-Y-02TfFjdXFFOrGpT5VWX1ZgUAIcpcZqRUvgzo09Pq1q7a_dTGnTbjXK5T5tjsLQ-W1aYrADk4xQlQVdRU_v7-0nzVElqIvLLntxfVpqsgCYI2Y3tj3c6Gmx6oNOgBiklmgiHvySbbtiINIAbDjCc8HdWn1dWtebmpYmXCh4cb5n-ChLgUX0Kv4_vB9Z8gPxj8F9DZEmBCzoviAAAAAElFTkSuQmCC",
+        "reference_size": {
+          "width": 1280,
+          "height": 900
+        },
+        "reference_crop": {
+          "x": 485,
+          "y": 279,
+          "width": 142,
+          "height": 17
+        },
+        "click_offset": {
+          "x": 94,
+          "y": 10
+        },
+        "match_threshold": 0.95,
+        "ambiguity_margin": 0.05
+      },
+      "reason": null,
+      "policy": {
+        "irreversible": false,
+        "sensitive": false
+      },
+      "panel": {
+        "columns": [
+          "field",
+          "value"
+        ],
+        "key_column": "field",
+        "dx": -112,
+        "dy": 26,
+        "width": 211,
+        "height": 92,
+        "key_dx": -88,
+        "key_dy": 26,
+        "key_width": 140,
+        "key_click_dx": null,
+        "row_pitch": 23
+      }
+    },
+    {
       "id": "account_services_table_control_panel",
       "label": "Account Services",
       "role": "table_control_panel",
-      "description": "A vertical menu of account service links such as Open New Account, Accounts Overview, Transfer Funds, etc., located on the left side of the screen. (8 rows, pitch 24px, autocorrelation 0.797)",
+      "description": "A vertical menu of account service links such as Open New Account, Accounts Overview, Transfer Funds, etc. (8 rows, pitch 24px, autocorrelation 0.797)",
       "status": "ready",
       "click_point": {
         "x": 370,
@@ -102,7 +155,7 @@
         "key_column": "service",
         "dx": -101,
         "dy": 16,
-        "width": 151,
+        "width": 179,
         "height": 192,
         "key_dx": -77,
         "key_dy": 16,

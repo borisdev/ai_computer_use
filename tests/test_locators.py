@@ -21,25 +21,35 @@ def test_a_serialised_locator_says_WHICH_KIND_it_is() -> None:
     assert DomLocator(selector="#login").kind == "dom"
 
 
-def test_existing_control_maps_load_without_a_kind_field() -> None:
-    """The committed maps predate the discriminator and must still resolve.
+def test_a_locator_written_before_the_discriminator_still_loads() -> None:
+    """The maps written before the discriminator must still resolve.
 
-    A default is what makes adding a discriminator a non-event. Without it,
-    every control map in the repo becomes unreadable on the commit that
-    introduces the union.
+    A default is what makes adding a discriminator a non-event. Without it, every
+    control map in the repo becomes unreadable on the commit that introduces the
+    union.
+
+    ⚠️ **This owned no fixture until it broke.** It used to read a LIVE control map
+    and assert `"kind" not in locator` — true only until something legitimately
+    rewrote that map, because writing one through the model serialises the
+    discriminator in. Re-running panel discovery normalised every map and the test
+    reported *"fixture no longer exercises the missing-field case"*, which is the
+    assertion doing its job and the fixture being in the wrong place. A
+    backward-compatibility test has to carry the old shape itself; a file the
+    system writes cannot be relied on to stay old.
     """
-    import json
-    from pathlib import Path
+    from interfaceai.screenshot2controls import ClickPoint, CropBox, ImageSize, VisualLocator
 
-    from interfaceai.screenshot2controls import VisualLocator
-
-    maps = Path(__file__).resolve().parents[1] / "control_maps"
-    raw = json.loads((maps / "parabank" / "baseline" / "index.json").read_text())
-    locator = next(
-        c["locator"] for c in raw["controls"] if c.get("locator") and c["status"] == "ready"
-    )
-    assert "kind" not in locator, "fixture no longer exercises the missing-field case"
-    assert VisualLocator.model_validate(locator).kind == "visual"
+    written_before_the_union = {
+        "schema_version": 1,
+        "template_png": "",
+        "reference_size": ImageSize(width=1280, height=900).model_dump(),
+        "reference_crop": CropBox(x=246, y=250, width=240, height=96).model_dump(),
+        "click_offset": ClickPoint(x=120, y=64).model_dump(),
+        "match_threshold": 0.95,
+        "ambiguity_margin": 0.05,
+    }
+    assert "kind" not in written_before_the_union
+    assert VisualLocator.model_validate(written_before_the_union).kind == "visual"
 
 
 def test_the_DOM_kind_refuses_rather_than_pretending() -> None:

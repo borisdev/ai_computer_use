@@ -39,6 +39,7 @@ from interfaceai.screenshot2panels import (
     _sequence,
     derive_panel,
     extract_panel_locators,
+    geometry_faults,
     marker_bands_contain_every_row,
     merge_panels,
 )
@@ -199,6 +200,57 @@ class TestTheOfflineCheckFails:
             shot(OVERVIEW), self.corrupt(key_dy=good.spec.key_dy + 9)
         )
         assert faults
+
+
+# --------------------------------------------------------------------------
+# A crop that cuts a value
+# --------------------------------------------------------------------------
+
+
+class TestClipping:
+    """⛔ The defect a discovered CHECKPOINT caught, two steps downstream.
+
+    The account-detail block's label and value are 2px apart, so they merge into
+    one span — and the span was measured on row one, `Account Number: 13344`. Row
+    two is `Account Type: SAVINGS`, which is wider. The crop cut it, the model
+    read **`SAVIN`** and reported it without complaint, and `replay` failed on the
+    `account_type == SAVINGS` checkpoint of the very capability that had just been
+    discovered.
+
+    Nothing about the rows was wrong, so the vertical check passed throughout.
+    """
+
+    def proposal(self):
+        proposal, why = propose(ACTIVITY, DETAILS_HEADING)
+        assert proposal is not None, why
+        return proposal
+
+    def test_the_widest_row_is_inside_the_crop(self) -> None:
+        assert geometry_faults(shot(ACTIVITY), self.proposal()) == ()
+
+    def narrowed(self, by: int):
+        good = self.proposal()
+        return dataclasses.replace(
+            good, spec=good.spec.model_copy(update={"width": good.spec.width - by})
+        )
+
+    def test_a_crop_that_cuts_a_value_is_caught(self) -> None:
+        # 30px in from the derived 211 lands inside the values; three of the four
+        # rows report it.
+        faults = geometry_faults(shot(ACTIVITY), self.narrowed(30))
+        assert len(faults) == 3, faults
+        assert "running past the crop's right edge" in faults[0]
+
+    def test_a_value_that_ENDS_at_the_edge_is_not_a_fault(self) -> None:
+        """⚠️ The distinction the first version of this check got wrong. Ink at the
+        boundary is read correctly; ink CROSSING it is cut. Told apart by looking
+        past the edge, which the screenshot can do and the crop cannot — and
+        conflating them went red on a hand-measured panel that was working."""
+        assert geometry_faults(shot(ACTIVITY), self.narrowed(25)) == ()
+
+    def test_the_vertical_check_alone_does_not_notice(self) -> None:
+        """Which is why the horizontal one had to be added rather than assumed."""
+        assert marker_bands_contain_every_row(shot(ACTIVITY), self.narrowed(30)) == ()
 
 
 # --------------------------------------------------------------------------

@@ -54,6 +54,42 @@ from interfaceai.screenshot2controls import (
 _SAFE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
 
+def panel_containing(control_map: ScreenOutput, control: LocatedControl) -> LocatedControl | None:
+    """The panel whose region holds this control's click point, if any.
+
+    ⚠️ **One implementation, two callers, deliberately.** The artifact check refuses
+    a capability that names a row directly, and the DISCOVERY loop has to refuse
+    the same decision while it is still a decision -- a model offered
+    `13344_link` will take it, and catching that only after the run leaves an
+    unapprovable draft and a wasted session (Copilot, #13/#14). Two copies of this
+    geometry would eventually disagree about what a row is.
+    """
+    if control.click_point is None or control.role is ControlRole.TABLE_CONTROL_PANEL:
+        return None
+    for panel in control_map.controls:
+        if panel.role is not ControlRole.TABLE_CONTROL_PANEL or panel.panel is None:
+            continue
+        if panel.click_point is None:
+            continue
+        spec, origin = panel.panel, panel.click_point
+        x0, y0 = origin.x + spec.dx, origin.y + spec.dy
+        if (
+            x0 <= control.click_point.x <= x0 + spec.width
+            and y0 <= control.click_point.y <= y0 + spec.height
+        ):
+            return panel
+    return None
+
+
+def row_instead_of_panel(panel: LocatedControl, control: LocatedControl) -> str:
+    """Why a direct click on a row is refused, and what to do instead."""
+    return (
+        f"{control.id} sits inside {panel.id}'s region, so it is a ROW. Grounded rows "
+        f"land on the wrong record 10 times in 11 (docs/issues/0009) -- reach it with a "
+        f"row_key on {panel.id} instead"
+    )
+
+
 class ControlMapMiss(LookupError):
     """A lookup found nothing, and says which part of the key failed.
 
@@ -246,24 +282,9 @@ def check_capability(capability: Capability, store: ControlMapStore) -> list[str
             control = store.control(key, ref.control_id)
         except (ValueError, ControlMapMiss):
             return  # already reported by check_ref
-        if control.click_point is None or control.role is ControlRole.TABLE_CONTROL_PANEL:
-            return
-        for panel in control_map.controls:
-            if panel.role is not ControlRole.TABLE_CONTROL_PANEL or panel.panel is None:
-                continue
-            if panel.click_point is None:
-                continue
-            spec, origin = panel.panel, panel.click_point
-            x0, y0 = origin.x + spec.dx, origin.y + spec.dy
-            inside_x = x0 <= control.click_point.x <= x0 + spec.width
-            inside_y = y0 <= control.click_point.y <= y0 + spec.height
-            if inside_x and inside_y:
-                faults.append(
-                    f"{where}: {ref.control_id} sits inside {panel.id}'s region, so it is a "
-                    f"ROW. Grounded rows land on the wrong record 10 times in 11 "
-                    f"(docs/issues/0009) -- reach it with a row_key on {panel.id} instead"
-                )
-                return
+        panel = panel_containing(control_map, control)
+        if panel is not None:
+            faults.append(f"{where}: {row_instead_of_panel(panel, control)}")
 
     for n, step in enumerate(capability.steps):
         if step.verb is StepVerb.CLICK and step.control is not None and step.row_key is None:

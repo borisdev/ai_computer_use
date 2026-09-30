@@ -1,9 +1,17 @@
 ---
 
-## ⛔ TWO were discovered, and the reason the others were not is GONE
+## ⛔ THREE were discovered, and the reason the others were not is GONE
 
-`log_in_discovered` and `discovered_balance` came out of real LLM runs. The other
-four were **written by hand** in `capabilities.py`. That is the honest state and
+`log_in_discovered`, `discovered_balance` and `discovered_savings_check` came out
+of real LLM runs. The other four were **written by hand** in `capabilities.py`.
+
+⭐ **`discovered_savings_check` is the brief's own worked example, discovered.**
+Two panels and a drilldown between them: open account 13344 from the accounts
+table by `row_key`, then read `Account Type` out of a label/value block on the
+detail page. It is the same shape as the hand-written `read_savings_balance` v3,
+including the `account_type == SAVINGS` checkpoint — which discovery inferred from
+the run, and which fails with **observed `CHECKING`** after `interfaceai env
+break`. That is the honest state and
 worth being precise about, because the brief's through-line is *"the model
 discovers, the artifact becomes a reusable capability."*
 
@@ -21,23 +29,38 @@ a model.
 as one line: **discovered → approved → replayed on both tenants**, reading a named
 row out of an eleven-row table whose shape nobody told it.
 
-⚠️ **What is still hand-measured, and why — because "one gap, not four" was too
-neat.** Geometry measures all four regions correctly; what varies is whether the
-READ pass proposes them at all:
+⚠️ **Every region this repo measured by hand is now proposed AND measured**,
+including the two that were missed at first:
 
 ```
 accounts table        11 rows, pitch 28px, autocorrelation 0.899   proposed, measured, USED
+account detail         4 rows, pitch 23px, 0.686                   proposed, measured, USED
 account-services nav   8 rows, pitch 24px, 0.797                  proposed, measured
+loan result            3 rows, pitch 23px                          proposed, measured
 ATM / online services  4 and 3 rows, pitch 20px                   proposed, measured
-account detail         4 rows, pitch 23px, 0.686                   MEASURED, not proposed --
-loan result            3 rows, pitch 23px                          the model names a different
-                                                                   region on those two screens
 empty transactions    refused: "no column below the heading repeats"
 ```
 
-So the remaining gap is which REGION perception names, not whether geometry can
-measure it — a narrower and more honest statement than the one this paragraph
-made. `read_savings_balance` still needs the hand-measured `account_details_panel`.
+⛔ **And the reason the last two were missed is worth more than the fix.** The
+prompt asked for *"a region of three or more near-identical rows — a results
+table, an account list, a label/value block, a menu of links"*, which reads as
+complete. Measured, three runs each: it found the account-detail block **0 of 3**
+times and the loan result **0 of 3**. Describing the LABEL/VALUE shape in its own
+right — *"one record's own fields, one per row, each row reading `Field Name:
+value` … easy to overlook because it is not a grid"* — found both **3 of 3**, and
+lost nothing. The model was not failing to see them; it was answering a question
+that did not ask for them.
+
+The four hand-measured panels stay in the store beside the discovered ones because
+four artifacts name their ids, not because a hand is still required.
+
+⚠️ **The origin column said `needs a panel` under the hand-authored three until
+2026-09-30, and that had become a false REASON rather than a stale label.** They
+are hand-written because they predate panel discovery. `read_savings_balance` in
+particular is a Python literal in `capabilities.py`: its approved artifact is
+byte-identical to an export of that declaration, and its v1 named `global_nav` —
+a screen with no control map — which is how a hand-written artifact carries 8
+faults and a recorded one carries 0.
 
 Everything downstream of the artifact — validation, approval, replay,
 composition, the guardrails — already treats both origins identically, which is

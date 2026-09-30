@@ -8,7 +8,7 @@
 > threshold stops and asks a person. Every number here came from a run.
 >
 > ```
-> 320 tests — 285 offline, 35 live · ruff clean
+> 338 tests — 303 offline, 35 live · ruff clean
 > ```
 
 Detail lives elsewhere so this stays short: **[evidence/](evidence/README.md)**
@@ -317,13 +317,13 @@ Reasoning per item in [STILL-OPEN.md](STILL-OPEN.md).
 
 ### If I had another day
 
-1. **Perception choosing the RIGHT repeated structure.** A panel producer now
-   exists (`screenshot2panels`): a read pass names the repeated structures, pure
-   geometry measures the pitch, phase, row count and extent, and
-   `discovered_balance` is a discovered panel-backed capability that replays on
-   both tenants. What is left is which region the read pass names — on the
-   account-detail and loan-result screens it names a neighbouring one, so those
-   two panels are still hand-measured.
+1. **A column's width from its WHITESPACE, not its ink.** Panels are discovered
+   now (`screenshot2panels`), including the brief's own worked example end to end
+   — two panels and a drilldown, `discovered_savings_check`. The weak seam left is
+   that a crop is sized to the values present when it was recorded: one row
+   height of slack covers a value a character longer, and anything past that
+   fails at the read rather than being truncated in silence. Deriving the edge
+   from the gutter would remove the failure instead of reporting it.
 2. **A restyled tenant** — the cheapest honest test of the decision with the
    most to lose (§4).
 3. **The headless mirror as a second operator mode**, so §5's trade is a

@@ -78,7 +78,14 @@ ACCOUNTS = LocatedControl(
         key_column="account_id",
         dx=-20,
         dy=28,
-        width=310,
+        # ⛔ **340, not 310, and the old number was cutting a column it declares.**
+        # The Available Amount column's digits run to x=791 and the crop ended at
+        # 780, so every read of this panel returned that column TRUNCATED --
+        # invisibly, because nothing reads it. Found when
+        # `table._reaches_the_right_edge` was added and this panel was the first
+        # thing it went red on. 340 covers the data and leaves ~19px of slack for
+        # a longer value.
+        width=340,
         height=320,
         key_dx=0,
         key_dy=28,

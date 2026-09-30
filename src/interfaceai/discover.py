@@ -67,10 +67,17 @@ from interfaceai.capability import (
     Value,
 )
 from interfaceai.contracts import Contract
-from interfaceai.control_map_store import ControlMapMiss, ControlMapStore, MapKey
+from interfaceai.control_map_store import (
+    ControlMapMiss,
+    ControlMapStore,
+    MapKey,
+    panel_containing,
+    row_instead_of_panel,
+)
 from interfaceai.decisions import AgentDecision, ManualActionKind, validate_decision
 from interfaceai.evidence import EvidenceWriter
 from interfaceai.screenshot2controls import (
+    ClickPoint,
     ControlRole,
     DiscoveryConfig,
     DiscoveryError,
@@ -90,6 +97,7 @@ from interfaceai.surface import (
     PlaywrightSurface,
     use_control,
 )
+from interfaceai.table import Offset, PanelNotFound, extract_panel, match_row
 from interfaceai.vocabulary import VOCABULARY, SlotType
 
 # TOGGLE is deliberately absent: ParaBank's flows need none, and `StepVerb` has
@@ -99,10 +107,14 @@ DISCOVERY_ACTIONS = frozenset(
     {ManualActionKind.CLICK, ManualActionKind.ENTER_TEXT, ManualActionKind.SELECT}
 )
 
-# How many times a draft may be refused before the run is. A refusal names what
-# to fix, so one more attempt is worth a model call; a model that cannot fix it
-# in two is not going to.
-_MAX_DRAFT_REFUSALS = 2
+# How many refusals the model may be handed back before the run ends. A refusal
+# names what to fix, so one more attempt is worth a model call; a model that
+# cannot fix it in two is not going to.
+#
+# ⚠️ Covers BOTH kinds: a draft the synthesiser refused, and a move the decision
+# boundary refused. They fail at opposite ends of the run and the reasoning is
+# identical -- the reason is in the model's hands, so give it the reason.
+_MAX_MODEL_RETRIES = 2
 
 _VERB_OF_ACTION = {
     ManualActionKind.CLICK: StepVerb.CLICK,
@@ -176,6 +188,10 @@ class NextMove(Contract):
     value: str | None = None
     value_ref: str | None = None
     slot: str | None = None
+    # A TABLE_CONTROL_PANEL only: open the ROW whose key column holds this value.
+    # The position comes from a panel read and the measured pitch, so this is the
+    # only way to reach a row -- nothing is ever asked where a row is.
+    row_key: str | None = None
     # Risk is a property of the control: "Log In" and "Transfer" are both a
     # click. The model classifies; the loop refuses to execute without a
     # confirmation; the artifact carries it to replay.
@@ -199,6 +215,8 @@ class RecordedStep:
     value_source: Value | None
     risky: bool
     note: str
+    # Set when the step opened a ROW of a panel. Becomes `Step.row_key`.
+    row_key: Value | None = None
 
 
 @dataclass
@@ -363,6 +381,12 @@ here.
 
 An output that names a panel WITHOUT a row_key and a field is refused, so give
 all three together: control_id, row_key, field.
+
+To OPEN one of its rows -- only where the panel says its rows can be opened --
+act with action="click", control_id=<the panel>, and row_key=<the value in its key
+column>. Do not try to click a row any other way: the position is computed from
+the panel read and the measured row spacing, and a row pointed at by eye lands on
+the wrong record.
 """
 
 
@@ -563,7 +587,7 @@ def discover(
                         # keeps producing unapprovable drafts still fails.
                         refusals += 1
                         evidence.event("draft_refused", step=index, why=outcome, attempt=refusals)
-                        if refusals > _MAX_DRAFT_REFUSALS:
+                        if refusals > _MAX_MODEL_RETRIES:
                             return DiscoveryFailure(outcome, index, evidence.dir, recorded)
                         history.append(f"finish was REFUSED and must be fixed: {outcome}")
                         continue
@@ -578,6 +602,7 @@ def discover(
                     png=png,
                     control_map=control_map,
                     surface=surface,
+                    caller=caller,
                     policy=policy,
                     secret_by_ref=secret_by_ref,
                     param_by_value=param_by_value,
@@ -587,7 +612,18 @@ def discover(
                     history=history,
                 )
                 if fault is not None:
-                    return PassToOperator(fault, index, screen, frame, evidence.dir, recorded)
+                    # ⛔ Handed back rather than escalated, while the reason is
+                    # something the model can act on. The case that forced this: the
+                    # inventory grounds table rows as clickable controls, so a model
+                    # offered `13344_link` takes it -- and ending the session there
+                    # spends a full run to produce nothing, when the refusal names
+                    # the panel to use instead.
+                    refusals += 1
+                    evidence.event("decision_refused", step=index, why=fault, attempt=refusals)
+                    if refusals > _MAX_MODEL_RETRIES:
+                        return PassToOperator(fault, index, screen, frame, evidence.dir, recorded)
+                    history.append(f"that move was REFUSED and must be fixed: {fault}")
+                    continue
 
             evidence.event("stopped", why="max_steps", step=max_steps)
             return DiscoveryFailure(
@@ -598,6 +634,98 @@ def discover(
             )
 
 
+def _row_point(
+    *,
+    control: LocatedControl,
+    wanted: str,
+    png: bytes,
+    anchor: ClickPoint,
+    caller: _Caller,
+    evidence: EvidenceWriter,
+    index: int,
+) -> tuple[ClickPoint | None, str | None]:
+    """Where to click to open the row whose key is `wanted`, or why not.
+
+    The same arithmetic `replay._drilldown_into_row` performs, and deliberately
+    the same `table.match_row` underneath it: discovery and replay have to answer
+    *which row is 13344* identically, or a recording means something different
+    from its playback.
+
+    ⛔ **Never grounded.** Asking a model where account 13344 is lands on the
+    wrong row 3 times in 4, silently (`docs/issues/0009`). Here the index comes
+    from the panel READ and the y from the measured pitch.
+
+    ⚠️ A disputed geometry refuses to click. `misaligned` means the bands we drew
+    did not line up with the rows the model saw, so the values are still
+    trustworthy -- they came from the model -- and a position computed from that
+    geometry is not. Reading is fine; clicking is not.
+    """
+    spec = control.panel
+    assert spec is not None and control.locator is not None
+    if not wanted:
+        return None, f"{control.id} is a panel: opening a row needs a row_key"
+
+    try:
+        read = caller.run(
+            extract_panel(
+                png,
+                control.locator,
+                panel=Offset(dx=spec.dx, dy=spec.dy, width=spec.width, height=spec.height),
+                key_column=Offset(
+                    dx=spec.key_dx, dy=spec.key_dy, width=spec.key_width, height=spec.height
+                ),
+                columns=spec.columns,
+                key_column_name=spec.key_column,
+                vision=caller.vision(),
+                row_pitch=spec.row_pitch,
+            )
+        )
+    except PanelNotFound as exc:
+        return None, f"panel {control.id}: {exc}"
+
+    evidence.event(
+        "panel_read",
+        step=index,
+        control=control.id,
+        rows=len(read.data.rows),
+        wanted=wanted,
+        misaligned=list(read.misaligned),
+    )
+    if read.misaligned:
+        return None, (
+            f"the row positions computed for {control.id} do not match what the screen "
+            f"shows, so this row will not be clicked: {read.misaligned[0]}"
+        )
+
+    match = match_row(read.data.rows, spec.key_column, wanted)
+    if match.matched == 0:
+        return None, (
+            f"no row of {control.id} where {spec.key_column} is {wanted!r}; "
+            f"the table holds {match.total}"
+        )
+    if match.index is None:
+        return None, (
+            f"{match.matched} rows of {control.id} have {spec.key_column} == {wanted!r}, "
+            "so which one to open is not determined"
+        )
+
+    assert spec.key_click_dx is not None  # validate_decision refused a read-only panel
+    try:
+        point = read.point_for_row(match.index, anchor.x + spec.key_click_dx)
+    except PanelNotFound as exc:
+        return None, str(exc)
+    evidence.event(
+        "row_resolved",
+        step=index,
+        control=control.id,
+        key=wanted,
+        row=match.index,
+        x=point.x,
+        y=point.y,
+    )
+    return point, None
+
+
 def _act(
     *,
     move: NextMove,
@@ -606,6 +734,7 @@ def _act(
     png: bytes,
     control_map: ScreenOutput,
     surface: PlaywrightSurface,
+    caller: _Caller,
     policy: ActionPolicy,
     secret_by_ref: dict[str, SecretBinding],
     param_by_value: dict[str, Parameter],
@@ -638,6 +767,7 @@ def _act(
                 action=move.action,
                 control_id=move.control_id,
                 value=typed,
+                row_key=move.row_key,
                 reason=move.reason,
                 post_action_expectation="",
                 confidence=move.confidence,
@@ -646,6 +776,16 @@ def _act(
         )
     except (KeyError, ValueError) as exc:
         return f"decision refused: {exc}"
+
+    # ⛔ **A row is not a control you click, even when the map offers it as one.**
+    # The inventory grounds `13344_link` and friends and they are `ready`, so the
+    # model is shown them and will take one. `check_capability` refuses that in an
+    # artifact; refusing it only THERE means a whole session ends in a draft nobody
+    # can approve. Same geometry, same words, applied while it is still a decision
+    # (Copilot, #13/#14).
+    inside = panel_containing(control_map, control)
+    if inside is not None:
+        return f"decision refused: {row_instead_of_panel(inside, control)}"
 
     if move.irreversible and not confirm_risky:
         # 3.4: the risky class is handled conservatively. During a supervised
@@ -663,11 +803,30 @@ def _act(
         # within the margin, which on an account list is two different records.
         return f"could not locate {move.control_id!r} on the live screen: {resolved.status} ({resolved.reason})"
 
+    point = resolved.point
+    row_key: Value | None = None
+    if control.panel is not None:
+        # The anchor is a HEADING. Clicking it would do nothing; the row is
+        # reached by arithmetic from a panel read.
+        point, why = _row_point(
+            control=control,
+            wanted=move.row_key or "",
+            png=png,
+            anchor=resolved.point,
+            caller=caller,
+            evidence=evidence,
+            index=index,
+        )
+        if point is None:
+            return why or f"could not resolve a row of {move.control_id!r}"
+        param = param_by_value.get(move.row_key or "")
+        row_key = ParamValue(param=param.name) if param else LiteralValue(value=move.row_key or "")
+
     try:
         acted = use_control(
             surface,
-            resolved.point.x,
-            resolved.point.y,
+            point.x,
+            point.y,
             move.action,
             typed,
             policy=policy,
@@ -690,8 +849,9 @@ def _act(
         value_length=acted.value_length,
         x=acted.x,
         y=acted.y,
-        url=acted.url,
+        location=acted.location,
         match_score=resolved.score,
+        row_key=move.row_key,
     )
     recorded.append(
         RecordedStep(
@@ -702,6 +862,7 @@ def _act(
             value_source=value_source,
             risky=move.irreversible,
             note=move.reason,
+            row_key=row_key,
         )
     )
     history.append(f"{move.action} on {move.control_id} ({screen}) -- {move.reason}")
@@ -742,6 +903,7 @@ def _synthesise(
             control=ControlRef(screen=r.screen, control_id=r.control_id),
             slot=r.slot,
             value=r.value_source,
+            row_key=r.row_key,
             risky=r.risky,
             note=r.note or "recorded by discovery",
         )
