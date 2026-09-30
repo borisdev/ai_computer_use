@@ -54,6 +54,14 @@ that did not ask for them.
 The four hand-measured panels stay in the store beside the discovered ones because
 four artifacts name their ids, not because a hand is still required.
 
+⚠️ **The origin column said `needs a panel` under the hand-authored three until
+2026-09-30, and that had become a false REASON rather than a stale label.** They
+are hand-written because they predate panel discovery. `read_savings_balance` in
+particular is a Python literal in `capabilities.py`: its approved artifact is
+byte-identical to an export of that declaration, and its v1 named `global_nav` —
+a screen with no control map — which is how a hand-written artifact carries 8
+faults and a recorded one carries 0.
+
 Everything downstream of the artifact — validation, approval, replay,
 composition, the guardrails — already treats both origins identically, which is
 why both discovered capabilities replay on both tenants alongside the rest.

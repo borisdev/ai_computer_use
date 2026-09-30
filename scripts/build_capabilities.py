@@ -8,7 +8,7 @@ T = "https://github.com/borisdev/ai_computer_use/tree/main"
 
 CAPS = [
     {
-        "origin": "✍️ hand-authored<br/><sub>needs a panel</sub>",
+        "origin": "✍️ hand-authored<br/><sub>predates panel discovery</sub>",
         "name": "read_savings_balance",
         "ver": "v3",
         "anchor": "read_savings_balance-v3",
@@ -140,7 +140,7 @@ CAPS = [
         ],
     },
     {
-        "origin": "✍️ hand-authored<br/><sub>needs a panel</sub>",
+        "origin": "✍️ hand-authored<br/><sub>predates panel discovery</sub>",
         "name": "request_loan",
         "ver": "v2",
         "anchor": "request_loan-v2",
@@ -164,7 +164,7 @@ CAPS = [
         "extra": [],
     },
     {
-        "origin": "✍️ hand-authored<br/><sub>needs a panel</sub>",
+        "origin": "✍️ hand-authored<br/><sub>predates panel discovery</sub>",
         "name": "session_loss_probe",
         "ver": "v1",
         "anchor": "session_loss_probe-v1",
