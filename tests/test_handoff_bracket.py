@@ -41,7 +41,7 @@ class _FakeSurface:
         self._url = url
         self.shots = 0
 
-    def current_url(self) -> str:
+    def location(self) -> str:
         return self._url
 
     def screenshot(self) -> bytes:
@@ -113,7 +113,7 @@ def test_both_edges_of_the_handoff_carry_a_frame(tmp_path: Path) -> None:
     after = _one(ctx, "handoff_returned")
     for edge in (before, after):
         assert Path(edge["frame"]).exists(), f"{edge['event']} frame was not written"
-        assert edge["url"] == "http://bank/overview.htm"
+        assert edge["location"] == "http://bank/overview.htm"
     assert before["frame"] != after["frame"], "one frame reused for both edges proves nothing"
 
 
@@ -127,9 +127,9 @@ def test_a_human_who_navigates_is_visible_even_though_we_never_saw_the_click(
     _hand_over(ctx, 0, _OBSERVE, _BLOCKED)
 
     after = _one(ctx, "handoff_returned")
-    assert after["url_changed"] is True
-    assert after["url"] == "http://bank/activity.htm"
-    assert _one(ctx, "handoff_requested")["url"] == "http://bank/overview.htm"
+    assert after["location_changed"] is True
+    assert after["location"] == "http://bank/activity.htm"
+    assert _one(ctx, "handoff_requested")["location"] == "http://bank/overview.htm"
 
 
 def test_a_human_who_changes_nothing_says_so(tmp_path: Path) -> None:
@@ -138,7 +138,7 @@ def test_a_human_who_changes_nothing_says_so(tmp_path: Path) -> None:
 
     _hand_over(ctx, 0, _OBSERVE, _BLOCKED)
 
-    assert _one(ctx, "handoff_returned")["url_changed"] is False
+    assert _one(ctx, "handoff_returned")["location_changed"] is False
 
 
 def test_the_bracket_is_recorded_even_when_the_operator_aborts(tmp_path: Path) -> None:
@@ -152,7 +152,7 @@ def test_the_bracket_is_recorded_even_when_the_operator_aborts(tmp_path: Path) -
     after = _one(ctx, "handoff_returned")
     assert after["resolution"] == "aborted"
     assert Path(after["frame"]).exists()
-    assert after["url_changed"] is True
+    assert after["location_changed"] is True
 
 
 def test_ownership_is_recorded_on_both_edges(tmp_path: Path) -> None:

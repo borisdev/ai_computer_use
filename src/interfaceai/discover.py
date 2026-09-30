@@ -387,7 +387,7 @@ def discover(
                     )
 
                 png = surface.screenshot()
-                url = surface.current_url()
+                url = surface.location()
                 screen = screen_name(url)
                 frame = evidence.frame(png, f"{index:02d}-{screen}")
 
@@ -632,7 +632,7 @@ def _synthesise(
     if not recorded:
         return "the model finished without taking a single action"
 
-    final_screen = screen_name(surface.current_url())
+    final_screen = screen_name(surface.location())
     steps: list[Step] = [
         Step(
             verb=_VERB_OF_ACTION[r.action],

@@ -1,0 +1,18 @@
+{"ts": "2026-09-30T05:38:34.211685+00:00", "event": "run_started", "goal": "apply for a loan of a given amount with a given down payment", "model": "replay/none", "requested_by": "borisdev"}
+{"ts": "2026-09-30T05:38:34.211798+00:00", "event": "replay_started", "capability": "request_loan", "version": 2, "inputs": ["amount", "down_payment"], "target": {"app": "parabank", "tenant": "baseline", "base_url": "http://localhost:8080/parabank"}}
+{"ts": "2026-09-30T05:38:34.882452+00:00", "event": "precondition", "name": "at_the_login_page", "want": "present", "present": true, "when": "entry"}
+{"ts": "2026-09-30T05:38:34.882606+00:00", "event": "invoke_started", "step": 0, "capability": "log_in", "version": 2, "bound": []}
+{"ts": "2026-09-30T05:38:34.999496+00:00", "event": "precondition", "name": "at_the_login_page", "want": "present", "present": true, "when": "entry"}
+{"ts": "2026-09-30T05:38:35.209700+00:00", "event": "acted", "step": 0, "control": "username_textbox", "action": "enter_text", "value_length": 4, "score": 1.0, "location": "http://localhost:8080/parabank/index.htm"}
+{"ts": "2026-09-30T05:38:36.424672+00:00", "event": "acted", "step": 1, "control": "password_textbox", "action": "enter_text", "value_length": 4, "score": 1.0, "location": "http://localhost:8080/parabank/index.htm"}
+{"ts": "2026-09-30T05:38:37.555791+00:00", "event": "acted", "step": 2, "control": "log_in_button", "action": "click", "value_length": null, "score": 0.9997754693031311, "location": "http://localhost:8080/parabank/index.htm"}
+{"ts": "2026-09-30T05:38:38.684590+00:00", "event": "waited", "step": 3, "control": "accounts_overview_link"}
+{"ts": "2026-09-30T05:38:38.684727+00:00", "event": "replay_succeeded", "capability": "log_in", "outputs": {}}
+{"ts": "2026-09-30T05:38:38.684769+00:00", "event": "invoke_finished", "step": 0, "capability": "log_in", "result": "Success"}
+{"ts": "2026-09-30T05:38:42.526503+00:00", "event": "panel_read", "step": 1, "control": "account_services_nav", "rows": 8, "wanted": "Request Loan"}
+{"ts": "2026-09-30T05:38:42.623856+00:00", "event": "row_resolved", "step": 1, "control": "account_services_nav", "key": "Request Loan", "index": 6, "pitch": 24, "x": 320, "y": 460}
+{"ts": "2026-09-30T05:38:42.631013+00:00", "event": "acted", "step": 1, "control": "account_services_nav", "action": "click", "location": "http://localhost:8080/parabank/overview.htm"}
+{"ts": "2026-09-30T05:38:43.727653+00:00", "event": "waited", "step": 2, "control": "loan_amount_textbox"}
+{"ts": "2026-09-30T05:38:43.943101+00:00", "event": "acted", "step": 3, "control": "loan_amount_textbox", "action": "enter_text", "value_length": 5, "score": 0.99997878074646, "location": "http://localhost:8080/parabank/requestloan.htm"}
+{"ts": "2026-09-30T05:38:45.140946+00:00", "event": "acted", "step": 4, "control": "down_payment_textbox", "action": "enter_text", "value_length": 4, "score": 0.9999957084655762, "location": "http://localhost:8080/parabank/requestloan.htm"}
+{"ts": "2026-09-30T05:38:46.214500+00:00", "event": "replay_finished", "outcome": "NeedsOperator", "capability": "request_loan", "recovered": [], "frame": "/home/borisdev/workspace/ai_computer_use/evidence/runs/20260930T053834Z/frames/001-05-stuck.png"}

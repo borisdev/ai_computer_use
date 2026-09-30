@@ -78,7 +78,7 @@ class InterventionRequest:
     capability: str
     step_index: int
     screen: str
-    url: str
+    location: str
     completed_steps: tuple[str, ...]
     frame: Path | None = None
 
@@ -90,7 +90,7 @@ class HumanAction:
     action: ManualActionKind
     x: int
     y: int
-    url: str
+    location: str
     value_length: int | None = None  # never the value
 
 
@@ -168,7 +168,7 @@ class TerminalOperator:
         print("\n" + "=" * 72)
         print(f"HUMAN NEEDED — {request.capability}, step {request.step_index}")
         print(f"  why        {request.why}")
-        print(f"  screen     {request.screen}   {request.url}")
+        print(f"  screen     {request.screen}   {request.location}")
         if request.completed_steps:
             print(f"  completed  {', '.join(request.completed_steps)}")
         if request.frame:
@@ -202,7 +202,7 @@ class TerminalOperator:
                 print(_HELP)
                 continue
             if verb == "url":
-                print(surface.current_url())
+                print(surface.location())
                 continue
 
             try:
@@ -237,22 +237,20 @@ class TerminalOperator:
             # the function that happens to wrap it.
             self.policy.check(ManualActionKind.ENTER_TEXT, rest)
             surface.type_text(rest)
-            return HumanAction(
-                ManualActionKind.ENTER_TEXT, -1, -1, surface.current_url(), len(rest)
-            )
+            return HumanAction(ManualActionKind.ENTER_TEXT, -1, -1, surface.location(), len(rest))
         elif verb == "goto":
             if not rest:
                 raise ValueError("usage: goto URL")
             # `surface.navigate` enforces the ORIGIN allowlist itself, so
             # this one was already gated -- checked before assuming otherwise.
             surface.navigate(rest)
-            return HumanAction(ManualActionKind.CLICK, -1, -1, surface.current_url())
+            return HumanAction(ManualActionKind.CLICK, -1, -1, surface.location())
         elif verb == "shot":
             surface.screenshot()
             return None
         else:
             raise ValueError(f"unknown command {verb!r}; try 'help'")
-        return HumanAction(acted.action, acted.x, acted.y, acted.url, acted.value_length)
+        return HumanAction(acted.action, acted.x, acted.y, acted.location, acted.value_length)
 
 
 class ScriptedOperator:
