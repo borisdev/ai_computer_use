@@ -50,34 +50,23 @@ class Viewport:
 class Surface(Protocol):
     """What a computer-use surface must be able to do.
 
-    ⛔ **THIRTEEN OF THESE FIFTEEN ARE PIXELS AND INPUT. TWO ARE BROWSERS.**
-    REPORT §4 said "a desktop backend implements `Surface` and nothing above
-    changes", and that is false for `navigate` and `current_url` — a desktop
-    application has no URL. Boris found it by asking why a surface is only a
-    screen.
+    ⭐ EVERY METHOD IS PIXELS, INPUT, OR AN OPAQUE LOCATION. Nothing here says
+    "browser", which is what makes §3.7's claim -- *"how your artifact schema
+    and replay engine would extend ... to a legacy web app and/or a desktop
+    app"* -- something a desktop implementation could actually satisfy.
 
-    §3.7 asks exactly this question — *"What's the seam between 'how we
-    perceive/act on a surface' and 'the recorded flow'?"* — so naming where the
-    seam LEAKS is part of answering it honestly.
+    ⛔ IT DID NOT USED TO BE. `current_url()` and `navigate(url)` were in this
+    protocol, and a desktop application has no URL. Boris asked why a surface
+    is only a screen; the honest answer was that two of fifteen methods were
+    not. Documenting that hole was the first instinct and the wrong one -- the
+    whole point of the extra work on the seam is the hardest case, and a
+    protocol that names a browser throws that away.
 
-    The leak is shallow and its shape is known:
-
-        navigate(url)     3 call sites, all of them "go to where this run
-                          starts". A desktop surface launches an app instead.
-        current_url()     7 call sites, and it is doing two DIFFERENT jobs:
-                          identifying a LOCATION (evidence, the handoff
-                          bracket) and detecting that the page MOVED (clearing
-                          money typed on a form that is gone).
-
-    The honest generalisation is a **location string**, not a URL: a desktop
-    surface answers with a window title or a view id, and every caller above
-    treats it as an opaque token already — they compare it and record it, and
-    none of them parse it.
-
-    ⚠️ NOT RENAMED, deliberately. `current_url` is in seven call sites, in the
-    committed evidence of every run, and in the handoff bracket that §3.6
-    grades. Renaming it to `location` would rewrite history for a clarity gain
-    the docstring can deliver. It is named here as issue #16 instead.
+    `location()` is the fix and it is not a euphemism. Every caller already
+    treated the return as an OPAQUE TOKEN: seven call sites compare it or
+    record it, and not one parses it. A browser answers with a URL; a desktop
+    surface answers with a window title or a view id; `use_control` enforces
+    the origin allowlist on navigation either way.
     """
 
     def screenshot(self) -> bytes: ...
@@ -92,8 +81,8 @@ class Surface(Protocol):
     def type_text(self, text: str) -> None: ...
     def press_key(self, key: str, repeat: int = 1) -> None: ...
     def wait(self, seconds: float) -> None: ...
-    def navigate(self, url: str) -> None: ...
-    def current_url(self) -> str: ...
+    def navigate(self, target: str) -> None: ...
+    def location(self) -> str: ...
 
 
 # Claude emits X11-style key names; Playwright wants its own spelling.
@@ -196,7 +185,9 @@ class PlaywrightSurface:
             clip={"x": x0, "y": y0, "width": max(1, x1 - x0), "height": max(1, y1 - y0)},
         )
 
-    def current_url(self) -> str:
+    def location(self) -> str:
+        """A browser answers with a URL. A desktop surface would answer with a
+        window title -- every caller treats this as an opaque token."""
         return self.page.url
 
     # --- action ------------------------------------------------------------
@@ -255,9 +246,9 @@ class PlaywrightSurface:
     def wait(self, seconds: float) -> None:
         self.page.wait_for_timeout(min(seconds, 30) * 1000)
 
-    def navigate(self, url: str) -> None:
-        self._check_origin(url)
-        self.page.goto(url, wait_until="domcontentloaded")
+    def navigate(self, target: str) -> None:
+        self._check_origin(target)
+        self.page.goto(target, wait_until="domcontentloaded")
 
 
 def png_to_base64(png: bytes) -> str:
@@ -326,7 +317,7 @@ class Acted:
     action: ManualActionKind
     x: int
     y: int
-    url: str
+    location: str
     value_length: int | None = None  # length, never the value itself
 
 
@@ -383,7 +374,7 @@ def use_control(
         action=action,
         x=x,
         y=y,
-        url=surface.current_url(),
+        location=surface.location(),
         value_length=None if value is None else len(value),
     )
 

@@ -22,7 +22,7 @@ class FakeSurface:
     def type_text(self, text):
         self.calls.append(("type", text))
 
-    def current_url(self):
+    def location(self):
         return "http://localhost:8080/parabank/index.htm"
 
 
@@ -111,7 +111,7 @@ def test_the_OPERATOR_cannot_type_a_forbidden_value() -> None:
         def type_text(self, text: str) -> None:
             typed.append(text)
 
-        def current_url(self) -> str:
+        def location(self) -> str:
             return "http://bank/transfer.htm"
 
         def screenshot(self) -> bytes:
@@ -126,7 +126,7 @@ def test_the_OPERATOR_cannot_type_a_forbidden_value() -> None:
             capability="c",
             step_index=0,
             screen="s",
-            url="u",
+            location="u",
             completed_steps=(),
         ),
         _Surface(),  # type: ignore[arg-type]

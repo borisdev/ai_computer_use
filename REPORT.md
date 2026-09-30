@@ -165,15 +165,16 @@ schema, engine and guardrails name the protocol, never a browser, except at the
 composition root where `replay()` constructs a `PlaywrightSurface` because
 something must.
 
-⚠️ **And the seam leaks in exactly two places, which is worth naming because
-§3.7 asks where it is.** Thirteen of `Surface`'s fifteen methods are pixels and
-input, and port to a desktop app unchanged. `navigate(url)` and `current_url()`
-do not — a desktop application has no URL. The leak is shallow and its shape is
-known: every caller treats the return of `current_url` as an **opaque location
-token**, comparing it or recording it and never parsing it, so a desktop
-surface answering with a window title would satisfy all seven call sites. It is
-not renamed to `location` because the name is in the committed evidence of
-every run ([#16](https://github.com/borisdev/ai_computer_use/issues/16)). `use_control` is surface-independent: *what is permitted* is a
+⚠️ **It did not used to be true, and §3.7 asks precisely this.** Two of
+`Surface`'s fifteen methods named a browser — `current_url()` and
+`navigate(url)` — and a desktop application has no URL, so the claim above was
+false for them. Documenting the hole was the first instinct and the wrong one:
+the point of the work on this seam is the **hardest** case, and a protocol that
+names a browser throws that away. Both are renamed — `location()` and
+`navigate(target)` — and the evidence records `location` / `location_changed`
+to match. Every caller already treated the value as an **opaque token**: seven
+sites compare it or record it and not one parses it, so a desktop surface
+answering with a window title satisfies all of them. `use_control` is surface-independent: *what is permitted* is a
 property of the bank, *how to click* a property of the surface.
 
 An artifact recorded on tenant A replays on tenant B. **Drift detection is the
@@ -243,7 +244,8 @@ value.
 
 ⚠️ **It is a protocol plus a recorded state, not an interlock** — nothing stops
 a person clicking the visible browser directly, and we would not see it. So the
-handoff window is **bracketed**: a frame, URL and `url_changed` at each edge.
+handoff window is **bracketed**: a frame, a location and `location_changed` at
+each edge.
 Not *"what the human did"* but *"what the page looked like when we handed it
 over and got it back"*. A co-browsing console would not fix this and §3.6 puts
 it out of scope; the design that would is a **headless mirror**, unbuilt because
