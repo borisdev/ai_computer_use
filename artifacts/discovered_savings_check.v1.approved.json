@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "name": "discovered_account_type",
+  "name": "discovered_savings_check",
   "version": 1,
-  "goal": "read the account type of account 13344",
+  "goal": "confirm that account 13344 is a savings account",
   "vocabulary_version": 1,
   "target": {
     "app": "parabank",
@@ -60,7 +60,7 @@
       "invokes_version": null,
       "bind": [],
       "risky": false,
-      "note": "To read the account type for account 13344, I need to log in first. The login form is present, so I will enter the username."
+      "note": "To confirm the account type for account 13344, I need to log in first. The first step is to enter the username."
     },
     {
       "verb": "enter",
@@ -81,7 +81,7 @@
       "invokes_version": null,
       "bind": [],
       "risky": false,
-      "note": "To log in, I need to enter the password after entering the username. The password field is present."
+      "note": "To proceed with login, I need to enter the password after entering the username."
     },
     {
       "verb": "click",
@@ -99,7 +99,7 @@
       "invokes_version": null,
       "bind": [],
       "risky": false,
-      "note": "The username and password have been entered. The next step is to click the LOG IN button to proceed with authentication and access account information."
+      "note": "Proceeding to log in by clicking the LOG IN button after entering username and password."
     },
     {
       "verb": "click",
@@ -120,7 +120,7 @@
       "invokes_version": null,
       "bind": [],
       "risky": false,
-      "note": "To read the account type for account 13344, I need to open its row in the Accounts Overview table, as the overview only shows balances and not account type."
+      "note": "To confirm the account type for account 13344, I need to open its row in the accounts overview table, which may show account details including the type."
     },
     {
       "verb": "observe",
@@ -200,6 +200,6 @@
     }
   ],
   "establishes": null,
-  "approval": "draft",
-  "approved_by": null
+  "approval": "approved",
+  "approved_by": "panel-discovery session"
 }

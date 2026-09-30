@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     # ⚠️ A tenant NOT named here is REFUSED, not unrestricted. Only an entirely
     # empty setting disables the gate. Adding a tenant to the system means
     # adding it here, or its runs will not start.
-    interfaceai_allowed_capabilities: str = "baseline=*;feature=log_in,log_in_discovered,read_savings_balance,discovered_balance,discovered_account_type"
+    interfaceai_allowed_capabilities: str = "baseline=*;feature=log_in,log_in_discovered,read_savings_balance,discovered_balance,discovered_savings_check"
 
     # --- Demo fixtures ---
     parabank_demo_username: str = "john"

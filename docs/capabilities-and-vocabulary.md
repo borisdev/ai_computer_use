@@ -197,7 +197,7 @@ from a real discovery run rather than a hand.
 ⚠️ **And the panel is no longer a hand-measured prerequisite.** Both of capability
 1's regions — the accounts TABLE and the account-detail LABEL/VALUE block — are
 proposed by discovery and measured by geometry (`screenshot2panels`, issue #6),
-and `discovered_account_type` is capability 1's shape produced that way: a
+and `discovered_savings_check` is capability 1's shape produced that way: a
 drilldown by `row_key` between two discovered panels, with the `account_type`
 checkpoint inferred from the run.
 

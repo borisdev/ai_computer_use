@@ -1005,10 +1005,10 @@
       "id": "atm_services_table_control_panel",
       "label": "ATM Services",
       "role": "table_control_panel",
-      "description": "A list of ATM services with their descriptions, located in the center right of the screen under the heading 'ATM Services'. Each row is a service such as 'Withdraw Funds' or 'Transfer Funds'. (4 rows, pitch 20px, autocorrelation 0.732)",
+      "description": "A vertical list of ATM-related services such as Withdraw Funds, Transfer Funds, Check Balances, and Make Deposits, located in the center right of the screen. (4 rows, pitch 20px, autocorrelation 0.732)",
       "status": "ready",
       "click_point": {
-        "x": 719,
+        "x": 700,
         "y": 290
       },
       "locator": {
@@ -1026,7 +1026,7 @@
           "height": 15
         },
         "click_offset": {
-          "x": 38,
+          "x": 19,
           "y": 1
         },
         "match_threshold": 0.95,
@@ -1039,15 +1039,14 @@
       },
       "panel": {
         "columns": [
-          "service",
-          "description"
+          "service"
         ],
         "key_column": "service",
-        "dx": -58,
+        "dx": -39,
         "dy": 17,
         "width": 313,
         "height": 80,
-        "key_dx": -34,
+        "key_dx": -15,
         "key_dy": 17,
         "key_width": 106,
         "key_click_dx": null,
@@ -1058,11 +1057,11 @@
       "id": "online_services_table_control_panel",
       "label": "Online Services",
       "role": "table_control_panel",
-      "description": "A list of online banking services with their descriptions, located in the center right of the screen under the heading 'Online Services'. Each row is a service such as 'Bill Pay' or 'Account History'. (3 rows, pitch 20px, autocorrelation 0.667)",
+      "description": "A vertical list of online banking services such as Bill Pay, Account History, and Transfer Funds, located to the right of the ATM Services list. (3 rows, pitch 20px, autocorrelation 0.667)",
       "status": "ready",
       "click_point": {
-        "x": 889,
-        "y": 301
+        "x": 869,
+        "y": 290
       },
       "locator": {
         "kind": "visual",
@@ -1079,8 +1078,8 @@
           "height": 15
         },
         "click_offset": {
-          "x": 45,
-          "y": 12
+          "x": 25,
+          "y": 1
         },
         "match_threshold": 0.95,
         "ambiguity_margin": 0.05
@@ -1092,20 +1091,20 @@
       },
       "panel": {
         "columns": [
-          "service",
-          "description"
+          "service"
         ],
         "key_column": "service",
-        "dx": -65,
-        "dy": 6,
+        "dx": -45,
+        "dy": 17,
         "width": 150,
         "height": 60,
-        "key_dx": -41,
-        "key_dy": 6,
+        "key_dx": -21,
+        "key_dy": 17,
         "key_width": 5,
         "key_click_dx": null,
         "row_pitch": 20
       }
     }
-  ]
+  ],
+  "panels_scanned": true
 }

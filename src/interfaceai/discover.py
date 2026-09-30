@@ -67,7 +67,13 @@ from interfaceai.capability import (
     Value,
 )
 from interfaceai.contracts import Contract
-from interfaceai.control_map_store import ControlMapMiss, ControlMapStore, MapKey
+from interfaceai.control_map_store import (
+    ControlMapMiss,
+    ControlMapStore,
+    MapKey,
+    panel_containing,
+    row_instead_of_panel,
+)
 from interfaceai.decisions import AgentDecision, ManualActionKind, validate_decision
 from interfaceai.evidence import EvidenceWriter
 from interfaceai.screenshot2controls import (
@@ -101,10 +107,14 @@ DISCOVERY_ACTIONS = frozenset(
     {ManualActionKind.CLICK, ManualActionKind.ENTER_TEXT, ManualActionKind.SELECT}
 )
 
-# How many times a draft may be refused before the run is. A refusal names what
-# to fix, so one more attempt is worth a model call; a model that cannot fix it
-# in two is not going to.
-_MAX_DRAFT_REFUSALS = 2
+# How many refusals the model may be handed back before the run ends. A refusal
+# names what to fix, so one more attempt is worth a model call; a model that
+# cannot fix it in two is not going to.
+#
+# ⚠️ Covers BOTH kinds: a draft the synthesiser refused, and a move the decision
+# boundary refused. They fail at opposite ends of the run and the reasoning is
+# identical -- the reason is in the model's hands, so give it the reason.
+_MAX_MODEL_RETRIES = 2
 
 _VERB_OF_ACTION = {
     ManualActionKind.CLICK: StepVerb.CLICK,
@@ -474,10 +484,29 @@ def discover(
                         return DiscoveryFailure(
                             f"could not map screen {screen!r}: {exc}", index, evidence.dir, recorded
                         )
-                    # Panels are proposed on the SAME screenshot, by the same
-                    # kind of pass, and merged into the one map -- a panel IS a
-                    # control (`ControlRole.TABLE_CONTROL_PANEL`), so a second
-                    # store would be a second source of truth for one screen.
+                    store.put(key, control_map)
+                    evidence.event(
+                        "control_map_built",
+                        step=index,
+                        screen=screen,
+                        controls=len(control_map.controls),
+                        ready=sum(1 for c in control_map.controls if c.status == "ready"),
+                    )
+
+                # ⛔ **Asked of every map, not only a fresh one.** Panels are
+                # proposed on the SAME screenshot, by the same kind of pass, and
+                # merged into the one map -- a panel IS a control
+                # (`ControlRole.TABLE_CONTROL_PANEL`), so a second store would be a
+                # second source of truth for one screen.
+                #
+                # `panels_scanned` is the fact this reads, and it exists because
+                # `panels == []` cannot answer the question: a screen with no
+                # repeated structure and a screen recorded BEFORE panel discovery
+                # are spelled identically. Running the pass only on a cache MISS
+                # meant every map already on disk stayed panel-less forever, so a
+                # normal session on those screens could not produce a
+                # panel-backed artifact at all (Copilot, #13).
+                if not control_map.panels_scanned:
                     try:
                         panels = caller.run(
                             extract_panel_locators(
@@ -497,11 +526,9 @@ def discover(
                     control_map = merge_panels(control_map, panels)
                     store.put(key, control_map)
                     evidence.event(
-                        "control_map_built",
+                        "panels_scanned",
                         step=index,
                         screen=screen,
-                        controls=len(control_map.controls),
-                        ready=sum(1 for c in control_map.controls if c.status == "ready"),
                         panels=len(panels),
                         panels_ready=sum(1 for p in panels if p.status == "ready"),
                     )
@@ -560,7 +587,7 @@ def discover(
                         # keeps producing unapprovable drafts still fails.
                         refusals += 1
                         evidence.event("draft_refused", step=index, why=outcome, attempt=refusals)
-                        if refusals > _MAX_DRAFT_REFUSALS:
+                        if refusals > _MAX_MODEL_RETRIES:
                             return DiscoveryFailure(outcome, index, evidence.dir, recorded)
                         history.append(f"finish was REFUSED and must be fixed: {outcome}")
                         continue
@@ -585,7 +612,18 @@ def discover(
                     history=history,
                 )
                 if fault is not None:
-                    return PassToOperator(fault, index, screen, frame, evidence.dir, recorded)
+                    # ⛔ Handed back rather than escalated, while the reason is
+                    # something the model can act on. The case that forced this: the
+                    # inventory grounds table rows as clickable controls, so a model
+                    # offered `13344_link` takes it -- and ending the session there
+                    # spends a full run to produce nothing, when the refusal names
+                    # the panel to use instead.
+                    refusals += 1
+                    evidence.event("decision_refused", step=index, why=fault, attempt=refusals)
+                    if refusals > _MAX_MODEL_RETRIES:
+                        return PassToOperator(fault, index, screen, frame, evidence.dir, recorded)
+                    history.append(f"that move was REFUSED and must be fixed: {fault}")
+                    continue
 
             evidence.event("stopped", why="max_steps", step=max_steps)
             return DiscoveryFailure(
@@ -739,6 +777,16 @@ def _act(
     except (KeyError, ValueError) as exc:
         return f"decision refused: {exc}"
 
+    # ⛔ **A row is not a control you click, even when the map offers it as one.**
+    # The inventory grounds `13344_link` and friends and they are `ready`, so the
+    # model is shown them and will take one. `check_capability` refuses that in an
+    # artifact; refusing it only THERE means a whole session ends in a draft nobody
+    # can approve. Same geometry, same words, applied while it is still a decision
+    # (Copilot, #13/#14).
+    inside = panel_containing(control_map, control)
+    if inside is not None:
+        return f"decision refused: {row_instead_of_panel(inside, control)}"
+
     if move.irreversible and not confirm_risky:
         # 3.4: the risky class is handled conservatively. During a supervised
         # authoring run the conservative thing is to stop and ask a person,
@@ -801,7 +849,7 @@ def _act(
         value_length=acted.value_length,
         x=acted.x,
         y=acted.y,
-        url=acted.url,
+        location=acted.location,
         match_score=resolved.score,
         row_key=move.row_key,
     )
@@ -973,9 +1021,16 @@ def _synthesise(
             "unmatched to a parameter, so replay would have nothing to verify"
         )
 
-    used = {
-        s.value.param for s in steps if s.value is not None and isinstance(s.value, ParamValue)
-    } | {c.expected.param for c in checkpoints if isinstance(c.expected, ParamValue)}
+    # ⚠️ **A row_key counts.** A parameter can be used NOWHERE else: read the
+    # balance of the row where account_id = the caller's id, and check a different
+    # output against a literal. Leaving row_keys out dropped that parameter from
+    # `params` and the draft then failed its own validation, since `row_key` named
+    # something undeclared. Found by Copilot on #13.
+    used = (
+        {s.value.param for s in steps if s.value is not None and isinstance(s.value, ParamValue)}
+        | {s.row_key.param for s in steps if isinstance(s.row_key, ParamValue)}
+        | {c.expected.param for c in checkpoints if isinstance(c.expected, ParamValue)}
+    )
 
     # The one precondition discovery can honestly infer: we must be where the
     # recording started. Anything richer would be invented.

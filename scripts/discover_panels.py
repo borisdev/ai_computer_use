@@ -30,6 +30,7 @@ left exactly where `add_panels.py` put them.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -53,7 +54,11 @@ SHOTS = {
 
 # `_slug(label, ControlRole.TABLE_CONTROL_PANEL)` ends every discovered panel's id
 # with this, and nothing hand-measured does.
-_DISCOVERED_SUFFIX = f"_{ControlRole.TABLE_CONTROL_PANEL.value}"
+#
+# ⚠️ **Optionally followed by a number.** Two regions whose headings slug the same,
+# or a heading a non-panel control already owns, get `_2` appended by `_unique` --
+# and matching the bare suffix left those behind on a rerun (Copilot, #13).
+_DISCOVERED = re.compile(rf"_{re.escape(ControlRole.TABLE_CONTROL_PANEL.value)}(_\d+)?$")
 
 
 def _without_discovered(control_map: ScreenOutput) -> ScreenOutput:
@@ -63,9 +68,7 @@ def _without_discovered(control_map: ScreenOutput) -> ScreenOutput:
             "controls": [
                 c
                 for c in control_map.controls
-                if not (
-                    c.role is ControlRole.TABLE_CONTROL_PANEL and c.id.endswith(_DISCOVERED_SUFFIX)
-                )
+                if not (c.role is ControlRole.TABLE_CONTROL_PANEL and _DISCOVERED.search(c.id))
             ]
         }
     )
@@ -105,18 +108,24 @@ def main() -> int:
                     # the reason is reviewable rather than a count.
                     print(f"  ⛔ {panel.id}: {panel.reason}")
             ready = [p for p in proposed if p.status == "ready"]
-            if not ready:
-                # Not an error: a screen may genuinely hold no repeated
-                # structure. `index` has three; the login form is not one.
-                print(f"  (nothing storable for {screen})")
-                continue
             if args.dry_run:
                 continue
+            # ⛔ **A run that proposes nothing still has to WRITE.** Returning early
+            # left the previous run's panels in the map, still `ready`, so replay
+            # could keep using a proposal this run refused -- the stale-proposal
+            # bug one level up from the suffix one (Copilot, #13). An empty read is
+            # a result: it removes what it no longer proposes.
+            if not ready:
+                print(f"  (nothing proposed for {screen}; removing earlier proposals)")
             for tenant in store.tenants("parabank"):
                 key = MapKey(app="parabank", tenant=tenant, screen=screen)
                 recorded = store.screens("parabank", tenant)
                 if screen in recorded:
                     store.put(key, merge_panels(_without_discovered(store.get(key)), ready))
+                elif not ready:
+                    # Never recorded and nothing to store: a map with no controls
+                    # at all would be a placeholder pretending to be a measurement.
+                    continue
                 else:
                     # Same choice `add_panels.py` makes for activity.htm: a map
                     # holding only the panel is honest, not a placeholder.

@@ -73,7 +73,7 @@ container is down is not — it would be asserting nothing.
 the escalation path and DISCOVERY were "not written yet". All of them exist and
 are central — discovery emits artifacts, and since
 [#6](https://github.com/borisdev/ai_computer_use/issues/6) closed it emits
-PANEL-BACKED ones. `artifacts/discovered_account_type.v1.approved.json` is the
+PANEL-BACKED ones. `artifacts/discovered_savings_check.v1.approved.json` is the
 brief's own worked example, discovered: two panels and a drilldown between them,
 with a checkpoint discovery inferred. Every region `scripts/add_panels.py`
 measured by hand is now proposed and measured —

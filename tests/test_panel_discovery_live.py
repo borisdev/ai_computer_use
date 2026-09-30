@@ -23,7 +23,7 @@ from interfaceai.screenshot2controls import ControlRole, ScreenInput
 from interfaceai.screenshot2panels import extract_panel_locators
 from interfaceai.settings import get_settings
 from interfaceai.surface import OffLoop, PlaywrightSurface
-from interfaceai.table import Offset, extract_panel
+from interfaceai.table import MARKER_FIELD, Offset, extract_panel
 from interfaceai.vision_llm import call_vision_llm
 
 pytestmark = pytest.mark.live
@@ -108,6 +108,12 @@ def test_every_panel_discovery_proposed_passes_the_alignment_check(
         read = _read(overview_screenshot, panel)
         assert read.data.rows, f"{panel.id} read no rows"
         assert read.misaligned == (), (panel.id, read.misaligned)
+        # ⛔ `misaligned == ()` is ALSO what a bypassed verifier looks like:
+        # `_check_alignment` SKIPS a row whose optional marker is missing, so a
+        # model that returned no markers at all passes silently. Assert the
+        # markers are there and each row reports its own band (Copilot, #13).
+        markers = [getattr(row, MARKER_FIELD, None) for row in read.data.rows]
+        assert markers == list(range(len(markers))), (panel.id, markers)
 
 
 def test_the_discovered_accounts_panel_can_find_account_13344(

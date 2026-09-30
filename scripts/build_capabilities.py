@@ -111,15 +111,15 @@ CAPS = [
     },
     {
         "origin": "🤖 <b>discovered</b><br/><sub>the brief's own example</sub>",
-        "name": "discovered_account_type",
+        "name": "discovered_savings_check",
         "ver": "v1",
-        "anchor": "discovered_account_type-v1",
-        "art": "discovered_account_type.v1.approved.json",
+        "anchor": "discovered_savings_check-v1",
+        "art": "discovered_savings_check.v1.approved.json",
         "sig": "(account_id) → account_id, account_type",
         "run": "--param account_id=13344",
-        "desc": "Open an account from the table and read its TYPE off the detail page. **The same shape as `read_savings_balance`, discovered** — two panels and a drilldown between them.",
-        "a": ("✅", "`Success` · 7 steps", "20260930T035124Z"),
-        "b": ("✅", "`Success` · 7 steps", "20260930T035146Z"),
+        "desc": "Confirm an account IS a savings account, by opening it from the table and reading its type off the detail page. **The same shape as `read_savings_balance`, discovered** — two panels and a drilldown between them.",
+        "a": ("✅", "`Success` · 7 steps", "20260930T182723Z"),
+        "b": ("✅", "`Success` · 7 steps", "20260930T182743Z"),
         "demo": [
             (
                 "A drilldown, discovered",
@@ -131,12 +131,12 @@ CAPS = [
             ),
             (
                 "A checkpoint with teeth, derived",
-                "`account_type == SAVINGS` was inferred from the run, and `interfaceai env break` makes it fail with **observed CHECKING**",
+                "`account_type == SAVINGS` was inferred from the run. It is an assertion, so the NAME says so — a capability promising to read any type must not fail on a checking account (Copilot, #14). `interfaceai env break` makes it fail with **observed CHECKING**",
             ),
         ],
         "extra": [
-            ("the discovery run that produced it", "20260930T033307Z"),
-            ("the checkpoint firing on a changed record", "20260930T035024Z"),
+            ("the discovery run that produced it", "20260930T182155Z"),
+            ("the checkpoint firing on a changed record", "20260930T182806Z"),
         ],
     },
     {

@@ -2,10 +2,10 @@
 
 ## ⛔ THREE were discovered, and the reason the others were not is GONE
 
-`log_in_discovered`, `discovered_balance` and `discovered_account_type` came out
+`log_in_discovered`, `discovered_balance` and `discovered_savings_check` came out
 of real LLM runs. The other four were **written by hand** in `capabilities.py`.
 
-⭐ **`discovered_account_type` is the brief's own worked example, discovered.**
+⭐ **`discovered_savings_check` is the brief's own worked example, discovered.**
 Two panels and a drilldown between them: open account 13344 from the accounts
 table by `row_key`, then read `Account Type` out of a label/value block on the
 detail page. It is the same shape as the hand-written `read_savings_balance` v3,

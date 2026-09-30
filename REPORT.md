@@ -8,7 +8,7 @@
 > threshold stops and asks a person. Every number here came from a run.
 >
 > ```
-> 336 tests — 301 offline, 35 live · ruff clean
+> 338 tests — 303 offline, 35 live · ruff clean
 > ```
 
 Detail lives elsewhere so this stays short: **[evidence/](evidence/README.md)**
@@ -319,7 +319,7 @@ Reasoning per item in [STILL-OPEN.md](STILL-OPEN.md).
 
 1. **A column's width from its WHITESPACE, not its ink.** Panels are discovered
    now (`screenshot2panels`), including the brief's own worked example end to end
-   — two panels and a drilldown, `discovered_account_type`. The weak seam left is
+   — two panels and a drilldown, `discovered_savings_check`. The weak seam left is
    that a crop is sized to the values present when it was recorded: one row
    height of slack covers a value a character longer, and anything past that
    fails at the read rather than being truncated in silence. Deriving the edge

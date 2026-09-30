@@ -25,7 +25,7 @@ artifact, deterministic replay with typed outcomes, human handoff of the live
 session, and one artifact serving two tenants.
 
 ```
-336 tests — 301 offline, 35 live · ruff clean
+338 tests — 303 offline, 35 live · ruff clean
 ```
 
 | Piece | State |
@@ -48,7 +48,7 @@ session, and one artifact serving two tenants.
 | Persistence of runs / interventions | cut — see REPORT §7 |
 
 Artifacts in `artifacts/` come from **both** routes, and which is which
-matters: `log_in_discovered`, `discovered_balance` and `discovered_account_type`
+matters: `log_in_discovered`, `discovered_balance` and `discovered_savings_check`
 were produced by real discovery runs against the live app — the last two
 **including their `TABLE_CONTROL_PANEL`s**, which was the last thing only a hand
 could add
@@ -707,7 +707,7 @@ TODO list that drifts from the code.
 
 ⛔ **[#6](https://github.com/borisdev/ai_computer_use/issues/6) — *"discovery
 cannot produce a `TABLE_CONTROL_PANEL`"* — was the biggest one, and it is
-closed.** `discovered_account_type` is the artifact that settles it: the brief's
+closed.** `discovered_savings_check` is the artifact that settles it: the brief's
 own worked example, discovered — two panels, a drilldown between them by
 `row_key`, and a `account_type == SAVINGS` checkpoint discovery inferred from the
 run. Every region this repo had measured by hand is now proposed by a read pass
