@@ -33,7 +33,19 @@ def _loan():
 
 
 def _replay(capability, permitted):
-    """No vision, no browser — the gate must refuse before either is touched."""
+    """Replay under a permission allowlist.
+
+    ⛔ THIS DOCSTRING SAID "No vision, no browser -- the gate must refuse
+    before either is touched", AND THAT IS ONLY TRUE OF THE REFUSALS. A
+    capability the gate PERMITS carries on into the real run and opens a
+    browser against the live app, so the three tests below that exercise the
+    passing path are `live` and the rest are not.
+
+    Found 2026-10-01 by pausing the ParaBank containers and running the
+    offline suite: three tests marked offline went red. A reviewer with no
+    Docker was being told to expect green. `checks.md` -- a suite that needs a
+    service it does not declare is a suite nobody can reproduce.
+    """
     return replay(
         capability,
         {"amount": "1", "down_payment": "1"},
@@ -95,12 +107,14 @@ def test_a_forbidden_capability_is_refused_before_a_browser_opens() -> None:
     assert "read_savings_balance" in result.observed
 
 
+@pytest.mark.live
 def test_a_permitted_capability_passes_the_gate() -> None:
     """It gets past PERMISSION and stops at the next real check, not this one."""
     result = _replay(_loan(), frozenset({"request_loan", "log_in"}))
     assert not (isinstance(result, Failed) and "permitted" in str(result.expected))
 
 
+@pytest.mark.live
 def test_no_allowlist_means_no_gate() -> None:
     result = _replay(_loan(), None)
     assert not (isinstance(result, Failed) and "permitted" in str(result.expected))
@@ -109,6 +123,7 @@ def test_no_allowlist_means_no_gate() -> None:
 # --- and composition cannot dodge it ---------------------------------------
 
 
+@pytest.mark.live
 def test_a_permitted_capability_cannot_INVOKE_a_forbidden_one() -> None:
     """The reason this is checked at every invoke, not only at the entry.
 

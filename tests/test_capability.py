@@ -656,11 +656,58 @@ def test_every_approved_artifact_the_docs_and_tests_LOAD_is_committed() -> None:
         ).stdout.split()
     )
     referenced: set[str] = set()
+    # ⭐ EXCEPT THE ONES THE READER IS TOLD TO MAKE. The Quick start walks a
+    # reviewer through a `discover --name ...` of their own, then shows the
+    # approve output -- which names a path that must NOT be in the repo. A
+    # committed copy would collide with the artifact their own run emits and
+    # would make a live demo look pre-baked.
+    #
+    # This is a RULE, not an allowlist: a name is exempt exactly while some
+    # document instructs the reader to create it. Delete the `discover --name`
+    # line and the guard tightens again by itself. An allowlist would have to
+    # be remembered; this cannot go stale.
+    reader_made: set[str] = set()
     for path in (ROOT / "README.md", *(ROOT / "tests").glob("*.py")):
-        referenced |= set(re.findall(r"artifacts/[a-z_]+\.v\d+\.approved\.json", path.read_text()))
+        text = path.read_text()
+        referenced |= set(re.findall(r"artifacts/[a-z_]+\.v\d+\.approved\.json", text))
+        reader_made |= set(re.findall(r"--name\s+([a-z_]+)", text))
     assert referenced, "nothing references an approved artifact; this asserted nothing"
-    missing = sorted(referenced - tracked)
+    # ⛔ "REFERENCED BY A `--name` FLAG" IS NOT ENOUGH, and the first two cuts
+    # of this rule both got it wrong in the dangerous direction. The README
+    # also documents `discover --name log_in_discovered` -- so that name is
+    # reader-made too, yet its artifact IS shipped and several tests load it
+    # by name (`lib["log_in_discovered"]`, which no path regex can see).
+    # Exempting it would have switched this guard off for a file whose absence
+    # is the exact bug the test was written for.
+    #
+    # The rule that holds: exempt a name only if the README is the ONLY file in
+    # the repository that mentions it. Scratch a reviewer is told to create is
+    # referenced nowhere else by construction; anything the system actually
+    # uses is named by code, a test, or another doc.
+    #
+    # ⚠️ Which is why this comment does not name the scratch capability. It
+    # did, and that mention alone -- in the test enforcing the rule -- was
+    # enough to make the name look like cargo and turn the suite red. A check
+    # whose own prose is part of its input has to watch what it says.
+    def mentioned_outside_readme(name: str) -> bool:
+        hits = subprocess.run(
+            ["git", "-C", str(ROOT), "grep", "-l", "-F", "--", name],
+            capture_output=True, text=True, timeout=30, check=False,
+        ).stdout.split()
+        return any(h != "README.md" for h in hits)
+
+    exempt = {
+        r
+        for r in referenced
+        if (nm := r.split("/")[1].split(".")[0]) in reader_made
+        and not mentioned_outside_readme(nm)
+    }
+    missing = sorted(referenced - tracked - exempt)
     assert not missing, "referenced but NOT committed (git add -f each): " + ", ".join(missing)
+
+    # The exemption must not quietly swallow everything -- if it ever covered
+    # the whole set this test would assert nothing while still passing.
+    assert referenced - exempt, "every referenced artifact is reader-made; the guard is inert"
 
 
 def test_a_capability_is_addressed_by_NAME_not_by_filename() -> None:
