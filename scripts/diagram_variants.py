@@ -6,7 +6,7 @@
 Three renderers, one flow:
 
   1  hand-written mermaid          what README uses today
-  2  workflow-workbench            a DECLARED spec -> diagram() + check_*()
+  2  graph-builder-spec            a DECLARED spec -> diagram() + check_*()
   3  pydantic-graph                a BUILT Graph -> mermaid_code()
 
 ⚠️ They are not interchangeable, and the difference is what to decide on:
@@ -46,10 +46,10 @@ BY_HAND = """flowchart TD
 
 
 # --------------------------------------------------------------------------
-# 2. workflow-workbench -- the flow as DATA
+# 2. graph-builder-spec -- the flow as DATA
 # --------------------------------------------------------------------------
 def by_workbench() -> tuple[str, list[str]]:
-    from workflow_workbench import (
+    from graph_builder_spec import (
         END,
         START,
         DecisionSpec,
@@ -82,7 +82,7 @@ def by_workbench() -> tuple[str, list[str]]:
     escalate = StepSpec("pass_to_operator", inputs=(move,), outputs=(artifact,))
 
     # ⚠️ `tuple[NodeSpec, ...]` AND NOT `tuple[StepSpec, ...]` -- `decide` is a
-    # `DecisionSpec`. This is the trap in workflow-workbench's 0.2 migration
+    # `DecisionSpec`. This is the trap in graph-builder-spec's 0.2 migration
     # guide: the blanket sed rewrites every `NodeSpec`, including annotations
     # that legitimately mean the union of every declared box.
     #
@@ -156,7 +156,7 @@ def main() -> int:
     print(BY_HAND)
 
     print(
-        "\n" + "=" * 72, "\n2. workflow-workbench -- declared, not implemented\n", "=" * 72, sep=""
+        "\n" + "=" * 72, "\n2. graph-builder-spec -- declared, not implemented\n", "=" * 72, sep=""
     )
     try:
         mmd, findings = by_workbench()

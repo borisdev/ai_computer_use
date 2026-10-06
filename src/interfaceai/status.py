@@ -389,7 +389,7 @@ def as_mermaid(capability: Capability) -> str:
 
     Only the classes actually used are emitted — borrowed from nobsmed's causal
     map, where an unused `classDef` is a legend entry for a shape the reader
-    will never find. The shape-per-kind idea is workflow-workbench's.
+    will never find. The shape-per-kind idea is graph-builder-spec's.
     """
     palette = {
         # ⭐ COMPOSITION SHOULD LOOK LIKE COMPOSITION. An invoked capability is drawn
