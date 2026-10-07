@@ -1,14 +1,24 @@
 # Computer-Use Automation
 
 
+An LLM drives a legacy bank UI once to work out how a task is done, that run is
+recorded as a typed capability artifact, and the artifact is then replayed
+deterministically with no model in the decision loop.
+
 > [!NOTE]
-> InterfaceAI requirements of this README 
-> - "how to set up and run" 
-> - "include any keys/config"
-> - "how to run without live services"
-> - "a demo path: the exact command(s)..... 
-> - DEMO PART 1 of 2: to run the agent on a goal, 
-> - DEMO PART 2 of 2: then replay the resulting artifact.
+> **What the brief asks a README to cover, and where each lands.** Paraphrased;
+> the verbatim text is in
+> [`Assignment-A-Computer-Use-Automation.md`](Assignment-A-Computer-Use-Automation.md).
+>
+> | brief | here |
+> |---|---|
+> | §6.1 — set it up and run it | [1 · Install](#1--install) |
+> | §6.1 — any keys or config it needs | [2 · Keys and config](#2--keys-and-config) |
+> | §6 — a stand-in target application | [3 · Start the target application](#3--start-the-target-application) |
+> | §6.1 — a demo path, part 1: drive the agent at a goal | [Part 1 of 2](#part-1-of-2--run-the-agent-on-a-goal) |
+> | §6.1 — a demo path, part 2: replay what that produced | [Part 2 of 2](#part-2-of-2--replay-the-resulting-artifact) |
+> | §3.6 — bring a human into a stuck run | [5 · Escalation & handoff](#5--human-in-the-loop-escalation--handoff) |
+> | §6.1 — running it without live services | [6 · Without live services](#6--running-without-live-services) |
 
 ## Quick start
 
@@ -38,17 +48,26 @@ uv sync                                            # fetches Python 3.13 too
 uv run playwright install chromium                 # the browser replay drives
 ```
 
-### 2 · A model key
+### 2 · Keys and config
+
+**One secret: an OpenAI API key** — `sk-…` from
+[platform.openai.com](https://platform.openai.com/api-keys), on an account with
+billing. It pays for the vision calls that read the screen: control mapping
+during discovery, and every `extract` step during replay.
 
 ```bash
 cp .secret.example .secret     # then set OPENAI_API_KEY
 ```
 
-A plain OpenAI key is the whole setup — no endpoint, no Azure resource, no
-deployment name. Using Azure instead, or what runs with no key at all: see
+⛔ **Not a ChatGPT Plus subscription** — that does not carry an API key. **Not
+an Azure OpenAI key** either; those need an endpoint and a deployment name, and
+are a separate path. Nothing else to configure: no endpoint, no resource, no
+deployment, no region.
+
+Using Azure anyway, or what still runs with no key at all: see
 [Config](#config).
 
-### 3 · Bring the bank up
+### 3 · Start the target application
 
 ```bash
 docker compose up -d --wait       # ParaBank → localhost:8080
@@ -81,10 +100,14 @@ serves HTTP 200 throughout, so the healthcheck goes green on an app that cannot
 answer a single question. Readiness is not liveness; `env reset` is the
 readiness gate and blocks until the seed is verified.
 
-### 4 · The demo path — drive a goal, then replay what it recorded
+### 4 · Demo path
 
-This is §6.1's demo path. **Step one is the only one with a model in the
-decision loop.**
+§6.1 wants the exact commands for two things — pointing the agent at a goal,
+then replaying what that produced. So they are two things here.
+
+#### Part 1 of 2 — run the agent on a goal
+
+**The only step with a model in the decision loop.**
 
 ```bash
 uv run banking-jobs discover \
@@ -92,17 +115,25 @@ uv run banking-jobs discover \
   --name my_balance_reader \
   --param account_id=account_id=13344 \
   --secret parabank_username=username --secret parabank_demo_password=password
-
-uv run banking-jobs capability approve my_balance_reader --by "your name"
-uv run banking-jobs replay my_balance_reader --param account_id=13344
 ```
 
-What you should see — the discovery takes **~13s**, the replay a few more:
+~13s:
 
 ```
 discovered my_balance_reader in 3 steps, 4 model calls, 13s
   artifact  artifacts/my_balance_reader.v1.draft.json
+```
 
+#### Part 2 of 2 — replay the resulting artifact
+
+Approval is the gate — replay refuses a draft.
+
+```bash
+uv run banking-jobs capability approve my_balance_reader --by "your name"
+uv run banking-jobs replay my_balance_reader --param account_id=13344
+```
+
+```
 approved artifacts/my_balance_reader.v1.approved.json by your name
 
 SUCCESS my_balance_reader in 6 steps
@@ -122,9 +153,8 @@ uv run banking-jobs diagram my_balance_reader   # its flowchart, read from the a
 uv run banking-jobs status                      # capabilities, runs and outcomes
 ```
 
-Replay refuses anything unapproved; `approve` is the gate.
 
-### 5 · Hand a stuck run to a human
+### 5 · Human-in-the-loop escalation & handoff
 
 The assignment's §3.6. Break the environment so the run is **genuinely** stuck —
 a record it was recorded against no longer exists:
@@ -159,7 +189,7 @@ Put the environment back when you are done:
 uv run banking-jobs env reset
 ```
 
-### 6 · Without live services
+### 6 · Running without live services
 
 The offline suite needs **no Docker and no key**:
 

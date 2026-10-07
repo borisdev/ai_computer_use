@@ -39,11 +39,22 @@ def main() -> int:
     for doc in docs:
         for match in LINK.finditer(doc.read_text()):
             target = match.group(1)
-            if target.startswith(("http://", "https://", "#", "mailto:")):
+            rel = doc.relative_to(ROOT)
+            # ⛔ SAME-FILE ANCHORS WERE SKIPPED WITH THE EXTERNAL ONES, so a
+            # table of seven `#section` links could be entirely wrong and this
+            # script printed "0 broken". Cross-file `path#frag` was checked
+            # below all along, which is exactly why the hole was invisible --
+            # the feature appeared to exist. Caught by breaking one on purpose
+            # and watching the check stay green.
+            if target.startswith("#"):
+                anchors = {slug(h) for h in HEADING.findall(doc.read_text())}
+                if target[1:] not in anchors:
+                    faults.append(f"{rel}: no such anchor in this file -> {target}")
+                continue
+            if target.startswith(("http://", "https://", "mailto:")):
                 continue
             path, _, fragment = target.partition("#")
             resolved = (doc.parent / path).resolve()
-            rel = doc.relative_to(ROOT)
             if not resolved.exists():
                 faults.append(f"{rel}: missing path -> {target}")
                 continue
