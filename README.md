@@ -37,34 +37,13 @@ uv run playwright install chromium                 # the browser replay drives
 
 ### 2 · A model key
 
-**One line. A plain OpenAI API key — no endpoint, no Azure resource, no
-deployment name.**
-
 ```bash
 cp .secret.example .secret     # then set OPENAI_API_KEY
 ```
 
-Verified end to end on 2026-10-07 against `openai/gpt-4.1`: discovery (3 steps,
-4 model calls, 13s), replay to `$1231.10`, and all **38 live tests in 3m35s**.
-
-**Without a key**, `log_in` and the tenant refusal still replay and the 289
-offline tests still run. Everything else refuses before the browser launches:
-
-```
-FAILED at pre-flight
-  expected  OPENAI_API_KEY (profile 'openai-gpt-4.1') in .secret -- see .secret.example
-  observed  not set, and request_loan reads from the screen
-```
-
-⚠️ **Evidence committed before 2026-10-07 was produced on Azure `gpt-4.1`**, which
-is still selectable — set `VISION_PROFILE=gpt-4.1` in `.env` plus
-`VISION_API_BASE` and `VISION_API_KEY` for your own resource. Every trace now
-records which model drove it, in `run_started.model`, so no run has to be taken
-on trust:
-
-```
-"model": "openai-gpt-4.1:openai/gpt-4.1"
-```
+A plain OpenAI key is the whole setup — no endpoint, no Azure resource, no
+deployment name. Using Azure instead, or what runs with no key at all: see
+[Config](#config).
 
 ### 3 · Bring the bank up
 
@@ -998,36 +977,42 @@ artifacts/             saved capability artifacts (brief deliverable)
 credentials; `.secret.example` shows the shape. Nothing that would fail a bank's
 security review belongs in `.env`.
 
-### Bring your own key
+### Model profiles
 
-Two profiles need no endpoint, so either line is a complete setup for someone
-who is not me:
+`VISION_PROFILE` in `.env` selects one; `OPENAI_API_KEY` in `.secret` is the
+only credential the default needs.
 
-```bash
-VISION_PROFILE=openai-gpt-4.1   OPENAI_API_KEY=...
-VISION_PROFILE=claude-opus      ANTHROPIC_API_KEY_FOR_VISION=...
-```
+| profile | endpoint | state |
+|---|---|---|
+| `openai-gpt-4.1` *(default)* | provider default | verified 2026-10-07 — discovery, replay, 38 live tests |
+| `gpt-4.1`, `gpt-4o`, `gpt-5.2-chat`, `gpt-5.2-codex` | Azure | produced every artifact committed before 2026-10-07; set `VISION_API_BASE` + `VISION_API_KEY` for your own resource |
+| `claude-opus` | provider default | **untested** — reaches Anthropic, rejected on credit before the vision call |
 
-⛔ **The default profile is unusable by a reviewer, and this is recorded rather
-than quietly fixed.** `gpt-4.1`, `gpt-4o`, `gpt-5.2-chat` and `gpt-5.2-codex`
-all pin an `api_base` inside my Azure subscription. It stays the default
-because every committed artifact and every number in REPORT was produced on
-it, and re-pointing that at a public endpoint would make the evidence
-unreproducible to prove a portability point the two profiles above already
-make.
-
-⚠️ **How this was found, which is the part worth keeping.** Not by reading the
-config — by cloning the repo into an empty directory and running the README's
-own commands. Nine of eleven died on a key the reader had no way to supply,
-and the tenth and eleventh passed only because they stop before reaching a
-model. A hundred runs in the working tree could not have surfaced it: the key
-was always already there.
-
-A capability that reads from the screen now says so **before the browser
-launches**:
+**With no key at all**, `log_in` and the tenant refusal still replay and the
+289 offline tests still run. Anything that reads the screen refuses before the
+browser launches, rather than failing inside a traceback:
 
 ```
 FAILED at pre-flight
   expected  OPENAI_API_KEY (profile 'openai-gpt-4.1') in .secret -- see .secret.example
   observed  not set, and request_loan reads from the screen
 ```
+
+⚠️ **`.env` is committed and beats the default in `settings.py`** — that is the
+control point. Flipping the code default alone did nothing: a run reported as
+proof the new provider worked had gone to Azure, because this file still said
+otherwise.
+
+⚠️ **Every trace records which model drove it**, in `run_started.model`, so no
+run has to be taken on trust. It used to be the hardcoded string `unset`, which
+is why that wrong-provider run could not be caught by reading its own evidence.
+
+```
+"model": "openai-gpt-4.1:openai/gpt-4.1"
+```
+
+⚠️ **How the key problem was found**, which is the transferable part: not by
+reading the config, but by cloning into an empty directory and running the
+README's own commands. Nine of eleven died on a key the reader had no way to
+supply — a hundred runs in the working tree could not have surfaced it, because
+the key was always already there.
