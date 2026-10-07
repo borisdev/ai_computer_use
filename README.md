@@ -55,6 +55,22 @@ docker compose up -d --wait       # ParaBank → localhost:8080
 uv run banking-jobs env reset     # seed it — REQUIRED, see below
 ```
 
+What you should see — **~9s and ~6s** once the image is local, plus a one-time
+224 MB pull:
+
+```
+ Container parabank  Starting
+ Container parabank  Waiting
+ Container parabank  Healthy
+
+Reseeded and verified http://localhost:8080/parabank
+```
+
+⚠️ **zsh may interrupt with `correct 'env' to '.env' [nyae]?`** — answer `n`.
+There is a `.env` file in this directory and zsh's autocorrect offers it as a
+fix for the `env` subcommand. Nothing is wrong; `setopt nocorrect` if it
+annoys you.
+
 `env reset` POSTs to ParaBank's own admin page to create the schema, then
 **polls until account 13344 is actually readable** and exits 1 if it never is.
 `env status` and `env break` are the other two — `break` drops to a minimal
@@ -81,10 +97,10 @@ uv run banking-jobs capability approve my_balance_reader --by "your name"
 uv run banking-jobs replay my_balance_reader --param account_id=13344
 ```
 
-Measured on the cold clone:
+What you should see — the discovery takes **~13s**, the replay a few more:
 
 ```
-discovered my_balance_reader in 3 steps, 4 model calls, 23s
+discovered my_balance_reader in 3 steps, 4 model calls, 13s
   artifact  artifacts/my_balance_reader.v1.draft.json
 
 approved artifacts/my_balance_reader.v1.approved.json by your name
