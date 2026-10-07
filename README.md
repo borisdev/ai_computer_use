@@ -3,10 +3,12 @@
 
 > [!NOTE]
 > InterfaceAI requirements of this README 
-> "how to set up and run" 
-> "include any keys/config"
-> "how to run without live services"
-> "a demo path: the exact command(s) to run the agent on a goal, then replay the resulting artifact.
+> - "how to set up and run" 
+> - "include any keys/config"
+> - "how to run without live services"
+> - "a demo path: the exact command(s) 
+>   ** to run the agent on a goal, 
+>   ** then replay the resulting artifact.
 
 ## Quick start
 
