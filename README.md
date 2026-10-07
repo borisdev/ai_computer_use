@@ -85,11 +85,6 @@ What you should see — **~9s and ~6s** once the image is local, plus a one-time
 Reseeded and verified http://localhost:8080/parabank
 ```
 
-⚠️ **zsh may interrupt with `correct 'env' to '.env' [nyae]?`** — answer `n`.
-There is a `.env` file in this directory and zsh's autocorrect offers it as a
-fix for the `env` subcommand. Nothing is wrong; `setopt nocorrect` if it
-annoys you.
-
 `env reset` POSTs to ParaBank's own admin page to create the schema, then
 **polls until account 13344 is actually readable** and exits 1 if it never is.
 `env status` and `env break` are the other two — `break` drops to a minimal
