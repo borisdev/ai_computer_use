@@ -1,8 +1,12 @@
 # Computer-Use Automation
 
-An LLM drives a legacy bank UI once to work out how a task is done, that run is
-recorded as a typed capability artifact, and the artifact is then replayed
-deterministically with no model in the decision loop.
+
+> [!NOTE]
+> InterfaceAI requirements of this README 
+> "how to set up and run" 
+> "include any keys/config"
+> "how to run without live services"
+> "a demo path: the exact command(s) to run the agent on a goal, then replay the resulting artifact.
 
 ## Quick start
 
