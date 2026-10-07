@@ -12,17 +12,15 @@
 
 ## Quick start
 
-> §6.1 asks a README to cover *"how to set up and run it (include any keys/config
-> needed, and how to run without live services if applicable)"* and *"a demo path:
-> the exact command(s) to run the agent on a goal, then replay the resulting
-> artifact."* This section is those two things and nothing else.
-
-**Every command below was run from a cold `git clone` into an empty directory on
-2026-10-01**, on Linux/amd64, against the published image. Timings and output
-are from that run, not from memory. If one of them does not work for you, that
-is a bug worth an issue.
-
 ### 1 · Install
+
+**Assumptions**
+
+- a Docker runtime with `docker compose`. 
+- Apple Silicon is fine — the arm64
+image carries the `bash` the healthcheck needs (measured 2026-09-30 by reading
+the arm64 image's filesystem, because the amd64 answer did not transfer).
+
 
 ```bash
 git clone https://github.com/borisdev/ai_computer_use && cd ai_computer_use
@@ -30,10 +28,6 @@ curl -LsSf https://astral.sh/uv/install.sh | sh    # if you do not have uv
 uv sync                                            # fetches Python 3.13 too
 uv run playwright install chromium                 # the browser replay drives
 ```
-
-Plus a Docker runtime with `docker compose`. Apple Silicon is fine — the arm64
-image carries the `bash` the healthcheck needs (measured 2026-09-30 by reading
-the arm64 image's filesystem, because the amd64 answer did not transfer).
 
 ### 2 · A model key — bring your own
 
