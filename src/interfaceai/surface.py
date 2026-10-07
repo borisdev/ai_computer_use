@@ -15,6 +15,11 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from interfaceai.screenshot2controls import RenderEnvironment
 from collections.abc import Coroutine
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -145,7 +150,24 @@ class PlaywrightSurface:
         )
         context.set_default_timeout(15_000)
         self._page = context.new_page()
+        # Read off the LIVE browser rather than assumed, so it cannot drift
+        # from whatever actually rendered the pixels.
+        self._browser_version = f"{self._browser.browser_type.name} {self._browser.version}"
         return self
+
+    def render_environment(self) -> RenderEnvironment:
+        """The stack a screenshot taken now would come from.
+
+        Recorded into every control map so a template that will not match can
+        say WHY -- see `RenderEnvironment` and issue 0012.
+        """
+        from interfaceai.screenshot2controls import ImageSize, RenderEnvironment
+
+        return RenderEnvironment(
+            platform=sys.platform,
+            browser=getattr(self, "_browser_version", "unknown"),
+            viewport=ImageSize(width=self.viewport.width, height=self.viewport.height),
+        )
 
     def __exit__(self, *exc: object) -> None:
         # Teardown must not mask whatever is already propagating, but a

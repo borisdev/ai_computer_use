@@ -282,9 +282,32 @@ class CropBox(Contract):
     height: int = Field(gt=0)
 
 
+def environment_mismatch(
+    screen_map: ScreenOutput, current: RenderEnvironment | None
+) -> str | None:
+    """A sentence explaining why these templates may not match, or None.
+
+    ⚠️ RETURNS None WHEN THE MAP PREDATES THE FIELD, and that is not a pass --
+    it is "nobody recorded it". The caller must not print "environments match"
+    on a None; there is nothing to compare.
+    """
+    if current is None or screen_map.captured_on is None:
+        return None
+    axes = current.differs_from(screen_map.captured_on)
+    if not axes:
+        return None
+    return (
+        "these templates were captured on a different rendering stack ("
+        + "; ".join(axes)
+        + ") -- see docs/issues/0012-control-maps-are-rendering-stack-specific.md"
+    )
+
+
 class ScreenInput(Contract):
     screenshot_png: bytes = Field(repr=False)
     coordinate_space: Literal["viewport_css_pixels"] = "viewport_css_pixels"
+    # What rasterised this screenshot. Travels into the map it produces.
+    rendered_on: RenderEnvironment | None = None
 
 
 class VisualLocator(Contract):
@@ -388,10 +411,55 @@ class LocatedControl(Contract):
     panel: PanelSpec | None = None
 
 
+class RenderEnvironment(Contract):
+    """The stack that rasterised a control map's templates.
+
+    ⛔ THE CONTROL MAP'S HIDDEN DEPENDENCY, UNRECORDED UNTIL 2026-10-07.
+    `reference_size` pinned the VIEWPORT (1280x900) and nothing pinned the
+    RASTERISER, so a map built on Linux Chromium and matched on macOS Chromium
+    produced a bare
+
+        not_found (best score 0.6889 is below threshold 0.95)
+
+    on `username_textbox`, the first control of the first screen. The number is
+    true and says nothing about the cause; the reader has no way to learn that
+    the templates came from a different machine. See
+    `docs/issues/0012-control-maps-are-rendering-stack-specific.md`.
+
+    Recording it does NOT make a map portable. It makes the failure
+    DIAGNOSABLE, which is the honest thing a field can do here -- and it is
+    what lets `locate_control` say "these templates were captured somewhere
+    else" instead of leaving a score to be interpreted.
+    """
+
+    platform: str  # sys.platform -- "linux", "darwin", "win32"
+    browser: str  # e.g. "chromium 141.0.7390.37"
+    viewport: ImageSize
+    device_scale_factor: float = 1.0
+
+    def differs_from(self, other: RenderEnvironment) -> list[str]:
+        """Which axes disagree. Empty means the pixels should be comparable."""
+        axes = []
+        if self.platform != other.platform:
+            axes.append(f"platform {other.platform} -> {self.platform}")
+        if self.browser != other.browser:
+            axes.append(f"browser {other.browser} -> {self.browser}")
+        if self.viewport != other.viewport:
+            axes.append(f"viewport {other.viewport.width}x{other.viewport.height}")
+        if self.device_scale_factor != other.device_scale_factor:
+            axes.append(f"scale {other.device_scale_factor} -> {self.device_scale_factor}")
+        return axes
+
+
 class ScreenOutput(Contract):
     schema_version: Literal[1] = 1
     screenshot_sha256: str
     image_size: ImageSize
+    # ⚠️ OPTIONAL, AND THE DEFAULT IS THE POINT. Every map already on disk was
+    # written before this field existed, so `None` reads as "nobody recorded
+    # it" -- never as "it matches yours". A missing input must not read as a
+    # pass.
+    captured_on: RenderEnvironment | None = None
     controls: list[LocatedControl]
     # Whether the PANEL pass has run on this screen. ⛔ `panels == []` is not the
     # same fact: a screen with no repeated structure and a screen recorded before
@@ -1244,4 +1312,5 @@ async def extract_control_locators(
         screenshot_sha256=hashlib.sha256(inp.screenshot_png).hexdigest(),
         image_size=size,
         controls=list(controls),
+        captured_on=inp.rendered_on,
     )

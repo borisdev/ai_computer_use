@@ -450,7 +450,7 @@ def discover(
                     try:
                         control_map = caller.run(
                             extract_control_locators(
-                                ScreenInput(screenshot_png=png),
+                                ScreenInput(screenshot_png=png, rendered_on=surface.render_environment()),
                                 vision=counted_vision,
                                 config=config,
                             )
@@ -486,7 +486,7 @@ def discover(
                     try:
                         panels = caller.run(
                             extract_panel_locators(
-                                ScreenInput(screenshot_png=png),
+                                ScreenInput(screenshot_png=png, rendered_on=surface.render_environment()),
                                 vision=counted_vision,
                                 config=config,
                             )
