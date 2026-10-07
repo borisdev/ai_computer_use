@@ -6,9 +6,9 @@
 > - "how to set up and run" 
 > - "include any keys/config"
 > - "how to run without live services"
-> - "a demo path: the exact command(s) 
->   ** to run the agent on a goal, 
->   ** then replay the resulting artifact.
+> - "a demo path: the exact command(s)..... 
+> - DEMO PART 1 of 2: to run the agent on a goal, 
+> - DEMO PART 2 of 2: then replay the resulting artifact.
 
 ## Quick start
 
