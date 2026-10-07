@@ -48,6 +48,38 @@ uv sync                                            # fetches Python 3.13 too
 uv run playwright install chromium                 # the browser replay drives
 ```
 
+### 1b · Or skip the host entirely (recommended off Linux)
+
+**A template PNG is specific to the stack that rasterised it.** The committed
+`control_maps/` were built on Linux Chromium; matched against macOS Chromium
+the first control of the first screen scores **0.6889** against a 0.95
+threshold, and the run correctly escalates to a human instead of clicking
+something it is 69% sure of. That is [issue
+0012](docs/issues/0012-control-maps-are-rendering-stack-specific.md).
+
+Running the agent in a container pins the stack, so the host leaves the path:
+
+```bash
+docker compose up -d --wait parabank
+uv run banking-jobs env reset                       # host-side, no browser involved
+docker compose run --rm agent replay log_in
+```
+
+Measured — the container reproduces the committed maps' stack exactly:
+
+```
+host        {'platform': 'linux', 'browser': 'chromium 153.0.8010.12', ...}
+container   {'platform': 'linux', 'browser': 'chromium 153.0.8010.12', ...}
+```
+
+Artifacts, control maps and evidence are bind-mounted, so they land on your
+disk, not in a layer. `run` gives a TTY, so the §5 handoff works in here too.
+
+⚠️ **Tenant B is not reachable from the container.** It shares ParaBank's
+network namespace so that `localhost:8080` means the same thing inside as it
+does in every committed artifact — the cost is that the second bank, on 8081,
+is host-side only. Cross-tenant replay is the one flow you run outside.
+
 ### 2 · Keys and config
 
 **One secret: an OpenAI API key** — `sk-…` from

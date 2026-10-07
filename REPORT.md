@@ -230,6 +230,31 @@ That is a mechanism, not a score, and it is the honest shape of the trade this
 design accepts in exchange for working without a DOM: **template matching does
 not survive a reskin, and the system's response to that is to refuse.**
 
+⛔ **And both of those measurements hold the RENDERING STACK constant, so
+neither tests the axis that actually broke.** A reviewer ran the demo on an M1
+Mac against maps built on Linux: `username_textbox`, the first control of the
+first screen, scored **0.6889** — below the floor of everything above, and
+below the 0.95 threshold, so the run escalated to a human rather than clicking
+at 69% confidence.
+
+```
+cross-tenant, same stack    1.0000     two ParaBank images
+tightest case on record     0.9998     "one antialiasing change from failing"
+reskinned tenant            8/25
+macOS vs Linux              0.6889     a different rasteriser, nothing else changed
+```
+
+The template was never only a picture of a control; it was a picture of a
+control *as rendered by a particular browser on a particular OS*, and nothing
+recorded that. `ScreenOutput.captured_on` now does, which makes the failure
+diagnosable rather than portable — the fix is to pin the stack by running the
+agent in the committed container. [Issue
+0012](docs/issues/0012-control-maps-are-rendering-stack-specific.md).
+
+**This is the strongest portability evidence here**, because it is the only
+measurement of the locator strategy taken under conditions that could defeat
+it — and did, unstaged, on someone else's hardware.
+
 ## 5. Escalation & handoff
 
 **Detect.** Eight triggers, **seven needing no model judgement**: a guardrail

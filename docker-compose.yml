@@ -56,6 +56,43 @@ services:
       retries: 12
       start_period: 60s   # Tomcat cold start + webapp deploy
 
+  # The agent itself, so the RENDERING STACK is pinned rather than the host's.
+  # See Dockerfile and docs/issues/0012 -- a template PNG rasterised by Linux
+  # Chromium scored 0.6889 against macOS Chromium, below the 0.95 threshold,
+  # on the first control of the first screen.
+  #
+  # ⭐ `network_mode: service:parabank` IS THE WHOLE TRICK, and it is why this
+  # needs no config changes at all. The agent shares parabank's network
+  # namespace, so `localhost:8080` inside here IS the bank -- which is exactly
+  # what every committed artifact's `target.base_url`, every control map and
+  # the origin allowlist already say. Putting the agent on a shared bridge
+  # instead would mean rewriting all three to `http://parabank:8080`, and
+  # retargeting artifacts for a networking detail is how a portability
+  # mechanism gets used to paper over plumbing.
+  #
+  # ⚠️ THE COST, STATED: sharing one namespace means tenant B (8081) is NOT
+  # reachable from in here. Cross-tenant replay stays a host-side flow. The
+  # container covers the demo path and the handoff, which is what a reviewer
+  # runs.
+  agent:
+    build: .
+    image: interfaceai-agent
+    profiles: ["agent"]
+    network_mode: "service:parabank"
+    depends_on:
+      parabank:
+        condition: service_healthy
+    env_file:
+      - .env
+      - .secret
+    volumes:
+      # Artifacts, control maps and evidence land on the HOST, not inside a
+      # layer that disappears. /opt/venv is outside /app so this cannot
+      # shadow the image's environment -- see the Dockerfile.
+      - .:/app
+    stdin_open: true    # the `--operator` handoff reads real stdin
+    tty: true
+
   parabank-b:
     image: parasoft/parabank:feature
     container_name: parabank-b
