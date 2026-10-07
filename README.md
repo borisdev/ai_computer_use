@@ -37,38 +37,34 @@ uv run playwright install chromium                 # the browser replay drives
 
 ### 2 · A model key
 
-**Required: an Azure OpenAI resource with a deployment named `gpt-4.1`.** That
-is the only configuration this has ever been run on — every committed artifact
-and every number in REPORT came from it.
+**One line. A plain OpenAI API key — no endpoint, no Azure resource, no
+deployment name.**
 
 ```bash
-cp .secret.example .secret
+cp .secret.example .secret     # then set OPENAI_API_KEY
 ```
 
-```bash
-VISION_API_BASE=https://<your-resource>.openai.azure.com/
-VISION_API_KEY=<your key>
-```
-
-⚠️ `VISION_API_BASE` exists because the endpoint used to be hardcoded to my
-subscription, so a reviewer who *had* Azure OpenAI still had to edit source to
-use it. Overriding the URL changes nothing else: same provider, same
-`azure/gpt-4.1`, same call.
+Verified end to end on 2026-10-07 against `openai/gpt-4.1`: discovery (3 steps,
+4 model calls, 13s), replay to `$1231.10`, and all **38 live tests in 3m35s**.
 
 **Without a key**, `log_in` and the tenant refusal still replay and the 289
 offline tests still run. Everything else refuses before the browser launches:
 
 ```
 FAILED at pre-flight
-  expected  VISION_API_KEY (profile 'gpt-4.1') in .secret -- see .secret.example
+  expected  OPENAI_API_KEY (profile 'openai-gpt-4.1') in .secret -- see .secret.example
   observed  not set, and request_loan reads from the screen
 ```
 
-⛔ **Two other providers are wired and UNTESTED.** `openai-gpt-4.1` has never
-been called at all; `claude-opus` reaches Anthropic and was rejected on credit
-balance before the vision call, so its image and schema handling are
-unexercised. `VISION_PROFILE=<name>` selects one if you want to try, but
-neither is the documented path and neither produced any evidence here.
+⚠️ **Evidence committed before 2026-10-07 was produced on Azure `gpt-4.1`**, which
+is still selectable — set `VISION_PROFILE=gpt-4.1` in `.env` plus
+`VISION_API_BASE` and `VISION_API_KEY` for your own resource. Every trace now
+records which model drove it, in `run_started.model`, so no run has to be taken
+on trust:
+
+```
+"model": "openai-gpt-4.1:openai/gpt-4.1"
+```
 
 ### 3 · Bring the bank up
 

@@ -20,8 +20,14 @@ class EvidenceWriter:
     """
 
     def __init__(
-        self, root: Path, goal: str, model: str = "unset", requested_by: str = "cli"
+        self, root: Path, goal: str, model: str | None = None, requested_by: str = "cli"
     ) -> None:
+        if model is None:
+            # Local import: vision_llm imports settings, and settings is read
+            # by everything -- resolving here keeps evidence importable alone.
+            from interfaceai.vision_llm import active_model
+
+            model = active_model()
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         self.dir = root / stamp
         self.dir.mkdir(parents=True, exist_ok=True)

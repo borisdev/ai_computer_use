@@ -35,7 +35,11 @@ class Settings(BaseSettings):
     # Named profiles, mirroring nobsmed-v2's LM_CONFIGS. Which one to use is
     # config; the keys are secrets. Endpoints differ per Azure resource, so
     # each profile names the key it needs.
-    vision_profile: str = "gpt-4.1"
+    # ⭐ PLAIN OpenAI IS THE DEFAULT, not Azure. A reviewer has an
+    # `api.openai.com` key far more often than an Azure resource with a
+    # deployment that happens to be named `gpt-4.1`, and the Azure profiles
+    # pinned an endpoint in one subscription. One key, one line, no endpoint.
+    vision_profile: str = "openai-gpt-4.1"
     vision_api_key: SecretStr | None = None  # openai-rg-nobsmed  (their API_KEY)
     vision_api_key_eastus2: SecretStr | None = None  # eastus2            (their EASTUS2_API_KEY)
     vision_api_key_west: SecretStr | None = None  # west-us            (their WEST_API_KEY)

@@ -71,6 +71,24 @@ PROFILES: dict[str, dict[str, str]] = {
 }
 
 
+def active_model(profile: str | None = None) -> str:
+    """The model string a run would actually call, e.g. `openai/gpt-4.1`.
+
+    ⛔ EXISTS BECAUSE EVERY TRACE SAID `model: unset`, AND THAT COST A WRONG
+    REPORT. Migrating to plain OpenAI, I flipped the default in `settings.py`,
+    re-ran discovery and the whole live suite, and announced both as proof the
+    new provider worked. They had run on AZURE -- `.env` is committed, sets
+    `VISION_PROFILE`, and pydantic-settings reads it over the code default.
+
+    Nothing in the evidence could contradict me, because the one field that
+    would have is a hardcoded string. A run that cannot say which model drove
+    it cannot be used to make a claim about a model.
+    """
+    name = profile or get_settings().vision_profile
+    cfg = PROFILES.get(name)
+    return f"{name}:{cfg['model']}" if cfg else f"{name}:UNKNOWN_PROFILE"
+
+
 def missing_key(profile: str | None = None) -> str | None:
     """The env var a model call would need and cannot find, or None if set.
 
