@@ -6,14 +6,14 @@
 Three renderers, one flow:
 
   1  hand-written mermaid          what README uses today
-  2  workflow-workbench            a DECLARED spec -> diagram() + check_*()
+  2  graph-builder-spec            a DECLARED spec -> diagram() + check_*()
   3  pydantic-graph                a BUILT Graph -> mermaid_code()
 
 ⚠️ They are not interchangeable, and the difference is what to decide on:
 
   hand         draws anything, including things the code does not do. Zero
                dependencies, zero guarantees. It is a claim.
-  workbench    draws a DECLARATION. Needs no implementation, so an unbuilt or
+  gbspec       draws a DECLARATION. Needs no implementation, so an unbuilt or
                partly-built design still renders -- and the same declaration is
                what `check_reachable`, `check_names` and friends read, so the
                picture and the lint cannot disagree.
@@ -46,10 +46,10 @@ BY_HAND = """flowchart TD
 
 
 # --------------------------------------------------------------------------
-# 2. workflow-workbench -- the flow as DATA
+# 2. graph-builder-spec -- the flow as DATA
 # --------------------------------------------------------------------------
-def by_workbench() -> tuple[str, list[str]]:
-    from workflow_workbench import (
+def by_graph_builder_spec() -> tuple[str, list[str]]:
+    from graph_builder_spec import (
         END,
         START,
         DecisionSpec,
@@ -82,7 +82,7 @@ def by_workbench() -> tuple[str, list[str]]:
     escalate = StepSpec("pass_to_operator", inputs=(move,), outputs=(artifact,))
 
     # ⚠️ `tuple[NodeSpec, ...]` AND NOT `tuple[StepSpec, ...]` -- `decide` is a
-    # `DecisionSpec`. This is the trap in workflow-workbench's 0.2 migration
+    # `DecisionSpec`. This is the trap in graph-builder-spec's 0.2 migration
     # guide: the blanket sed rewrites every `NodeSpec`, including annotations
     # that legitimately mean the union of every declared box.
     #
@@ -156,10 +156,10 @@ def main() -> int:
     print(BY_HAND)
 
     print(
-        "\n" + "=" * 72, "\n2. workflow-workbench -- declared, not implemented\n", "=" * 72, sep=""
+        "\n" + "=" * 72, "\n2. graph-builder-spec -- declared, not implemented\n", "=" * 72, sep=""
     )
     try:
-        mmd, findings = by_workbench()
+        mmd, findings = by_graph_builder_spec()
         print(mmd)
         print("\n  and the SAME declaration is what the checks read:")
         print("\n".join(findings))
