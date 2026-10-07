@@ -28,6 +28,9 @@
 locators are template PNGs captured on Linux Chromium, so a different font
 stack can miss — that is a UI-drift finding, not a broken setup.
 
+`banking-jobs` and `interfaceai` are **the same binary under two names** — the
+commands below use the first; older docs use the second.
+
 ```bash
 git clone https://github.com/borisdev/ai_computer_use && cd ai_computer_use
 curl -LsSf https://astral.sh/uv/install.sh | sh    # if you do not have uv
@@ -48,9 +51,14 @@ deployment name. Using Azure instead, or what runs with no key at all: see
 ### 3 · Bring the bank up
 
 ```bash
-docker compose up -d --wait        # ParaBank → localhost:8080
-uv run interfaceai env reset       # seed it — REQUIRED
+docker compose up -d --wait       # ParaBank → localhost:8080
+uv run banking-jobs env reset     # seed it — REQUIRED, see below
 ```
+
+`env reset` POSTs to ParaBank's own admin page to create the schema, then
+**polls until account 13344 is actually readable** and exits 1 if it never is.
+`env status` and `env break` are the other two — `break` drops to a minimal
+dataset so a replay hits a missing record.
 
 ⚠️ **`env reset` is not optional.** ParaBank boots with no database schema and
 serves HTTP 200 throughout, so the healthcheck goes green on an app that cannot
@@ -106,7 +114,7 @@ The assignment's §3.6. Break the environment so the run is **genuinely** stuck 
 a record it was recorded against no longer exists:
 
 ```bash
-uv run interfaceai env break
+uv run banking-jobs env break
 uv run banking-jobs replay log_in_discovered --operator
 ```
 
@@ -132,7 +140,7 @@ records the design that would actually work.
 Put the environment back when you are done:
 
 ```bash
-uv run interfaceai env reset
+uv run banking-jobs env reset
 ```
 
 ### 6 · Without live services
