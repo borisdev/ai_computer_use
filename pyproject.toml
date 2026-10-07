@@ -55,9 +55,11 @@ package = true
 [tool.uv.sources]
 # ⚠️ `rev = "main"` is an UNPINNED dependency: this repo tracks whatever main
 # happens to be, which is how 0.2.0's breaking rename arrived without anyone
-# choosing it. `uv.lock` pins the commit so a build is reproducible, but `uv
-# sync -U` moves it. Pin a TAG when graph-builder-spec publishes one -- there
-# is no v0.2.0 tag on the remote today, only the version in its pyproject.
+# choosing it -- and how the whole-package rename to graph-builder-spec arrived
+# the same way. `uv.lock` pins the commit so a build is reproducible, but `uv
+# sync -U` moves it. Pin a TAG when graph-builder-spec publishes one -- measured
+# today, `git ls-remote --tags` returns NOTHING, so there is no tag of any
+# version to pin. Its pyproject says 0.3.0 and the rename is unreleased on top.
 graph-builder-spec = { git = "https://github.com/borisdev/graph-builder-spec", rev = "main" }
 
 [tool.hatch.build.targets.wheel]

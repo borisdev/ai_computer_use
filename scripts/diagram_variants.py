@@ -13,7 +13,7 @@ Three renderers, one flow:
 
   hand         draws anything, including things the code does not do. Zero
                dependencies, zero guarantees. It is a claim.
-  workbench    draws a DECLARATION. Needs no implementation, so an unbuilt or
+  gbspec       draws a DECLARATION. Needs no implementation, so an unbuilt or
                partly-built design still renders -- and the same declaration is
                what `check_reachable`, `check_names` and friends read, so the
                picture and the lint cannot disagree.
@@ -48,7 +48,7 @@ BY_HAND = """flowchart TD
 # --------------------------------------------------------------------------
 # 2. graph-builder-spec -- the flow as DATA
 # --------------------------------------------------------------------------
-def by_workbench() -> tuple[str, list[str]]:
+def by_graph_builder_spec() -> tuple[str, list[str]]:
     from graph_builder_spec import (
         END,
         START,
@@ -159,7 +159,7 @@ def main() -> int:
         "\n" + "=" * 72, "\n2. graph-builder-spec -- declared, not implemented\n", "=" * 72, sep=""
     )
     try:
-        mmd, findings = by_workbench()
+        mmd, findings = by_graph_builder_spec()
         print(mmd)
         print("\n  and the SAME declaration is what the checks read:")
         print("\n".join(findings))
