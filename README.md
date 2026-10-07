@@ -14,12 +14,28 @@
 
 ### 1 · Install
 
-**Assumptions**
+**Assumptions, each with the one line it rests on.**
 
-- a Docker runtime with `docker compose`. 
-- Apple Silicon is fine — the arm64
-image carries the `bash` the healthcheck needs (measured 2026-09-30 by reading
-the arm64 image's filesystem, because the amd64 answer did not transfer).
+| assumption | why / what it rests on |
+|---|---|
+| a Docker runtime with `docker compose` | ParaBank is the target app; nothing else supplies it |
+| a POSIX shell | the `uv` installer below is `curl \| sh` — on Windows use WSL2 |
+| ports 8080-8081, 9001-9002, 61616-61617 free | compose publishes all six |
+| outbound network to your model provider | discovery and every `extract` step call it |
+| CPU is amd64 **or** arm64 | both ParaBank images carry the `bash` the healthcheck needs — measured 2026-10-07 by reading each image's filesystem |
+| ⚠️ **the host renders text like Linux** | the visual locators are template PNGs captured on Linux Chromium and matched at 0.95, one of them clearing by 0.007 — this is the only assumption here that can fail *silently* |
+
+⛔ **Verified end to end on amd64 Linux only.** Every output quoted below came
+from a cold clone there on 2026-10-01, not from memory. On arm64 the
+healthcheck is measured and **nothing else has been run** — "Apple Silicon is
+fine" would be a claim about a pipeline resting on evidence about a shell
+binary.
+
+⭐ If a locator misses on macOS, that is a **finding about cross-rendering-stack
+drift** — the §3 "UI drift" question — not a broken setup. The fix under
+consideration removes the host from the path entirely: run the agent itself in
+the multi-arch Playwright container, so every host drives the same Linux
+Chromium the templates were captured on.
 
 
 ```bash
