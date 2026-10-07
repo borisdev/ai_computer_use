@@ -18,7 +18,7 @@
 
 | assumption | why / what it rests on |
 |---|---|
-| a Docker runtime with `docker compose` | ParaBank is the target app; nothing else supplies it |
+| a Docker runtime with `docker compose` | the target app's database is in-container with no volume, so `down` is a factory reset and every run starts from the same seed — which is what makes replay determinism measurable rather than asserted |
 | a POSIX shell | the `uv` installer below is `curl \| sh` — on Windows use WSL2 |
 | ports 8080-8081, 9001-9002, 61616-61617 free | compose publishes all six |
 | outbound network to your model provider | discovery and every `extract` step call it |
