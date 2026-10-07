@@ -182,7 +182,7 @@ async def call_vision_llm[T: BaseModel](
     data_url = f"data:image/png;base64,{base64.standard_b64encode(image_png).decode('ascii')}"
     response = await litellm.acompletion(
         model=cfg["model"],
-        api_base=cfg.get("api_base"),
+        api_base=settings.vision_api_base or cfg.get("api_base"),
         api_key=key,
         api_version=cfg.get("api_version"),
         max_tokens=int(cfg.get("max_tokens", 8000)),

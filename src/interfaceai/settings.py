@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     # endpoint, so `VISION_PROFILE=openai-gpt-4.1` or `VISION_PROFILE=claude-opus`
     # plus the matching key is the whole setup for a stranger.
     openai_api_key: SecretStr | None = None
+    # ⭐ POINT THE AZURE PROFILES AT YOUR OWN RESOURCE. Without this the
+    # endpoint is baked into `PROFILES` and a reviewer who HAS Azure OpenAI
+    # still has to edit source to use it -- the tested path, locked to my
+    # subscription by a string. Overriding the URL leaves the code path
+    # identical: same provider, same `azure/gpt-4.1`, same litellm call.
+    vision_api_base: str | None = None
 
     # --- Model access ---
     # Read from .secret, which is NOT the process environment -- so it has to be

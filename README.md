@@ -35,33 +35,40 @@ uv sync                                            # fetches Python 3.13 too
 uv run playwright install chromium                 # the browser replay drives
 ```
 
-### 2 · A model key — bring your own
+### 2 · A model key
+
+**Required: an Azure OpenAI resource with a deployment named `gpt-4.1`.** That
+is the only configuration this has ever been run on — every committed artifact
+and every number in REPORT came from it.
 
 ```bash
 cp .secret.example .secret
 ```
 
-Then fill in **one** line. Neither profile pins an endpoint, so your own key is
-the whole setup:
-
 ```bash
-VISION_PROFILE=openai-gpt-4.1   OPENAI_API_KEY=...
-VISION_PROFILE=claude-opus      ANTHROPIC_API_KEY_FOR_VISION=...
+VISION_API_BASE=https://<your-resource>.openai.azure.com/
+VISION_API_KEY=<your key>
 ```
 
-⚠️ **The default profile is mine and you cannot use it.** `gpt-4.1`, `gpt-4o`,
-`gpt-5.2-chat` and `gpt-5.2-codex` pin an `api_base` in my Azure subscription.
-They stay the default because every committed artifact and every number in
-REPORT came from them. See [Config](#config) for why that trade was made.
+⚠️ `VISION_API_BASE` exists because the endpoint used to be hardcoded to my
+subscription, so a reviewer who *had* Azure OpenAI still had to edit source to
+use it. Overriding the URL changes nothing else: same provider, same
+`azure/gpt-4.1`, same call.
 
-A capability that reads from the screen now says so **before the browser
-launches**, rather than failing forty lines into a traceback:
+**Without a key**, `log_in` and the tenant refusal still replay and the 289
+offline tests still run. Everything else refuses before the browser launches:
 
 ```
 FAILED at pre-flight
-  expected  OPENAI_API_KEY (profile 'openai-gpt-4.1') in .secret -- see .secret.example
+  expected  VISION_API_KEY (profile 'gpt-4.1') in .secret -- see .secret.example
   observed  not set, and request_loan reads from the screen
 ```
+
+⛔ **Two other providers are wired and UNTESTED.** `openai-gpt-4.1` has never
+been called at all; `claude-opus` reaches Anthropic and was rejected on credit
+balance before the vision call, so its image and schema handling are
+unexercised. `VISION_PROFILE=<name>` selects one if you want to try, but
+neither is the documented path and neither produced any evidence here.
 
 ### 3 · Bring the bank up
 
