@@ -24,59 +24,25 @@
 
 ### 1 · Install
 
-**Assumptions**
-
-- **Docker with `docker compose`** — the bank runs as a local container so that
-  every run starts from an identical seed, which is what makes replay
-  determinism measurable.
-- a POSIX shell (on Windows, use WSL2)
-- ports 8080-8081, 9001-9002, 61616-61617 free
-- outbound network to your model provider
-- amd64 or arm64 — both ParaBank images work
-
-⚠️ **Verified end to end on amd64 Linux only**, cold clone, 2026-10-01. The
-locators are template PNGs captured on Linux Chromium, so a different font
-stack can miss — that is a UI-drift finding, not a broken setup.
-
-`banking-jobs` and `interfaceai` are **the same binary under two names** — the
-commands below use the first; older docs use the second.
+**One prerequisite: Docker with `docker compose`.** No Python, no `uv`, no
+browser install — everything runs in a container, including the tests.
 
 ```bash
 git clone https://github.com/borisdev/ai_computer_use && cd ai_computer_use
-curl -LsSf https://astral.sh/uv/install.sh | sh    # if you do not have uv
-uv sync                                            # fetches Python 3.13 too
-uv run playwright install chromium                 # the browser replay drives
+docker compose build agent
 ```
 
-### 1b · Run the agent in a container
+Also assumed: a POSIX shell (on Windows, use WSL2), ports 8080-8081,
+9001-9002, 61616-61617 free, and outbound network to OpenAI. amd64 and arm64
+both work.
 
-**Required on macOS and Windows, optional on Linux.** Control maps are template
-images and only match the browser that made them — on macOS the very first
-control scores 0.6889 against a 0.95 threshold and the run stops for a human
-([issue 0012](docs/issues/0012-control-maps-are-rendering-stack-specific.md)).
-The container pins the browser.
-
-```bash
-docker compose up -d --wait parabank
-uv run banking-jobs env reset                   # host-side, no browser involved
-docker compose run --rm agent replay log_in
-```
-
-Artifacts and evidence are bind-mounted to your disk; `run` gives a TTY, so the
-§5 handoff works in here too.
-
-**Tenant B has a different address inside.** Nothing else differs:
-
-| | host | container |
-|---|---|---|
-| tenant A (`baseline`) | default, no flag | same |
-| tenant B (`feature`) | `--tenant-config tenant_configs/bank_b.yaml` | `--tenant-config tenant_configs/bank_b.docker.yaml` |
-
-```bash
-docker compose --profile tenant-b up -d --wait
-docker compose run --rm agent replay read_savings_balance \
-  --tenant-config tenant_configs/bank_b.docker.yaml --param account_id=13344
-```
+⚠️ **Everything runs in the container because a control map is specific to the
+browser that built it.** The committed maps came from Linux Chromium; on macOS
+the very first control scores 0.6889 against a 0.95 threshold and the run
+stops for a human ([issue
+0012](docs/issues/0012-control-maps-are-rendering-stack-specific.md)). The
+container pins the browser so the host stops mattering — which is also why
+there is one path here instead of a choice you would have no way to evaluate.
 
 ### 2 · Keys and config
 
@@ -100,8 +66,8 @@ Using Azure anyway, or what still runs with no key at all: see
 ### 3 · Start the target application
 
 ```bash
-docker compose up -d --wait       # ParaBank → localhost:8080
-uv run banking-jobs env reset     # seed it — REQUIRED, see below
+docker compose up -d --wait parabank          # the bank → localhost:8080
+docker compose run --rm agent env reset       # seed it — REQUIRED, see below
 ```
 
 What you should see — **~9s and ~6s** once the image is local, plus a one-time
@@ -135,7 +101,7 @@ then replaying what that produced. So they are two things here.
 **The only step with a model in the decision loop.**
 
 ```bash
-uv run banking-jobs discover \
+docker compose run --rm agent discover \
   --goal "read the balance of account 13344" \
   --name my_balance_reader \
   --param account_id=account_id=13344 \
@@ -154,8 +120,8 @@ discovered my_balance_reader in 3 steps, 4 model calls, 13s
 Approval is the gate — replay refuses a draft.
 
 ```bash
-uv run banking-jobs capability approve my_balance_reader --by "your name"
-uv run banking-jobs replay my_balance_reader --param account_id=13344
+docker compose run --rm agent capability approve my_balance_reader --by "your name"
+docker compose run --rm agent replay my_balance_reader --param account_id=13344
 ```
 
 ```
@@ -174,8 +140,8 @@ is asked of a model — so the replay reaches row `13344` by parameter rather
 than by coordinate.
 
 ```bash
-uv run banking-jobs diagram my_balance_reader   # its flowchart, read from the artifact
-uv run banking-jobs status                      # capabilities, runs and outcomes
+docker compose run --rm agent diagram my_balance_reader  # its flowchart, read from the artifact
+docker compose run --rm agent status                     # capabilities, runs and outcomes
 ```
 
 
@@ -185,8 +151,8 @@ The assignment's §3.6. Break the environment so the run is **genuinely** stuck 
 a record it was recorded against no longer exists:
 
 ```bash
-uv run banking-jobs env break
-uv run banking-jobs replay log_in_discovered --operator
+docker compose run --rm agent env break
+docker compose run --rm agent replay log_in_discovered --operator
 ```
 
 ```
@@ -211,23 +177,22 @@ records the design that would actually work.
 Put the environment back when you are done:
 
 ```bash
-uv run banking-jobs env reset
+docker compose run --rm agent env reset
 ```
 
 ### 6 · Running without live services
 
-The offline suite needs **no Docker and no key**:
-
 ```bash
-uv run pytest -q -m "not live"      # 289 passed, 38 deselected
+docker compose run --rm tests     # 293 passed, 38 deselected
 ```
 
-⛔ **Verified by stopping the containers, not by trusting the marker.** Pausing
-ParaBank and running this on 2026-10-01 turned up three tests marked offline
-that quietly needed the live app — they are `live` now. A suite that needs a
-service it does not declare is one nobody else can reproduce.
+⛔ **The `tests` service proves its own claim by construction** — it declares no
+`network_mode` and no `depends_on`, so nothing can reach the bank from it. That
+is stronger than the `live` marker, which is a label someone has to remember to
+apply: pausing the containers on 2026-10-01 found three tests wearing the wrong
+one.
 
-The `live` 38 need ParaBank up; the discovery tests additionally need a key.
+The 38 `live` tests need the bank up; the discovery ones also need a key.
 
 - **Start here** — [`HANDOFF.md`](HANDOFF.md): scope, what is proven, what is next
 - **What is still open**, with a decision line per item — [`STILL-OPEN.md`](STILL-OPEN.md)
@@ -1049,6 +1014,22 @@ tests/                 offline fixture tests + live smoke tests
 evidence/              discovery and replay run evidence (brief deliverable)
 artifacts/             saved capability artifacts (brief deliverable)
 ```
+
+## Working on this repo without the container
+
+The Quick start is container-only on purpose — one path, and it cannot hit
+[0012](docs/issues/0012-control-maps-are-rendering-stack-specific.md). To edit
+code you will want a local environment too:
+
+```bash
+uv sync && uv run playwright install chromium
+uv run banking-jobs --help        # same binary; `interfaceai` is an alias
+uv run pytest -q -m "not live"
+```
+
+⚠️ **On macOS or Windows the committed control maps will not match your
+browser.** Discovery and replay against them fail at the first control; point
+`--maps` at an empty directory to build native ones, or use the container.
 
 ## Config
 

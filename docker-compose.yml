@@ -80,6 +80,20 @@ services:
   #
   # So both tenants work; tenant B just has a different address, which is what
   # `tenant_configs/bank_b.docker.yaml` carries. Tenant A needs no variant.
+  # The offline suite, and it proves its own claim by construction: NO
+  # `network_mode`, NO `depends_on`. If anything in here needed ParaBank it
+  # would fail, which is a stronger statement than the `live` marker -- that
+  # is a label someone has to remember to apply, and three tests were wearing
+  # the wrong one until the containers were paused on 2026-10-01.
+  tests:
+    image: interfaceai-agent
+    build: .
+    profiles: ["agent"]
+    entrypoint: ["pytest"]
+    command: ["-q", "-m", "not live"]
+    volumes:
+      - .:/app
+
   agent:
     build: .
     image: interfaceai-agent

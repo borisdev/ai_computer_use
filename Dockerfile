@@ -30,12 +30,21 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
 
 WORKDIR /app
 
+# ⚠️ The repo is bind-mounted from the host, so its files are owned by a UID
+# this container does not have, and git refuses with "dubious ownership". Two
+# tests shell out to `git ls-files` -- one proving every approved artifact the
+# docs reference is actually committed -- and without this they fail INSIDE a
+# container while passing on the host, which is the worst way for a check to
+# disagree with itself.
+RUN git config --system --add safe.directory /app
+
+
 # Dependencies first, so editing source does not re-resolve them.
 COPY pyproject.toml uv.lock README.md ./
-RUN uv sync --frozen --no-install-project --no-dev
+RUN uv sync --frozen --no-install-project
 
 COPY . .
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen
 
 # The browsers are already in the base image at $PLAYWRIGHT_BROWSERS_PATH, and
 # the tag is pinned to the SAME playwright version as uv.lock (1.63.0). A
