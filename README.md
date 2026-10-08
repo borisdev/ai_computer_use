@@ -1,11 +1,11 @@
 # Computer-Use Automation
 
 
-Topic: AI Automation on using a computer.
-Motivation: Replace a human's toil at doing back office banking work by building an AI agent that controls old computer banking apps to perform low risk operations. 
-High-level to automate a human using a computer:
-- Discovery: Iteratively build workflow of screen control click-type steps 
-- Replay: Execute workflow, ie. f(task_name, args, tenant-app configs) 
+- Topic: AI Automation on using a computer.
+- Motivation: Replace a human's toil at doing back office banking work by building an AI agent that controls old computer banking apps to perform low risk operations. 
+- High-level to automate a human using a computer:
+  ** Discovery: Iteratively build workflow of screen control click-type steps 
+  ** Replay: Execute workflow, ie. f(task_name, args, tenant-app configs) 
 
 > [!NOTE]
 > [InterfaceAI reqs](Assignment-A-Computer-Use-Automation.md) of this README 
