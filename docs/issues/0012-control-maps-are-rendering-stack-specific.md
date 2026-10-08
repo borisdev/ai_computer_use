@@ -90,7 +90,7 @@ docker run --rm -v "$PWD:/w" -w /w --network host \
 
 | | |
 |---|---|
-| **Pin the stack — run the agent in a container** | Chosen. Every host drives the same Linux Chromium the templates came from, so the host leaves the path entirely and a reviewer cannot hit 0.6889. Needs no schema change and no second map. |
+| **Pin the stack — run the agent in a container** | **Done** — `Dockerfile` + the `agent` compose service. Every host drives the same Linux Chromium the templates came from. Verified identical, which is the only claim here that matters:<br>`host      {'platform': 'linux', 'browser': 'chromium 153.0.8010.12', ...}`<br>`container {'platform': 'linux', 'browser': 'chromium 153.0.8010.12', ...}`<br>Pinned by tagging the base image to the same playwright version as `uv.lock`; a mismatch is not a warning, Playwright refuses to launch. Needed no schema change and no second map. |
 | Record the environment | **Done** — above. Does not fix anything; makes the failure legible, and is what a future developer needs to diagnose the next one. |
 | One map per environment, keyed like a tenant | **Not built.** `MapKey` would grow a dimension and the store would hold `linux/…` and `darwin/…` side by side. It is the right shape *if* multiple hosts must be supported directly — but pinning the stack makes it unnecessary, and building it now is an abstraction ahead of its caller (`project.md`). Recorded so the option is not re-derived. |
 | Lower the threshold | **No.** 0.6889 against 0.95 is not a tuning problem, and a threshold low enough to admit it would admit the wrong control. Issue 0009 is what that costs. |

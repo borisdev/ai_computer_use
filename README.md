@@ -50,62 +50,33 @@ uv run playwright install chromium                 # the browser replay drives
 
 ### 1b · Run the agent in a container
 
-Works on any host, including Linux — every command in this README was verified
-inside it. **Necessary on macOS and Windows**, optional on Linux, and the
-reason is one measurement:
-
-a template PNG is specific to the stack that rasterised it. The committed
-`control_maps/` were built on Linux Chromium; matched against macOS Chromium
-the first control of the first screen scores **0.6889** against a 0.95
-threshold, and the run correctly escalates to a human instead of clicking
-something it is 69% sure of. That is [issue
-0012](docs/issues/0012-control-maps-are-rendering-stack-specific.md).
-
-Running the agent in a container pins the stack, so the host leaves the path:
+**Required on macOS and Windows, optional on Linux.** Control maps are template
+images and only match the browser that made them — on macOS the very first
+control scores 0.6889 against a 0.95 threshold and the run stops for a human
+([issue 0012](docs/issues/0012-control-maps-are-rendering-stack-specific.md)).
+The container pins the browser.
 
 ```bash
 docker compose up -d --wait parabank
-uv run banking-jobs env reset                       # host-side, no browser involved
+uv run banking-jobs env reset                   # host-side, no browser involved
 docker compose run --rm agent replay log_in
 ```
 
-Measured — the container reproduces the committed maps' stack exactly:
+Artifacts and evidence are bind-mounted to your disk; `run` gives a TTY, so the
+§5 handoff works in here too.
 
-```
-host        {'platform': 'linux', 'browser': 'chromium 153.0.8010.12', ...}
-container   {'platform': 'linux', 'browser': 'chromium 153.0.8010.12', ...}
-```
-
-Artifacts, control maps and evidence are bind-mounted, so they land on your
-disk, not in a layer. `run` gives a TTY, so the §5 handoff works in here too.
-
-**Reaching each tenant** — the only difference is tenant B's address:
+**Tenant B has a different address inside.** Nothing else differs:
 
 | | host | container |
 |---|---|---|
-| **tenant A** (`baseline`) | `localhost:8080` — the default, no flag | same address, no flag |
-| **tenant B** (`feature`) | `--tenant-config tenant_configs/bank_b.yaml` | `--tenant-config tenant_configs/bank_b.docker.yaml` |
+| tenant A (`baseline`) | default, no flag | same |
+| tenant B (`feature`) | `--tenant-config tenant_configs/bank_b.yaml` | `--tenant-config tenant_configs/bank_b.docker.yaml` |
 
 ```bash
-# tenant B, host
-uv run banking-jobs replay read_savings_balance \
-  --tenant-config tenant_configs/bank_b.yaml --param account_id=13344
-
-# tenant B, container
 docker compose --profile tenant-b up -d --wait
 docker compose run --rm agent replay read_savings_balance \
   --tenant-config tenant_configs/bank_b.docker.yaml --param account_id=13344
 ```
-
-Both print `cross-tenant replaying on feature` and then `SUCCESS … $1231.10`.
-Tenant A needs no variant because `localhost:8080` means the same thing in
-both places — that is what the shared namespace buys.
-
-⚠️ The **origin allowlist differs inside**, and it refused before it was told:
-the first container run against tenant B died on `NotAllowedError: navigation
-to 'http://parabank-b:8080/…' is outside the allowlist`. That is the §3.4
-guardrail working. compose sets the two origins that exist in there — not a
-wildcard, and `localhost:8081` is deliberately absent since nothing serves it.
 
 ### 2 · Keys and config
 
