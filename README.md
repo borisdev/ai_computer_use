@@ -54,9 +54,13 @@ uv sync                                            # fetches Python 3.13 too
 uv run playwright install chromium                 # the browser replay drives
 ```
 
-### 1b · Run the agent in a container — do this on macOS or Windows
+### 1b · Run the agent in a container
 
-**A template PNG is specific to the stack that rasterised it.** The committed
+Works on any host, including Linux — every command in this README was verified
+inside it. **Necessary on macOS and Windows**, optional on Linux, and the
+reason is one measurement:
+
+a template PNG is specific to the stack that rasterised it. The committed
 `control_maps/` were built on Linux Chromium; matched against macOS Chromium
 the first control of the first screen scores **0.6889** against a 0.95
 threshold, and the run correctly escalates to a human instead of clicking
