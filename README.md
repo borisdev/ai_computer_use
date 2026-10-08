@@ -75,10 +75,33 @@ container   {'platform': 'linux', 'browser': 'chromium 153.0.8010.12', ...}
 Artifacts, control maps and evidence are bind-mounted, so they land on your
 disk, not in a layer. `run` gives a TTY, so the §5 handoff works in here too.
 
-⚠️ **Tenant B is not reachable from the container.** It shares ParaBank's
-network namespace so that `localhost:8080` means the same thing inside as it
-does in every committed artifact — the cost is that the second bank, on 8081,
-is host-side only. Cross-tenant replay is the one flow you run outside.
+**Reaching each tenant** — the only difference is tenant B's address:
+
+| | host | container |
+|---|---|---|
+| **tenant A** (`baseline`) | `localhost:8080` — the default, no flag | same address, no flag |
+| **tenant B** (`feature`) | `--tenant-config tenant_configs/bank_b.yaml` | `--tenant-config tenant_configs/bank_b.docker.yaml` |
+
+```bash
+# tenant B, host
+uv run banking-jobs replay read_savings_balance \
+  --tenant-config tenant_configs/bank_b.yaml --param account_id=13344
+
+# tenant B, container
+docker compose --profile tenant-b up -d --wait
+docker compose run --rm agent replay read_savings_balance \
+  --tenant-config tenant_configs/bank_b.docker.yaml --param account_id=13344
+```
+
+Both print `cross-tenant replaying on feature` and then `SUCCESS … $1231.10`.
+Tenant A needs no variant because `localhost:8080` means the same thing in
+both places — that is what the shared namespace buys.
+
+⚠️ The **origin allowlist differs inside**, and it refused before it was told:
+the first container run against tenant B died on `NotAllowedError: navigation
+to 'http://parabank-b:8080/…' is outside the allowlist`. That is the §3.4
+guardrail working. compose sets the two origins that exist in there — not a
+wildcard, and `localhost:8081` is deliberately absent since nothing serves it.
 
 ### 2 · Keys and config
 

@@ -70,10 +70,16 @@ services:
   # retargeting artifacts for a networking detail is how a portability
   # mechanism gets used to paper over plumbing.
   #
-  # ⚠️ THE COST, STATED: sharing one namespace means tenant B (8081) is NOT
-  # reachable from in here. Cross-tenant replay stays a host-side flow. The
-  # container covers the demo path and the handoff, which is what a reviewer
-  # runs.
+  # ⛔ THIS SAID TENANT B WAS UNREACHABLE IN HERE. It is not, and the claim was
+  # reasoned rather than measured. The namespace is still on the compose
+  # bridge, so service DNS works -- what is absent is the HOST PORT MAPPING:
+  #
+  #   localhost:8080    HTTP/1.1 200     tenant A, same address as the host
+  #   parabank-b:8080   HTTP/1.1 200     tenant B, by service name
+  #   localhost:8081    UNREACHABLE      a host mapping, correctly absent
+  #
+  # So both tenants work; tenant B just has a different address, which is what
+  # `tenant_configs/bank_b.docker.yaml` carries. Tenant A needs no variant.
   agent:
     build: .
     image: interfaceai-agent
@@ -85,6 +91,19 @@ services:
     env_file:
       - .env
       - .secret
+    environment:
+      # ⚠️ THE ALLOWLIST IS NOT THE SAME IN HERE, and it refused before it was
+      # told. `.env` lists the HOST origins; from inside, tenant A is still
+      # `localhost:8080` (shared namespace) but tenant B is `parabank-b:8080`,
+      # and the first attempt died on
+      #
+      #   NotAllowedError: navigation to 'http://parabank-b:8080/...' is
+      #   outside the allowlist ('http://localhost:8080','http://localhost:8081')
+      #
+      # which is the §3.4 guardrail working. Widened to the two origins that
+      # exist in here, NOT to a wildcard: `localhost:8081` is deliberately
+      # absent because nothing serves it inside this namespace.
+      INTERFACEAI_ALLOWED_ORIGINS: http://localhost:8080,http://parabank-b:8080
     volumes:
       # Artifacts, control maps and evidence land on the HOST, not inside a
       # layer that disappears. /opt/venv is outside /app so this cannot

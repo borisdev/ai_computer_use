@@ -1,0 +1,37 @@
+# Tenant B, ADDRESSED FROM INSIDE THE AGENT CONTAINER.
+#
+# Identical to bank_b.yaml but for `base_url`. `localhost:8081` is a HOST port
+# mapping and means nothing inside the container; `parabank-b:8080` is the
+# service on the compose network, which the agent can resolve because it
+# shares parabank's namespace and that namespace is on the same bridge.
+#
+# Measured, because the first version of this was documented as impossible:
+#   localhost:8080    HTTP/1.1 200     tenant A
+#   parabank-b:8080   HTTP/1.1 200     tenant B
+#   localhost:8081    UNREACHABLE      the host mapping, correctly absent
+#
+# Tenant A needs no container variant: `localhost:8080` means the same thing
+# in both places, which is the point of the shared namespace.
+
+# Tenant B — the same vendor product at a second institution.
+#
+# ⚠️ `request_loan` and `session_loss_probe` are ABSENT ON PURPOSE. That
+# exclusion is the demonstration: replay refuses them at pre-flight, before a
+# browser opens, and the outcome says "not permitted" rather than reporting a
+# locator that missed. See CAPABILITIES.md.
+# ⚠️ TWO NAMES. `institution` is who this is; `tenant` is which PIXEL SET
+# their screens match -- and today that is a Docker image tag
+# (`parasoft/parabank:baseline`), which is a defect recorded in #13.
+institution: Bank B
+tenant: feature
+app: parabank
+base_url: http://parabank-b:8080/parabank
+
+confirm_money_above: 1000
+
+permits:
+  - log_in
+  - log_in_discovered
+  - read_savings_balance
+
+control_maps: control_maps
