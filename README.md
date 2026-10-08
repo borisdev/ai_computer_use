@@ -1,6 +1,5 @@
 # Computer-Use Automation
 
-
 - Topic: AI Automation on using a computer.
 - Motivation: Replace a human's toil at doing back office banking work by building an AI agent that controls old computer banking apps to perform low risk operations. 
 - High-level to automate a human using a computer:
@@ -8,23 +7,18 @@
   - Replay: Execute workflow, ie. f(task_name, args, tenant-app configs) 
 
 > [!NOTE]
-> [InterfaceAI reqs](Assignment-A-Computer-Use-Automation.md) of this README 
-> - "how to run without live services"
-> - "a demo path: the exact command(s)..... 
-> - DEMO PART 1 of 2: to run the agent on a goal, 
-> - DEMO PART 2 of 2: then replay the resulting artifact.
-> **What the brief asks a README to cover, and where each lands.** Paraphrased;
-> the verbatim text is in
+> **What [the brief](Assignment-A-Computer-Use-Automation.md) asks a README to
+> cover, and where each lands.** Paraphrased, not quoted.
 >
 > | Assignment | here |
 > |---|---|
 > | §6.1 — set it up and run it | [1 · Install](#1--install) |
 > | §6.1 — any keys or config it needs | [2 · Keys and config](#2--keys-and-config) |
-> | §6 — target application | [3 · Run target application ("without a live service")](#3--start-the-target-application) |
+> | §6 — a stand-in target application | [3 · Start the target application](#3--start-the-target-application) |
 > | §6.1 — a demo path, part 1: drive the agent at a goal | [Part 1 of 2](#part-1-of-2--run-the-agent-on-a-goal) |
 > | §6.1 — a demo path, part 2: replay what that produced | [Part 2 of 2](#part-2-of-2--replay-the-resulting-artifact) |
-> | §3.6 — bring a human into a stuck run | [5 · Escalation & handoff](#5--human-in-the-loop-escalation--handoff) |
-> | §6.1 — running it without live services | [6 · Without live services](#6--running-without-live-services) |
+> | §3.6 — bring a human into a stuck run | [5 · Human-in-the-loop escalation & handoff](#5--human-in-the-loop-escalation--handoff) |
+> | §6.1 — run it without live services | [6 · Running without live services](#6--running-without-live-services) |
 
 ## Quick start
 
