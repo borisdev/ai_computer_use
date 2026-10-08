@@ -48,7 +48,7 @@ uv sync                                            # fetches Python 3.13 too
 uv run playwright install chromium                 # the browser replay drives
 ```
 
-### 1b · Or skip the host entirely (recommended off Linux)
+### 1b · Run the agent in a container — do this on macOS or Windows
 
 **A template PNG is specific to the stack that rasterised it.** The committed
 `control_maps/` were built on Linux Chromium; matched against macOS Chromium
